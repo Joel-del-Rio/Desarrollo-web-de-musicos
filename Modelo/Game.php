@@ -3,51 +3,48 @@ require_once __DIR__ . '/Database.php';
 
 class Game {
     private PDO $db;
-    private const QUESTION_SECONDS = 20;
 
     public function __construct() {
         $this->db = Database::getInstance()->pdo();
     }
 
-    public function create(int $totalRounds): array {
-        // PIN único para partidas activas
+    public function create(int $totalRounds, int $questionTime): array {
+        // PIN único entre partidas activas
         do {
             $pin = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
-            $st  = $this->db->prepare("SELECT id FROM games WHERE pin = ? AND status != 'finished'");
+            $st  = $this->db->prepare("SELECT id FROM games WHERE pin=? AND status!='finished'");
             $st->execute([$pin]);
         } while ($st->fetch());
 
         $token = bin2hex(random_bytes(32));
-        $st = $this->db->prepare(
-            "INSERT INTO games (pin, admin_token, total_rounds) VALUES (?, ?, ?)"
-        );
-        $st->execute([$pin, $token, $totalRounds]);
+        $this->db->prepare(
+            "INSERT INTO games (pin, admin_token, total_rounds, question_time) VALUES (?,?,?,?)"
+        )->execute([$pin, $token, $totalRounds, $questionTime]);
         $gameId = (int)$this->db->lastInsertId();
 
-        // Seleccionar canciones aleatorias y guardar opciones de respuesta
-        $st = $this->db->prepare("SELECT id, year FROM songs ORDER BY RAND() LIMIT ?");
+        // Seleccionar canciones para las rondas
+        $st = $this->db->prepare("SELECT id FROM songs ORDER BY RAND() LIMIT ?");
         $st->execute([$totalRounds]);
-        $songs = $st->fetchAll();
+        $songs = $st->fetchAll(PDO::FETCH_COLUMN);
 
         $ins = $this->db->prepare(
-            "INSERT INTO game_songs (game_id, song_id, round_number, options) VALUES (?, ?, ?, ?)"
+            "INSERT INTO game_songs (game_id, song_id, round_number) VALUES (?,?,?)"
         );
-        foreach ($songs as $i => $song) {
-            $options = $this->buildOptions((int)$song['year'], $gameId * 100 + $i);
-            $ins->execute([$gameId, $song['id'], $i + 1, json_encode($options)]);
+        foreach ($songs as $i => $songId) {
+            $ins->execute([$gameId, $songId, $i + 1]);
         }
 
         return ['id' => $gameId, 'pin' => $pin, 'admin_token' => $token];
     }
 
     public function getByPin(string $pin): ?array {
-        $st = $this->db->prepare("SELECT * FROM games WHERE pin = ? AND status != 'finished'");
+        $st = $this->db->prepare("SELECT * FROM games WHERE pin=? AND status!='finished'");
         $st->execute([$pin]);
         return $st->fetch() ?: null;
     }
 
     public function getById(int $id): ?array {
-        $st = $this->db->prepare("SELECT * FROM games WHERE id = ?");
+        $st = $this->db->prepare("SELECT * FROM games WHERE id=?");
         $st->execute([$id]);
         return $st->fetch() ?: null;
     }
@@ -57,7 +54,41 @@ class Game {
         return $game && hash_equals($game['admin_token'], $token);
     }
 
+    /**
+     * Inicia la partida: reparte la canción inicial a cada jugador y pasa a ronda 1.
+     */
     public function start(int $gameId): void {
+        // IDs de canciones reservadas para las rondas
+        $st = $this->db->prepare("SELECT song_id FROM game_songs WHERE game_id=?");
+        $st->execute([$gameId]);
+        $roundIds = $st->fetchAll(PDO::FETCH_COLUMN);
+
+        // Jugadores
+        $st = $this->db->prepare("SELECT id FROM players WHERE game_id=?");
+        $st->execute([$gameId]);
+        $playerIds = $st->fetchAll(PDO::FETCH_COLUMN);
+
+        $insTimeline = $this->db->prepare(
+            "INSERT IGNORE INTO player_timeline (player_id, game_id, song_id) VALUES (?,?,?)"
+        );
+
+        $placeholders = $roundIds ? implode(',', array_fill(0, count($roundIds), '?')) : '0';
+        foreach ($playerIds as $pid) {
+            // Canción inicial: una NOT usada en rondas, si es posible
+            $st = $this->db->prepare(
+                "SELECT id FROM songs WHERE id NOT IN ($placeholders) ORDER BY RAND() LIMIT 1"
+            );
+            $st->execute($roundIds);
+            $initial = $st->fetchColumn();
+
+            if (!$initial) { // Fallback: cualquier canción
+                $st = $this->db->prepare("SELECT id FROM songs ORDER BY RAND() LIMIT 1");
+                $st->execute();
+                $initial = $st->fetchColumn();
+            }
+            if ($initial) $insTimeline->execute([$pid, $gameId, $initial]);
+        }
+
         $this->db->prepare(
             "UPDATE games SET status='question', current_round=1, question_started_at=NOW() WHERE id=?"
         )->execute([$gameId]);
@@ -82,70 +113,40 @@ class Game {
 
     public function getCurrentSong(int $gameId): ?array {
         $st = $this->db->prepare(
-            "SELECT s.id, s.title, s.artist, s.year, s.genre, gs.round_number, gs.options
+            "SELECT s.id, s.title, s.artist, s.year, s.genre, gs.round_number
              FROM game_songs gs
              JOIN songs s ON gs.song_id = s.id
              JOIN games  g ON gs.game_id = g.id
-             WHERE gs.game_id = ? AND gs.round_number = g.current_round"
+             WHERE gs.game_id=? AND gs.round_number=g.current_round"
         );
         $st->execute([$gameId]);
-        $row = $st->fetch();
-        if ($row) {
-            $row['options'] = json_decode($row['options'], true);
-        }
-        return $row ?: null;
+        return $st->fetch() ?: null;
     }
 
     public function getState(int $gameId): array {
-        // Auto-transición por tiempo
-        $this->db->prepare(
-            "UPDATE games SET status='results'
-             WHERE id=? AND status='question'
-             AND TIMESTAMPDIFF(SECOND, question_started_at, NOW()) >= ?"
-        )->execute([$gameId, self::QUESTION_SECONDS]);
-
+        // Auto-transición cuando se acaba el tiempo
         $game = $this->getById($gameId);
+        if ($game && $game['status'] === 'question' && $game['question_started_at']) {
+            $elapsed = time() - strtotime($game['question_started_at']);
+            if ($elapsed >= (int)$game['question_time']) {
+                $this->db->prepare("UPDATE games SET status='results' WHERE id=?")->execute([$gameId]);
+                $game = $this->getById($gameId);
+            }
+        }
         if (!$game) return ['error' => 'Partida no encontrada'];
 
-        $timeLeft = self::QUESTION_SECONDS;
+        $timeLeft = (int)$game['question_time'];
         if ($game['status'] === 'question' && $game['question_started_at']) {
             $elapsed  = time() - strtotime($game['question_started_at']);
-            $timeLeft = max(0, self::QUESTION_SECONDS - $elapsed);
+            $timeLeft = max(0, (int)$game['question_time'] - $elapsed);
         }
 
         return [
             'status'        => $game['status'],
             'current_round' => (int)$game['current_round'],
             'total_rounds'  => (int)$game['total_rounds'],
+            'question_time' => (int)$game['question_time'],
             'time_left'     => $timeLeft,
         ];
-    }
-
-    // Genera 4 opciones de año deterministas a partir de un seed
-    private function buildOptions(int $correctYear, int $seed): array {
-        $rng = static function () use (&$seed): int {
-            $seed = ($seed * 1664525 + 1013904223) & 0x7FFFFFFF;
-            return $seed;
-        };
-
-        $options = [$correctYear];
-        $tries   = 0;
-        while (count($options) < 4 && $tries < 200) {
-            $tries++;
-            $offset = ($rng() % 17) - 8; // -8 … +8, never 0
-            if ($offset === 0) $offset = 1;
-            $y = max(1950, min(2024, $correctYear + $offset));
-            if (!in_array($y, $options, true)) {
-                $options[] = $y;
-            }
-        }
-
-        // Fisher-Yates determinista
-        for ($i = count($options) - 1; $i > 0; $i--) {
-            $j = $rng() % ($i + 1);
-            [$options[$i], $options[$j]] = [$options[$j], $options[$i]];
-        }
-
-        return $options;
     }
 }

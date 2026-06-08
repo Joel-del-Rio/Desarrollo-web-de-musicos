@@ -19,8 +19,8 @@ class PlayerController {
         if ($name === '' || strlen($name) > 30)         return ['error' => 'Nombre inválido (máx 30 caracteres)'];
 
         $game = $this->game->getByPin($pin);
-        if (!$game)                         return ['error' => 'Partida no encontrada'];
-        if ($game['status'] !== 'waiting')  return ['error' => 'La partida ya ha comenzado'];
+        if (!$game)                        return ['error' => 'Partida no encontrada con ese PIN'];
+        if ($game['status'] !== 'waiting') return ['error' => 'La partida ya ha comenzado'];
 
         $pl = $this->player->create((int)$game['id'], $name);
         return [
@@ -38,43 +38,38 @@ class PlayerController {
 
         $pl = $this->player->getById($playerId);
         if (!$pl) return ['error' => 'Jugador no encontrado'];
-
         $this->player->ping($playerId);
 
         $gameId  = (int)$pl['game_id'];
         $state   = $this->game->getState($gameId);
         $players = $this->player->getByGame($gameId);
 
-        // Calcular ranking del jugador
+        // Ranking del jugador
         $rank = 1;
-        foreach ($players as $p) {
-            if ((int)$p['score'] > (int)$pl['score']) $rank++;
-        }
+        foreach ($players as $p) { if ((int)$p['score'] > (int)$pl['score']) $rank++; }
 
         $state['player']        = $pl;
         $state['player_rank']   = $rank;
         $state['total_players'] = count($players);
         $state['has_answered']  = false;
+        $state['timeline']      = $this->player->getTimeline($playerId, $gameId);
 
-        if (in_array($state['status'], ['question', 'results', 'answered'], true)) {
+        if (in_array($state['status'], ['question','results'], true)) {
             $song = $this->game->getCurrentSong($gameId);
             if ($song) {
                 $state['has_answered'] = $this->player->hasAnswered($playerId, $gameId, (int)$song['id']);
 
                 if ($state['status'] === 'question') {
-                    // No revelar el año correcto al jugador
+                    // Ocultar año al jugador durante la pregunta
                     $songForPlayer = $song;
                     unset($songForPlayer['year']);
                     $state['song'] = $songForPlayer;
                 } else {
-                    $state['song']          = $song;
-                    $state['round_results'] = $this->player->getRoundResults($gameId, (int)$song['id']);
-                    // Resultado personal de esta ronda
-                    foreach ($state['round_results'] as $r) {
-                        if ($r['name'] === $pl['name']) {
-                            $state['my_result'] = $r;
-                            break;
-                        }
+                    $state['song']         = $song; // Año visible en resultados
+                    $results               = $this->player->getRoundResults($gameId, (int)$song['id']);
+                    $state['round_results'] = $results;
+                    foreach ($results as $r) {
+                        if ($r['name'] === $pl['name']) { $state['my_result'] = $r; break; }
                     }
                 }
             }
@@ -88,8 +83,10 @@ class PlayerController {
     }
 
     public function submitAnswer(): array {
-        $playerId  = (int)($_POST['player_id']  ?? 0);
-        $yearGuess = (int)($_POST['year_guess'] ?? 0);
+        $playerId = (int)($_POST['player_id'] ?? 0);
+        $position = (int)($_POST['position']  ?? -1);
+
+        if ($position < 0) return ['error' => 'Posición inválida'];
 
         $pl = $this->player->getById($playerId);
         if (!$pl) return ['error' => 'Jugador no encontrado'];
@@ -97,7 +94,7 @@ class PlayerController {
         $gameId = (int)$pl['game_id'];
         $state  = $this->game->getState($gameId);
 
-        if ($state['status'] !== 'question') return ['error' => 'No hay pregunta activa'];
+        if ($state['status'] !== 'question') return ['error' => 'No hay ronda activa'];
 
         $song = $this->game->getCurrentSong($gameId);
         if (!$song) return ['error' => 'Sin canción activa'];
@@ -106,9 +103,10 @@ class PlayerController {
             return ['error' => 'Ya has respondido esta ronda'];
         }
 
-        return $this->player->submitAnswer(
+        return $this->player->submitPositionAnswer(
             $playerId, $gameId, (int)$song['id'],
-            $yearGuess, (int)$song['year'], (int)$state['time_left']
+            $position, (int)$song['year'],
+            (int)$state['time_left'], (int)$state['question_time']
         );
     }
 }
