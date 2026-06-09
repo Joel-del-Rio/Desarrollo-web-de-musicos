@@ -38,6 +38,17 @@ try {
             echo json_encode((new GameController())->nextRound());
             break;
 
+        /* ── Canciones ── */
+        case 'get_songs':
+            require_once __DIR__ . '/SongController.php';
+            echo json_encode((new SongController())->getSongs());
+            break;
+
+        case 'update_song_links':
+            require_once __DIR__ . '/SongController.php';
+            echo json_encode((new SongController())->updateLinks());
+            break;
+
         /* ── Jugador ── */
         case 'join_game':
             require_once __DIR__ . '/PlayerController.php';

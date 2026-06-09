@@ -57,9 +57,49 @@
         </div>
       </div>
 
+      <!-- Opciones de streaming -->
+      <div class="mb-4">
+        <label class="form-label text-secondary small fw-semibold text-uppercase">Streaming</label>
+
+        <div class="d-flex align-items-center justify-content-between py-2 border-bottom border-secondary border-opacity-25">
+          <div>
+            <div class="fw-semibold small">Mostrar enlaces a plataformas</div>
+            <div class="small" style="color:var(--muted);opacity:.75">Spotify y YouTube junto a cada canción</div>
+          </div>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="toggle-links" role="switch"
+                   onchange="onLinksToggle()">
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between py-2 border-bottom border-secondary border-opacity-25" id="row-embed">
+          <div>
+            <div class="fw-semibold small">YouTube embebido</div>
+            <div class="small" style="color:var(--muted);opacity:.75">Reproduce el vídeo dentro de la app</div>
+          </div>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="toggle-embed" role="switch"
+                   onchange="onEmbedToggle()">
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between py-2" id="row-autoplay" style="display:none!important">
+          <div>
+            <div class="fw-semibold small">Autoplay al cambiar ronda</div>
+            <div class="small" style="color:var(--muted);opacity:.75">El vídeo empieza solo al iniciar cada ronda</div>
+          </div>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="toggle-autoplay" role="switch">
+          </div>
+        </div>
+      </div>
+
       <button class="btn btn-game btn-lg w-100 rounded-pill fw-bold" onclick="createGame()">
         🎮 Crear Partida
       </button>
+      <div class="text-center mt-2">
+        <a href="songs.php" class="small" style="color:var(--accent)">🎵 Gestionar catálogo de canciones</a>
+      </div>
       <div id="setup-error" class="alert alert-danger mt-3 py-2 small d-none"></div>
     </div>
 
@@ -138,6 +178,16 @@
         <div class="rsc-year year-hidden" id="q-year">—</div>
         <div class="rsc-genre"  id="q-genre"></div>
         <div class="text-secondary small mt-2">El año se desvela al terminar el tiempo</div>
+        <!-- Zona streaming (question) -->
+        <div id="q-streaming" class="mt-3 d-none">
+          <div id="q-yt-embed" class="mb-2 d-none">
+            <div class="ratio ratio-16x9" style="max-height:220px">
+              <iframe id="q-yt-iframe" src="" allow="autoplay; encrypted-media" allowfullscreen
+                      style="border-radius:8px;border:none"></iframe>
+            </div>
+          </div>
+          <div id="q-stream-btns" class="d-flex gap-2 justify-content-center flex-wrap"></div>
+        </div>
       </div>
 
       <div class="d-flex justify-content-between align-items-center">
@@ -175,6 +225,10 @@
         <div class="rsc-artist" id="r-artist">—</div>
         <div class="rsc-year year-revealed" id="r-year">—</div>
         <div class="rsc-genre"  id="r-genre"></div>
+        <!-- Zona streaming (results) -->
+        <div id="r-streaming" class="mt-3 d-none">
+          <div id="r-stream-btns" class="d-flex gap-2 justify-content-center flex-wrap"></div>
+        </div>
       </div>
 
       <div>

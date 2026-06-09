@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS games (
     question_started_at TIMESTAMP NULL,
     question_time       INT DEFAULT 30,
     selected_genre      VARCHAR(100) DEFAULT 'Todos',
+    show_links          TINYINT(1) DEFAULT 0,
+    embed_youtube       TINYINT(1) DEFAULT 0,
+    autoplay            TINYINT(1) DEFAULT 0,
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_pin (pin)
 );
@@ -27,11 +30,13 @@ CREATE TABLE IF NOT EXISTS players (
 );
 
 CREATE TABLE IF NOT EXISTS songs (
-    id     INT AUTO_INCREMENT PRIMARY KEY,
-    title  VARCHAR(200) NOT NULL,
-    artist VARCHAR(200) NOT NULL,
-    year   INT NOT NULL,
-    genre  VARCHAR(100)
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    title        VARCHAR(200) NOT NULL,
+    artist       VARCHAR(200) NOT NULL,
+    year         INT NOT NULL,
+    genre        VARCHAR(100),
+    spotify_url  VARCHAR(500) NULL,
+    youtube_url  VARCHAR(500) NULL
 );
 
 CREATE TABLE IF NOT EXISTS game_songs (

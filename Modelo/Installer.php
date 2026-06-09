@@ -13,7 +13,14 @@ class Installer {
         $row = $pdo->query("SELECT version FROM schema_version LIMIT 1")->fetch(PDO::FETCH_ASSOC);
         $currentVersion = $row ? (int)$row['version'] : 0;
 
-        if ($currentVersion >= 3) return; // Ya instalado
+        // Migración a v4: añadir columnas de streaming si falta
+        if ($currentVersion === 3) {
+            try { $pdo->exec("ALTER TABLE songs ADD COLUMN spotify_url VARCHAR(500) NULL, ADD COLUMN youtube_url VARCHAR(500) NULL"); } catch (\Exception $e) {}
+            try { $pdo->exec("ALTER TABLE games ADD COLUMN show_links TINYINT(1) DEFAULT 0, ADD COLUMN embed_youtube TINYINT(1) DEFAULT 0, ADD COLUMN autoplay TINYINT(1) DEFAULT 0"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=4");
+            return;
+        }
+        if ($currentVersion >= 4) return; // Ya instalado
 
         // Borrar tablas antiguas para garantizar esquema limpio
         $pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
@@ -33,6 +40,9 @@ class Installer {
                 total_rounds        INT DEFAULT 10,
                 question_time       INT DEFAULT 30,
                 selected_genre      VARCHAR(100) DEFAULT 'Todos',
+                show_links          TINYINT(1) DEFAULT 0,
+                embed_youtube       TINYINT(1) DEFAULT 0,
+                autoplay            TINYINT(1) DEFAULT 0,
                 question_started_at TIMESTAMP NULL,
                 created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_pin (pin)
@@ -41,11 +51,13 @@ class Installer {
 
         $pdo->exec("
             CREATE TABLE songs (
-                id     INT AUTO_INCREMENT PRIMARY KEY,
-                title  VARCHAR(200) NOT NULL,
-                artist VARCHAR(200) NOT NULL,
-                year   INT NOT NULL,
-                genre  VARCHAR(100)
+                id           INT AUTO_INCREMENT PRIMARY KEY,
+                title        VARCHAR(200) NOT NULL,
+                artist       VARCHAR(200) NOT NULL,
+                year         INT NOT NULL,
+                genre        VARCHAR(100),
+                spotify_url  VARCHAR(500) NULL,
+                youtube_url  VARCHAR(500) NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
 
@@ -104,7 +116,7 @@ class Installer {
         ");
 
         $pdo->exec("CREATE TABLE schema_version (version INT DEFAULT 0)");
-        $pdo->exec("INSERT INTO schema_version (version) VALUES (3)");
+        $pdo->exec("INSERT INTO schema_version (version) VALUES (4)");
 
         // ── Canciones de muestra ───────────────────────────
         $ins = $pdo->prepare("INSERT INTO songs (title, artist, year, genre) VALUES (?,?,?,?)");

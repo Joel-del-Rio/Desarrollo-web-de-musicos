@@ -128,7 +128,6 @@
 
     <!-- Reveal canción -->
     <div class="card w-100 p-3">
-      <div class="text-secondary small mb-1">Era de…</div>
       <div class="fw-bold fs-5" id="r-title">—</div>
       <div class="text-secondary"    id="r-artist">—</div>
       <div class="fw-black mt-1" style="font-size:2.5rem;color:var(--accent)" id="r-year">—</div>

@@ -8,7 +8,7 @@ class Game {
         $this->db = Database::getInstance()->pdo();
     }
 
-    public function create(int $totalRounds, int $questionTime, string $genre = 'Todos'): array {
+    public function create(int $totalRounds, int $questionTime, string $genre = 'Todos', int $showLinks = 0, int $embedYoutube = 0, int $autoplay = 0): array {
         // PIN único entre partidas activas
         do {
             $pin = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
@@ -18,8 +18,8 @@ class Game {
 
         $token = bin2hex(random_bytes(32));
         $this->db->prepare(
-            "INSERT INTO games (pin, admin_token, total_rounds, question_time, selected_genre) VALUES (?,?,?,?,?)"
-        )->execute([$pin, $token, $totalRounds, $questionTime, $genre]);
+            "INSERT INTO games (pin, admin_token, total_rounds, question_time, selected_genre, show_links, embed_youtube, autoplay) VALUES (?,?,?,?,?,?,?,?)"
+        )->execute([$pin, $token, $totalRounds, $questionTime, $genre, $showLinks, $embedYoutube, $autoplay]);
         $gameId = (int)$this->db->lastInsertId();
 
         // Seleccionar canciones para las rondas (filtradas por género si aplica)
@@ -137,7 +137,7 @@ class Game {
 
     public function getCurrentSong(int $gameId): ?array {
         $st = $this->db->prepare(
-            "SELECT s.id, s.title, s.artist, s.year, s.genre, gs.round_number
+            "SELECT s.id, s.title, s.artist, s.year, s.genre, s.spotify_url, s.youtube_url, gs.round_number
              FROM game_songs gs
              JOIN songs s ON gs.song_id = s.id
              JOIN games  g ON gs.game_id = g.id
@@ -171,6 +171,9 @@ class Game {
             'total_rounds'  => (int)$game['total_rounds'],
             'question_time' => (int)$game['question_time'],
             'time_left'     => $timeLeft,
+            'show_links'    => (int)$game['show_links'],
+            'embed_youtube' => (int)$game['embed_youtube'],
+            'autoplay'      => (int)$game['autoplay'],
         ];
     }
 }

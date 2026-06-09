@@ -5,6 +5,7 @@ let pollTimer  = null;
 let timerInterval = null;
 let lastStatus = null;
 let questionTime = 30;
+let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0 };
 
 /* ── Arranque ── */
 (function init() {
@@ -94,6 +95,9 @@ function renderQuestion(state) {
   const players = state.players || [];
   questionTime  = state.question_time || 30;
 
+  // Guardar settings de la partida
+  if (state.show_links !== undefined) gameSettings = { show_links: state.show_links, embed_youtube: state.embed_youtube, autoplay: state.autoplay };
+
   document.getElementById('q-round').textContent  = state.current_round;
   document.getElementById('q-total').textContent  = state.total_rounds;
   document.getElementById('q-title').textContent  = song.title  || '—';
@@ -106,6 +110,9 @@ function renderQuestion(state) {
   const pct = players.length > 0
     ? Math.round(((state.answer_count || 0) / players.length) * 100) : 0;
   document.getElementById('q-progress').style.width = pct + '%';
+
+  // Streaming
+  renderStreamingQuestion(song, state.current_round);
 
   startTimerRing(state.time_left ?? questionTime, questionTime);
   renderLeaderboard('q-leaderboard', players);
@@ -125,6 +132,8 @@ function renderResults(state) {
   document.getElementById('r-artist').textContent = song.artist || '—';
   document.getElementById('r-year').textContent   = song.year ? `📅 ${song.year}` : '—';
   document.getElementById('r-genre').textContent  = song.genre || '';
+
+  renderStreamingResults(song);
 
   // Lista de respuestas
   const list = document.getElementById('r-results');
@@ -215,6 +224,97 @@ function startTimerRing(seconds, total) {
 }
 function stopTimer() { clearInterval(timerInterval); timerInterval = null; }
 
+/* ── Setup toggles ── */
+function onLinksToggle() {
+  const on = document.getElementById('toggle-links').checked;
+  document.getElementById('row-embed').style.opacity    = on ? '1' : '.4';
+  document.getElementById('row-embed').style.pointerEvents = on ? '' : 'none';
+  if (!on) {
+    document.getElementById('toggle-embed').checked = false;
+    onEmbedToggle();
+  }
+}
+function onEmbedToggle() {
+  const on = document.getElementById('toggle-embed').checked;
+  const row = document.getElementById('row-autoplay');
+  row.style.display = on ? 'flex' : 'none';
+}
+
+/* ── Streaming helpers ── */
+function getYouTubeId(url) {
+  if (!url) return null;
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/))([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+let lastRenderedRound = -1;
+
+function renderStreamingQuestion(song, round) {
+  const zone   = document.getElementById('q-streaming');
+  const embed  = document.getElementById('q-yt-embed');
+  const iframe = document.getElementById('q-yt-iframe');
+  const btns   = document.getElementById('q-stream-btns');
+
+  if (!gameSettings.show_links) { zone.classList.add('d-none'); return; }
+  zone.classList.remove('d-none');
+
+  const ytId = getYouTubeId(song.youtube_url);
+
+  // Embed YouTube
+  if (gameSettings.embed_youtube && ytId) {
+    embed.classList.remove('d-none');
+    // Sólo cambia el src cuando cambia de ronda (evita recargar en cada poll)
+    if (round !== lastRenderedRound) {
+      const autoplay = gameSettings.autoplay ? 1 : 0;
+      iframe.src = `https://www.youtube.com/embed/${ytId}?autoplay=${autoplay}&rel=0`;
+      lastRenderedRound = round;
+    }
+  } else {
+    embed.classList.add('d-none');
+    iframe.src = '';
+  }
+
+  // Botones de plataforma
+  btns.innerHTML = '';
+  if (song.spotify_url) {
+    btns.insertAdjacentHTML('beforeend',
+      `<a href="${esc(song.spotify_url)}" target="_blank" rel="noopener" class="btn-stream btn-spotify">
+         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+         Spotify
+       </a>`);
+  }
+  if (song.youtube_url && !gameSettings.embed_youtube) {
+    btns.insertAdjacentHTML('beforeend',
+      `<a href="${esc(song.youtube_url)}" target="_blank" rel="noopener" class="btn-stream btn-youtube">
+         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
+         YouTube
+       </a>`);
+  }
+}
+
+function renderStreamingResults(song) {
+  const zone = document.getElementById('r-streaming');
+  const btns = document.getElementById('r-stream-btns');
+  if (!gameSettings.show_links) { zone.classList.add('d-none'); return; }
+
+  btns.innerHTML = '';
+  if (song.spotify_url) {
+    btns.insertAdjacentHTML('beforeend',
+      `<a href="${esc(song.spotify_url)}" target="_blank" rel="noopener" class="btn-stream btn-spotify">
+         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+         Spotify
+       </a>`);
+  }
+  if (song.youtube_url) {
+    btns.insertAdjacentHTML('beforeend',
+      `<a href="${esc(song.youtube_url)}" target="_blank" rel="noopener" class="btn-stream btn-youtube">
+         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
+         YouTube
+       </a>`);
+  }
+  zone.classList.toggle('d-none', btns.innerHTML === '');
+}
+
 /* ── Acciones admin ── */
 function selectGenre(btn) {
   document.querySelectorAll('#genre-selector .genre-btn').forEach(b => b.classList.remove('active'));
@@ -225,14 +325,17 @@ async function createGame() {
   const rounds = parseInt(document.getElementById('rounds-input').value, 10);
   const time   = parseInt(document.getElementById('time-input').value,   10);
   const activeGenreBtn = document.querySelector('#genre-selector .genre-btn.active');
-  const genre  = activeGenreBtn ? activeGenreBtn.dataset.genre : 'Todos';
+  const genre        = activeGenreBtn ? activeGenreBtn.dataset.genre : 'Todos';
+  const showLinks    = document.getElementById('toggle-links').checked    ? '1' : '0';
+  const embedYoutube = document.getElementById('toggle-embed').checked    ? '1' : '0';
+  const autoplay     = document.getElementById('toggle-autoplay').checked ? '1' : '0';
   const errEl  = document.getElementById('setup-error');
   errEl.classList.add('d-none');
   try {
     const data = await fetch(`${API}?action=create_game`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ total_rounds: rounds, question_time: time, genre }),
+      body: new URLSearchParams({ total_rounds: rounds, question_time: time, genre, show_links: showLinks, embed_youtube: embedYoutube, autoplay }),
     }).then(r => r.json());
 
     if (data.error) { errEl.textContent = data.error; errEl.classList.remove('d-none'); return; }

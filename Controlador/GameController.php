@@ -16,9 +16,12 @@ class GameController {
         $questionTime = max(10, min(60, (int)($_POST['question_time'] ?? 30)));
         $validGenres  = ['Todos','Rock Internacional','Pop/Rock Español','80s','New Age',
                          'Rock en Español','Trap/Rap Internacional','Trap/Rap en Español','Actualidad'];
-        $genre        = in_array($_POST['genre'] ?? '', $validGenres, true)
-                        ? $_POST['genre'] : 'Todos';
-        return $this->game->create($rounds, $questionTime, $genre);
+        $genre         = in_array($_POST['genre'] ?? '', $validGenres, true)
+                         ? $_POST['genre'] : 'Todos';
+        $showLinks     = isset($_POST['show_links'])    && $_POST['show_links']    === '1' ? 1 : 0;
+        $embedYoutube  = isset($_POST['embed_youtube']) && $_POST['embed_youtube'] === '1' ? 1 : 0;
+        $autoplay      = isset($_POST['autoplay'])      && $_POST['autoplay']      === '1' ? 1 : 0;
+        return $this->game->create($rounds, $questionTime, $genre, $showLinks, $embedYoutube, $autoplay);
     }
 
     public function getGameState(): array {
