@@ -77,16 +77,35 @@ class Game {
             "INSERT IGNORE INTO player_timeline (player_id, game_id, song_id) VALUES (?,?,?)"
         );
 
+        // Obtener el género seleccionado para filtrar la canción ancla
+        $stGame = $this->db->prepare("SELECT selected_genre FROM games WHERE id=?");
+        $stGame->execute([$gameId]);
+        $selectedGenre = $stGame->fetchColumn() ?: 'Todos';
+
         $placeholders = $roundIds ? implode(',', array_fill(0, count($roundIds), '?')) : '0';
         foreach ($playerIds as $pid) {
-            // Canción inicial: una NOT usada en rondas, si es posible
-            $st = $this->db->prepare(
-                "SELECT id FROM songs WHERE id NOT IN ($placeholders) ORDER BY RAND() LIMIT 1"
-            );
-            $st->execute($roundIds);
-            $initial = $st->fetchColumn();
+            // Canción ancla: del mismo género (si no es "Todos") y no usada en rondas
+            if ($selectedGenre !== 'Todos') {
+                $st = $this->db->prepare(
+                    "SELECT id FROM songs WHERE genre=? AND id NOT IN ($placeholders) ORDER BY RAND() LIMIT 1"
+                );
+                $st->execute(array_merge([$selectedGenre], $roundIds));
+                $initial = $st->fetchColumn();
+                // Fallback: del género pero sin filtrar rondas
+                if (!$initial) {
+                    $st = $this->db->prepare("SELECT id FROM songs WHERE genre=? ORDER BY RAND() LIMIT 1");
+                    $st->execute([$selectedGenre]);
+                    $initial = $st->fetchColumn();
+                }
+            } else {
+                $st = $this->db->prepare(
+                    "SELECT id FROM songs WHERE id NOT IN ($placeholders) ORDER BY RAND() LIMIT 1"
+                );
+                $st->execute($roundIds);
+                $initial = $st->fetchColumn();
+            }
 
-            if (!$initial) { // Fallback: cualquier canción
+            if (!$initial) { // Fallback final: cualquier canción
                 $st = $this->db->prepare("SELECT id FROM songs ORDER BY RAND() LIMIT 1");
                 $st->execute();
                 $initial = $st->fetchColumn();

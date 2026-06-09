@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS answers (
 INSERT INTO songs (title, artist, year, genre) VALUES
  
 -- Rock Internacional
+('Stairway to Heaven', 'Led Zeppelin', 1971, 'Rock Internacional'),
 ('Bohemian Rhapsody', 'Queen', 1975, 'Rock Internacional'),
 ('Hotel California', 'Eagles', 1977, 'Rock Internacional'),
 ('Back in Black', 'AC/DC', 1980, 'Rock Internacional'),
@@ -85,6 +86,7 @@ INSERT INTO songs (title, artist, year, genre) VALUES
 ('In the End', 'Linkin Park', 2000, 'Rock Internacional'),
  
 -- Pop/Rock Español
+('En el Rio', 'Vetusta Morla', 2011, 'Pop/Rock Español'),
 ('La Bicicleta', 'Carlos Vives & Shakira', 2016, 'Pop/Rock Español'),
 ('Macarena', 'Los del Rio', 1993, 'Pop/Rock Español'),
 ('Hijo de la Luna', 'Mecano', 1986, 'Pop/Rock Español'),
@@ -107,6 +109,7 @@ INSERT INTO songs (title, artist, year, genre) VALUES
 ('No me llames dolores', 'OBK', 1991, 'Pop/Rock Español'),
  
 -- 80s
+('Sweet Dreams', 'Eurythmics', 1983, '80s'),
 ('Thriller', 'Michael Jackson', 1982, '80s'),
 ('Take On Me', 'a-ha', 1985, '80s'),
 ('Girls Just Want to Have Fun', 'Cyndi Lauper', 1983, '80s'),
@@ -129,6 +132,7 @@ INSERT INTO songs (title, artist, year, genre) VALUES
 ('Africa', 'Toto', 1982, '80s'),
  
 -- New Age
+('Watermark', 'Enya', 1988, 'New Age'),
 ('Oxygene', 'Jean-Michel Jarre', 1976, 'New Age'),
 ('Tubular Bells', 'Mike Oldfield', 1973, 'New Age'),
 ('Orinoco Flow', 'Enya', 1988, 'New Age'),
@@ -151,6 +155,7 @@ INSERT INTO songs (title, artist, year, genre) VALUES
 ('Song of the Sea', 'Clannad', 1982, 'New Age'),
  
 -- Rock en Español
+('Lamento Boliviano', 'Los Enanitos Verdes', 1994, 'Rock en Español'),
 ('La Camisa Negra', 'Juanes', 2004, 'Rock en Español'),
 ('Donde Jugaran los Ninos', 'Mana', 1992, 'Rock en Español'),
 ('Clavado en un Bar', 'Mana', 1994, 'Rock en Español'),
@@ -173,6 +178,7 @@ INSERT INTO songs (title, artist, year, genre) VALUES
 ('A las Nueve', 'Dover', 1997, 'Rock en Español'),
  
 -- Trap/Rap Internacional
+('Stan', 'Eminem', 2000, 'Trap/Rap Internacional'),
 ('Lose Yourself', 'Eminem', 2002, 'Trap/Rap Internacional'),
 ('HUMBLE.', 'Kendrick Lamar', 2017, 'Trap/Rap Internacional'),
 ('Sicko Mode', 'Travis Scott', 2018, 'Trap/Rap Internacional'),
@@ -195,6 +201,7 @@ INSERT INTO songs (title, artist, year, genre) VALUES
 ('MONTERO', 'Lil Nas X', 2021, 'Trap/Rap Internacional'),
  
 -- Trap/Rap en Español
+('Krippy Kush', 'Bad Bunny & Farruko', 2017, 'Trap/Rap en Español'),
 ('Taki Taki', 'DJ Snake ft. Ozuna', 2018, 'Trap/Rap en Español'),
 ('MIA', 'Bad Bunny ft. Drake', 2018, 'Trap/Rap en Español'),
 ('Dakiti', 'Bad Bunny & Jhay Cortez', 2020, 'Trap/Rap en Español'),
@@ -217,6 +224,7 @@ INSERT INTO songs (title, artist, year, genre) VALUES
 ('Gatubela', 'Karol G & Maluma', 2021, 'Trap/Rap en Español'),
  
 -- Actualidad 2020-2025
+('Levitating', 'Dua Lipa', 2020, 'Actualidad'),
 ('Blinding Lights', 'The Weeknd', 2020, 'Actualidad'),
 ('drivers license', 'Olivia Rodrigo', 2021, 'Actualidad'),
 ('Stay', 'Kid Laroi & Justin Bieber', 2021, 'Actualidad'),

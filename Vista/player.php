@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Cronófono — Jugador</title>
+  <title>Hitstoric — Jugador</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css">
   <style>
@@ -23,11 +23,10 @@
 
 <!-- ══ JOIN ══ -->
 <div id="screen-join" class="screen active align-items-center justify-content-center">
-  <div class="container py-4" style="max-width:380px">
+  <div class="container py-4 d-flex flex-column" style="max-width:380px">
 
     <div class="text-center mb-4">
-      <div style="font-size:3rem">🎵</div>
-      <h1 class="fw-black fs-1">Cronófono</h1>
+      <img src="<?= BASE_URL ?>/Imagenes/Logo.png" alt="Hitstoric" style="width:100%;max-width:100%;display:block">
     </div>
 
     <div class="card p-4">
@@ -49,6 +48,10 @@
       <div id="join-error" class="alert alert-danger mt-3 py-2 small d-none text-center"></div>
     </div>
 
+    <div class="text-center mt-3">
+      <a href="index.php" class="btn btn-outline-secondary btn-sm rounded-pill px-4">‹ Volver al inicio</a>
+    </div>
+
   </div>
 </div>
 
@@ -66,6 +69,7 @@
     <div class="text-secondary small mb-1">Jugadores en la sala</div>
     <div class="fw-black" style="font-size:2.5rem;color:var(--accent)" id="lobby-count">0</div>
   </div>
+  <button class="btn btn-outline-secondary btn-sm rounded-pill px-4" onclick="goToJoin()">‹ Salir de la sala</button>
 </div>
 
 <!-- ══ QUESTION (timeline) ══ -->
@@ -152,15 +156,16 @@
     <div class="fw-bold fs-5" id="f-rank"></div>
     <div class="pts-badge"    id="f-score"></div>
     <div id="f-leaderboard" class="leaderboard w-100"></div>
-    <button class="btn btn-outline-secondary rounded-pill px-5 mt-2" onclick="goToJoin()">Jugar de nuevo</button>
+    <button class="btn btn-game rounded-pill px-5 mt-2 fw-bold" onclick="goToJoin()">🎮 Jugar de nuevo</button>
+    <a href="index.php" class="btn btn-outline-secondary rounded-pill px-5">‹ Inicio</a>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   const API = '<?= BASE_URL ?>/Controlador/api.php';
-  const PK  = 'cronofono_pid';
-  const GK  = 'cronofono_gid_p';
+  const PK  = 'hitstoric_pid';
+  const GK  = 'hitstoric_gid_p';
 </script>
 <script src="<?= BASE_URL ?>/assets/js/player.js"></script>
 </body>

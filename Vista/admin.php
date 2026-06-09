@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cronófono — Dinamizador</title>
+  <title>Hitstoric — Dinamizador</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css">
 </head>
@@ -12,12 +12,12 @@
 
 <!-- ══ SETUP ══ -->
 <div id="screen-setup" class="screen active align-items-center justify-content-center">
-  <div class="container py-4" style="max-width:500px">
+  <div class="container py-4 d-flex flex-column" style="max-width:500px">
 
     <div class="text-center mb-4">
-      <h1 class="fw-black display-5">🎵 Cronófono</h1>
-      <p class="text-secondary">Panel del Dinamizador</p>
+      <img src="<?= BASE_URL ?>/Imagenes/Logo.png" alt="Hitstoric" style="width:100%;max-width:100%;display:block">
     </div>
+    <p class="text-secondary text-center mb-2">Panel del Dinamizador</p>
 
     <div class="card p-4">
       <h5 class="fw-bold mb-4">Configurar partida</h5>
@@ -63,6 +63,10 @@
       <div id="setup-error" class="alert alert-danger mt-3 py-2 small d-none"></div>
     </div>
 
+    <div class="text-center mt-3">
+      <a href="index.php" class="btn btn-outline-secondary btn-sm rounded-pill px-4">‹ Volver al inicio</a>
+    </div>
+
   </div>
 </div>
 
@@ -92,6 +96,8 @@
       </button>
       <span class="text-secondary small">Mínimo 1 jugador para comenzar</span>
     </div>
+
+    <button class="btn btn-outline-secondary btn-sm rounded-pill px-4" onclick="newGame()">‹ Cancelar partida</button>
 
   </div>
 </div>
@@ -134,7 +140,8 @@
         <div class="text-secondary small mt-2">El año se desvela al terminar el tiempo</div>
       </div>
 
-      <div class="text-end">
+      <div class="d-flex justify-content-between align-items-center">
+        <button class="btn btn-outline-secondary btn-sm rounded-pill" onclick="if(confirm('¿Abandonar la partida?')) newGame()">‹ Salir</button>
         <button class="btn btn-game rounded-pill px-4 fw-bold" onclick="showResults()">
           Revelar año y ver resultados →
         </button>
@@ -175,7 +182,8 @@
         <div id="r-results"></div>
       </div>
 
-      <div class="mt-auto text-center pb-3">
+      <div class="mt-auto d-flex justify-content-between align-items-center pb-3">
+        <button class="btn btn-outline-secondary btn-sm rounded-pill" onclick="if(confirm('¿Abandonar la partida?')) newGame()">‹ Salir</button>
         <button class="btn btn-game btn-lg rounded-pill px-5 fw-bold" id="btn-next" onclick="nextRound()">
           Siguiente Ronda →
         </button>
@@ -194,7 +202,8 @@
 <!-- ══ FINISHED ══ -->
 <div id="screen-finished" class="screen align-items-center justify-content-center">
   <div class="container py-4 d-flex flex-column align-items-center gap-4 text-center" style="max-width:560px">
-    <h1 class="fw-black display-4">🏆 Fin del Cronófono</h1>
+    <img src="<?= BASE_URL ?>/Imagenes/Logo.png" alt="Hitstoric" style="width:180px;max-width:100%">
+    <h2 class="fw-black display-5 mb-0">🏆 Fin de la partida</h2>
     <div id="f-podium" class="podium w-100"></div>
     <div id="f-leaderboard" class="leaderboard w-100"></div>
     <button class="btn btn-outline-secondary rounded-pill px-5" onclick="newGame()">↩ Nueva Partida</button>
@@ -204,8 +213,8 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   const API = '<?= BASE_URL ?>/Controlador/api.php';
-  const GK  = 'cronofono_gid';
-  const TK  = 'cronofono_tok';
+  const GK  = 'hitstoric_gid';
+  const TK  = 'hitstoric_tok';
 </script>
 <script src="<?= BASE_URL ?>/assets/js/admin.js"></script>
 </body>
