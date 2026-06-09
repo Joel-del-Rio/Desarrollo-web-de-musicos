@@ -176,16 +176,19 @@ function renderLeaderboard(id, players) {
 function renderPodium(id, players) {
   const el = document.getElementById(id);
   if (!el) return;
-  const top3   = players.slice(0, 3);
-  const order  = [top3[1], top3[0], top3[2]].filter(Boolean);
-  const cls    = ['podium-2nd','podium-1st','podium-3rd'];
-  const medals = ['🥈','🥇','🥉'];
+  const top3 = players.slice(0, 3);
+  // Orden visual: 2º izq, 1º centro, 3º dcha — con sus índices originales
+  const slots = [
+    { p: top3[1], cls: 'podium-2nd', medal: '🥈' },
+    { p: top3[0], cls: 'podium-1st', medal: '🥇' },
+    { p: top3[2], cls: 'podium-3rd', medal: '🥉' },
+  ].filter(s => s.p);
   el.innerHTML = '';
-  order.forEach((p, i) => {
+  slots.forEach(({ p, cls, medal }) => {
     const step = document.createElement('div');
-    step.className = `podium-step ${cls[i]}`;
+    step.className = `podium-step ${cls}`;
     step.innerHTML = `
-      <div class="podium-medal" style="font-size:1.75rem">${medals[i]}</div>
+      <div class="podium-medal" style="font-size:1.75rem">${medal}</div>
       <div class="podium-avatar-big" style="background:${p.avatar_color}">${p.name[0].toUpperCase()}</div>
       <div style="font-size:.8rem;font-weight:700;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</div>
       <div style="font-size:.7rem;color:var(--muted)">${p.score} pts</div>
@@ -213,16 +216,23 @@ function startTimerRing(seconds, total) {
 function stopTimer() { clearInterval(timerInterval); timerInterval = null; }
 
 /* ── Acciones admin ── */
+function selectGenre(btn) {
+  document.querySelectorAll('#genre-selector .genre-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
 async function createGame() {
   const rounds = parseInt(document.getElementById('rounds-input').value, 10);
   const time   = parseInt(document.getElementById('time-input').value,   10);
+  const activeGenreBtn = document.querySelector('#genre-selector .genre-btn.active');
+  const genre  = activeGenreBtn ? activeGenreBtn.dataset.genre : 'Todos';
   const errEl  = document.getElementById('setup-error');
   errEl.classList.add('d-none');
   try {
     const data = await fetch(`${API}?action=create_game`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ total_rounds: rounds, question_time: time }),
+      body: new URLSearchParams({ total_rounds: rounds, question_time: time, genre }),
     }).then(r => r.json());
 
     if (data.error) { errEl.textContent = data.error; errEl.classList.remove('d-none'); return; }

@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS games (
     current_round       INT DEFAULT 0,
     total_rounds        INT DEFAULT 10,
     question_started_at TIMESTAMP NULL,
+    question_time       INT DEFAULT 30,
+    selected_genre      VARCHAR(100) DEFAULT 'Todos',
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_pin (pin)
 );
@@ -29,7 +31,7 @@ CREATE TABLE IF NOT EXISTS songs (
     title  VARCHAR(200) NOT NULL,
     artist VARCHAR(200) NOT NULL,
     year   INT NOT NULL,
-    genre  VARCHAR(100),
+    genre  VARCHAR(100)
 );
 
 CREATE TABLE IF NOT EXISTS game_songs (

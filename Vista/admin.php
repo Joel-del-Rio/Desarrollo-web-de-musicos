@@ -38,6 +38,25 @@
         <div class="d-flex justify-content-between text-secondary small"><span>10s</span><span>60s</span></div>
       </div>
 
+      <div class="mb-4">
+        <label class="form-label text-secondary small fw-semibold text-uppercase">Género musical</label>
+        <div class="d-flex flex-wrap gap-2 mt-2" id="genre-selector">
+          <?php
+          $genres = ['Todos','Rock Internacional','Pop/Rock Español','80s','New Age',
+                     'Rock en Español','Trap/Rap Internacional','Trap/Rap en Español','Actualidad'];
+          foreach ($genres as $g):
+            $active = $g === 'Todos' ? ' active' : '';
+          ?>
+          <button type="button"
+                  class="btn btn-sm rounded-pill genre-btn<?= $active ?>"
+                  onclick="selectGenre(this)"
+                  data-genre="<?= htmlspecialchars($g) ?>">
+            <?= htmlspecialchars($g) ?>
+          </button>
+          <?php endforeach; ?>
+        </div>
+      </div>
+
       <button class="btn btn-game btn-lg w-100 rounded-pill fw-bold" onclick="createGame()">
         🎮 Crear Partida
       </button>

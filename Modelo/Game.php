@@ -8,7 +8,7 @@ class Game {
         $this->db = Database::getInstance()->pdo();
     }
 
-    public function create(int $totalRounds, int $questionTime): array {
+    public function create(int $totalRounds, int $questionTime, string $genre = 'Todos'): array {
         // PIN único entre partidas activas
         do {
             $pin = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
@@ -18,13 +18,18 @@ class Game {
 
         $token = bin2hex(random_bytes(32));
         $this->db->prepare(
-            "INSERT INTO games (pin, admin_token, total_rounds, question_time) VALUES (?,?,?,?)"
-        )->execute([$pin, $token, $totalRounds, $questionTime]);
+            "INSERT INTO games (pin, admin_token, total_rounds, question_time, selected_genre) VALUES (?,?,?,?,?)"
+        )->execute([$pin, $token, $totalRounds, $questionTime, $genre]);
         $gameId = (int)$this->db->lastInsertId();
 
-        // Seleccionar canciones para las rondas
-        $st = $this->db->prepare("SELECT id FROM songs ORDER BY RAND() LIMIT ?");
-        $st->execute([$totalRounds]);
+        // Seleccionar canciones para las rondas (filtradas por género si aplica)
+        if ($genre === 'Todos') {
+            $st = $this->db->prepare("SELECT id FROM songs ORDER BY RAND() LIMIT ?");
+            $st->execute([$totalRounds]);
+        } else {
+            $st = $this->db->prepare("SELECT id FROM songs WHERE genre=? ORDER BY RAND() LIMIT ?");
+            $st->execute([$genre, $totalRounds]);
+        }
         $songs = $st->fetchAll(PDO::FETCH_COLUMN);
 
         $ins = $this->db->prepare(

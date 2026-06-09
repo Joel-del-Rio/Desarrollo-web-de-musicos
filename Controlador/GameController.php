@@ -14,7 +14,11 @@ class GameController {
     public function createGame(): array {
         $rounds       = max(5, min(20, (int)($_POST['total_rounds']   ?? 10)));
         $questionTime = max(10, min(60, (int)($_POST['question_time'] ?? 30)));
-        return $this->game->create($rounds, $questionTime);
+        $validGenres  = ['Todos','Rock Internacional','Pop/Rock Español','80s','New Age',
+                         'Rock en Español','Trap/Rap Internacional','Trap/Rap en Español','Actualidad'];
+        $genre        = in_array($_POST['genre'] ?? '', $validGenres, true)
+                        ? $_POST['genre'] : 'Todos';
+        return $this->game->create($rounds, $questionTime, $genre);
     }
 
     public function getGameState(): array {

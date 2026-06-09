@@ -213,3 +213,13 @@ body { background: var(--bg) !important; color: var(--text); }
 /* Results reveal: year hidden during question */
 .year-hidden { filter: blur(12px); transition: filter .5s; user-select: none; }
 .year-revealed { filter: none; }
+
+/* Genre selector pills */
+.genre-btn {
+  background: var(--card);
+  color: var(--muted);
+  border: 1.5px solid var(--bg2);
+  transition: background .15s, color .15s, border-color .15s;
+}
+.genre-btn:hover { border-color: var(--accent); color: var(--accent); }
+.genre-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
