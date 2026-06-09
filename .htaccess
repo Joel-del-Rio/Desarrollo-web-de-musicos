@@ -1,0 +1,38 @@
+# ══════════════════════════════════════════════════════
+#  Hitstoric — Apache URL Rewriting
+# ══════════════════════════════════════════════════════
+#  RewriteBase debe coincidir con el subdirectorio donde
+#  está instalado el proyecto:
+#
+#  XAMPP local  →  RewriteBase /Practicas/Web%20Musicos/
+#  SiteGround   →  RewriteBase /
+#
+#  Ajusta la línea activa según el entorno.
+# ══════════════════════════════════════════════════════
+
+Options -Indexes
+RewriteEngine On
+
+# ── Entorno ──────────────────────────────────────────
+# Descomenta la línea correcta para tu entorno:
+RewriteBase /Practicas/Web%20Musicos/
+# RewriteBase /
+
+# ── Archivos y carpetas reales → acceso directo ───────
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# ── API: acceso directo sin pasar por el front controller
+RewriteRule ^Controlador/api\.php$ - [L]
+
+# ── Rutas limpias → front controller ─────────────────
+RewriteRule ^$                 index.php?page=home    [L,QSA]
+RewriteRule ^home/?$           index.php?page=home    [L,QSA]
+RewriteRule ^admin/?$          index.php?page=admin   [L,QSA]
+RewriteRule ^player/?$         index.php?page=player  [L,QSA]
+RewriteRule ^songs/?$          index.php?page=songs   [L,QSA]
+RewriteRule ^api/?$            index.php?page=api     [L,QSA]
+
+# ── Cualquier otra ruta → front controller ────────────
+RewriteRule ^(.+)$             index.php?page=$1      [L,QSA]

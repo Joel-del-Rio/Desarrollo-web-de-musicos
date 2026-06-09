@@ -4,5 +4,11 @@ define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_NAME', 'hitster_musicos');
 
-$scriptDir = dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
-define('BASE_URL', str_replace(' ', '%20', 'http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/Practicas/Web Musicos'));
+// ── BASE_URL dinámica (XAMPP subfolder y SiteGround root) ──
+$scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$host     = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$docRoot  = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
+$projRoot = rtrim(str_replace('\\', '/', __DIR__), '/');
+// basePath = diferencia entre DOCUMENT_ROOT y la carpeta del proyecto
+$basePath = str_replace($docRoot, '', $projRoot);
+define('BASE_URL', $scheme . '://' . $host . $basePath);
