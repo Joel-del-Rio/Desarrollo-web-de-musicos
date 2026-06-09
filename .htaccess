@@ -15,8 +15,8 @@ RewriteEngine On
 
 # ── Entorno ──────────────────────────────────────────
 # Descomenta la línea correcta para tu entorno:
-RewriteBase /Practicas/Web%20Musicos/
-# RewriteBase /
+# RewriteBase /Practicas/Web%20Musicos/
+RewriteBase /
 
 # ── Archivos y carpetas reales → acceso directo ───────
 RewriteCond %{REQUEST_FILENAME} -f [OR]
