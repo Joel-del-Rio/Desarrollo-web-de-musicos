@@ -185,6 +185,10 @@ async function saveAll(btn) {
 
     const s = allSongs.find(x => x.id == id);
     if (s) { s.spotify_url = spotify; s.youtube_url = youtube; }
+
+    // Tick en la fila individual
+    const ok = row.querySelector('.saved-ok');
+    if (ok) ok.classList.remove('d-none');
   }));
 
   btn.disabled = false;
@@ -192,9 +196,7 @@ async function saveAll(btn) {
 
   if (errors) { alert(`${errors} canción(es) no se pudieron guardar.`); return; }
 
-  const ok = document.getElementById('save-all-ok');
-  ok.classList.remove('d-none');
-  setTimeout(() => ok.classList.add('d-none'), 2500);
+  document.getElementById('save-all-ok').classList.remove('d-none');
 }
 
 function esc(s) {

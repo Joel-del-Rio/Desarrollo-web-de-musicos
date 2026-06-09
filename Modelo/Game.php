@@ -171,9 +171,9 @@ class Game {
             'total_rounds'  => (int)$game['total_rounds'],
             'question_time' => (int)$game['question_time'],
             'time_left'     => $timeLeft,
-            'show_links'    => (int)$game['show_links'],
-            'embed_youtube' => (int)$game['embed_youtube'],
-            'autoplay'      => (int)$game['autoplay'],
+            'show_links'    => (int)($game['show_links']    ?? 0),
+            'embed_youtube' => (int)($game['embed_youtube'] ?? 0),
+            'autoplay'      => (int)($game['autoplay']      ?? 0),
         ];
     }
 }
