@@ -27,7 +27,7 @@
       <h4 class="fw-black mb-0">Catálogo de canciones</h4>
       <div class="small" style="color:var(--muted)">Edita los enlaces de Spotify y YouTube por canción</div>
     </div>
-    <a href="admin.php" class="btn btn-outline-secondary btn-sm rounded-pill ms-auto">‹ Volver al panel</a>
+    <a href="<?= BASE_URL ?>/admin" class="btn btn-outline-secondary btn-sm rounded-pill ms-auto">‹ Volver al panel</a>
   </div>
 
   <!-- Filtros -->

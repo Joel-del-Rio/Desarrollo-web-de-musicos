@@ -1,10 +1,20 @@
 <?php
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'hitster_musicos');
+// ── Credenciales de base de datos ─────────────────────
+if (strpos(__DIR__, '/home/u72') !== false) {
+    // SiteGround
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'ug5qzildxb4vc');
+    define('DB_PASS', '0lx5wdgggcri');
+    define('DB_NAME', 'dbe7oc67cjh788');
+} else {
+    // XAMPP local
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
+    define('DB_NAME', 'hitster_musicos');
+}
 
-// ── Géneros disponibles ───────────────────────────────────
+// ── Géneros disponibles ───────────────────────────────
 const GENRES = [
     'Todos',
     'Rock Internacional',
@@ -22,6 +32,5 @@ $scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https'
 $host     = $_SERVER['HTTP_HOST'] ?? 'localhost';
 $docRoot  = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
 $projRoot = rtrim(str_replace('\\', '/', __DIR__), '/');
-// basePath = diferencia entre DOCUMENT_ROOT y la carpeta del proyecto
 $basePath = str_replace($docRoot, '', $projRoot);
 define('BASE_URL', $scheme . '://' . $host . $basePath);
