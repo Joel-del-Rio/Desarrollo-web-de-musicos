@@ -1,17 +1,17 @@
 <?php
 // ── Credenciales de base de datos ─────────────────────
-if (strpos(__DIR__, '/home/u72') !== false) {
-    // SiteGround
-    define('DB_HOST', 'localhost');
-    define('DB_USER', 'ug5qzildxb4vc');
-    define('DB_PASS', '0lx5wdgggcri');
-    define('DB_NAME', 'dbe7oc67cjh788');
-} else {
+if (PHP_OS_FAMILY === 'Windows') {
     // XAMPP local
     define('DB_HOST', 'localhost');
     define('DB_USER', 'root');
     define('DB_PASS', '');
     define('DB_NAME', 'hitster_musicos');
+} else {
+    // SiteGround (Linux)
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'ug5qzildxb4vc');
+    define('DB_PASS', '0lx5wdgggcri');
+    define('DB_NAME', 'dbe7oc67cjh788');
 }
 
 // ── Géneros disponibles ───────────────────────────────
