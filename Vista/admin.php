@@ -41,10 +41,7 @@
       <div class="mb-4">
         <label class="form-label text-secondary small fw-semibold text-uppercase">Género musical</label>
         <div class="d-flex flex-wrap gap-2 mt-2" id="genre-selector">
-          <?php
-          $genres = ['Todos','Rock Internacional','Pop/Rock Español','80s','New Age',
-                     'Rock en Español','Trap/Rap Internacional','Trap/Rap en Español','Actualidad'];
-          foreach ($genres as $g):
+          <?php foreach (GENRES as $g):
             $active = $g === 'Todos' ? ' active' : '';
           ?>
           <button type="button"

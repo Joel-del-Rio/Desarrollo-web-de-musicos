@@ -20,7 +20,7 @@
 
     <div class="d-flex flex-column gap-3 mb-4">
 
-      <a href="admin.php" class="card text-decoration-none p-3 d-flex flex-row align-items-center gap-3"
+      <a href="<?= BASE_URL ?>/admin" class="card text-decoration-none p-3 d-flex flex-row align-items-center gap-3"
         style="border:2px solid transparent !important;transition:border-color .2s,transform .15s"
         onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-2px)'"
         onmouseout="this.style.borderColor='transparent';this.style.transform=''">
@@ -32,7 +32,7 @@
         <span class="ms-auto text-secondary fs-4">›</span>
       </a>
 
-      <a href="player.php" class="card text-decoration-none p-3 d-flex flex-row align-items-center gap-3"
+      <a href="<?= BASE_URL ?>/player" class="card text-decoration-none p-3 d-flex flex-row align-items-center gap-3"
         style="border:2px solid transparent !important;transition:border-color .2s,transform .15s"
         onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-2px)'"
         onmouseout="this.style.borderColor='transparent';this.style.transform=''">
@@ -54,6 +54,7 @@
         <li>En tu móvil indica si la canción va <strong>antes o después</strong> de las que ya tienes y pulsa <em>Confirmar selección</em>.</li>
         <li>Si aciertas, la canción se añade a tu línea del tiempo y sumas puntos — cuanto más rápido respondas, más puntos de bonus.</li>
         <li>Si fallas, no sumas puntos y la canción no se añade a tu línea del tiempo.</li>
+      </ol>
     </div>
 
   </div>

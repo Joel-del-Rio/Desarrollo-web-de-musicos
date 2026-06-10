@@ -14,9 +14,7 @@ class GameController {
     public function createGame(): array {
         $rounds       = max(5, min(20, (int)($_POST['total_rounds']   ?? 10)));
         $questionTime = max(10, min(60, (int)($_POST['question_time'] ?? 30)));
-        $validGenres  = ['Todos','Rock Internacional','Pop/Rock Español','80s','New Age',
-                         'Rock en Español','Trap/Rap Internacional','Trap/Rap en Español','Actualidad'];
-        $genre         = in_array($_POST['genre'] ?? '', $validGenres, true)
+        $genre         = in_array($_POST['genre'] ?? '', GENRES, true)
                          ? $_POST['genre'] : 'Todos';
         $showLinks     = isset($_POST['show_links'])    && $_POST['show_links']    === '1' ? 1 : 0;
         $embedYoutube  = isset($_POST['embed_youtube']) && $_POST['embed_youtube'] === '1' ? 1 : 0;

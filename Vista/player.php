@@ -49,7 +49,7 @@
     </div>
 
     <div class="text-center mt-3">
-      <a href="index.php" class="btn btn-outline-secondary btn-sm rounded-pill px-4">‹ Volver al inicio</a>
+      <a href="<?= BASE_URL ?>/" class="btn btn-outline-secondary btn-sm rounded-pill px-4">‹ Volver al inicio</a>
     </div>
 
   </div>
