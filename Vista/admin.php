@@ -95,13 +95,13 @@
         🎮 Crear Partida
       </button>
       <div class="text-center mt-2">
-        <a href="songs.php" class="small" style="color:var(--accent)">🎵 Gestionar catálogo de canciones</a>
+        <a href="<?= BASE_URL ?>/songs" class="small" style="color:var(--accent)">🎵 Gestionar catálogo de canciones</a>
       </div>
       <div id="setup-error" class="alert alert-danger mt-3 py-2 small d-none"></div>
     </div>
 
     <div class="text-center mt-3">
-      <a href="index.php" class="btn btn-outline-secondary btn-sm rounded-pill px-4">‹ Volver al inicio</a>
+      <a href="<?= BASE_URL ?>/" class="btn btn-outline-secondary btn-sm rounded-pill px-4">‹ Volver al inicio</a>
     </div>
 
   </div>
@@ -115,7 +115,7 @@
       <div class="text-secondary small text-uppercase fw-semibold mb-1">PIN de la partida</div>
       <div class="pin-box" id="w-pin">----</div>
       <div class="text-secondary small mt-2">
-        Jugadores: <strong><?= BASE_URL ?>/Vista/player.php</strong>
+        Jugadores: <strong><?= BASE_URL ?>/player</strong>
       </div>
     </div>
 

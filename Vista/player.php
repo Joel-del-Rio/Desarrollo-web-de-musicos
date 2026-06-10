@@ -156,7 +156,7 @@
     <div class="pts-badge"    id="f-score"></div>
     <div id="f-leaderboard" class="leaderboard w-100"></div>
     <button class="btn btn-game rounded-pill px-5 mt-2 fw-bold" onclick="goToJoin()">🎮 Jugar de nuevo</button>
-    <a href="index.php" class="btn btn-outline-secondary rounded-pill px-5">‹ Inicio</a>
+    <a href="<?= BASE_URL ?>/" class="btn btn-outline-secondary rounded-pill px-5">‹ Inicio</a>
   </div>
 </div>
 
