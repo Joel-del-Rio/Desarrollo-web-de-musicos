@@ -16,11 +16,30 @@ class PlayerController {
         $name = trim($_POST['name'] ?? '');
 
         if (strlen($pin) !== 4 || !ctype_digit($pin)) return ['error' => 'PIN inválido (4 dígitos)'];
-        if ($name === '' || strlen($name) > 30)         return ['error' => 'Nombre inválido (máx 30 caracteres)'];
+        if ($name === '' || strlen($name) > 30)        return ['error' => 'Nombre inválido (máx 30 caracteres)'];
 
+        // Primero buscar como PIN individual
+        $gameByIndiv = $this->game->getByIndividualPin($pin);
+        if ($gameByIndiv) {
+            if ($gameByIndiv['status'] !== 'waiting') return ['error' => 'La partida ya ha comenzado'];
+            $pl = $this->player->create((int)$gameByIndiv['id'], $name);
+            $this->game->claimIndividualPin($pin, $pl['id']);
+            return [
+                'success'      => true,
+                'player_id'    => $pl['id'],
+                'game_id'      => (int)$gameByIndiv['id'],
+                'player_name'  => $name,
+                'player_color' => $pl['color'],
+            ];
+        }
+
+        // Buscar como PIN compartido
         $game = $this->game->getByPin($pin);
-        if (!$game)                        return ['error' => 'Partida no encontrada con ese PIN'];
+        if (!$game) return ['error' => 'PIN no encontrado'];
         if ($game['status'] !== 'waiting') return ['error' => 'La partida ya ha comenzado'];
+        if (($game['pin_mode'] ?? 'shared') === 'individual') {
+            return ['error' => 'Esta partida usa PINs individuales. Usa tu código personal.'];
+        }
 
         $pl = $this->player->create((int)$game['id'], $name);
         return [

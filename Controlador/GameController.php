@@ -14,12 +14,33 @@ class GameController {
     public function createGame(): array {
         $rounds       = max(5, min(20, (int)($_POST['total_rounds']   ?? 10)));
         $questionTime = max(10, min(60, (int)($_POST['question_time'] ?? 30)));
-        $genre         = in_array($_POST['genre'] ?? '', GENRES, true)
-                         ? $_POST['genre'] : 'Todos';
-        $showLinks     = isset($_POST['show_links'])    && $_POST['show_links']    === '1' ? 1 : 0;
-        $embedYoutube  = isset($_POST['embed_youtube']) && $_POST['embed_youtube'] === '1' ? 1 : 0;
-        $autoplay      = isset($_POST['autoplay'])      && $_POST['autoplay']      === '1' ? 1 : 0;
-        return $this->game->create($rounds, $questionTime, $genre, $showLinks, $embedYoutube, $autoplay);
+        $genre        = in_array($_POST['genre'] ?? '', GENRES, true) ? $_POST['genre'] : 'Todos';
+        $showLinks    = ($_POST['show_links']    ?? '0') === '1' ? 1 : 0;
+        $embedYoutube = ($_POST['embed_youtube'] ?? '0') === '1' ? 1 : 0;
+        $autoplay     = ($_POST['autoplay']      ?? '0') === '1' ? 1 : 0;
+        $pinMode      = ($_POST['pin_mode'] ?? 'shared') === 'individual' ? 'individual' : 'shared';
+        $email        = filter_var(trim($_POST['organizer_email'] ?? ''), FILTER_VALIDATE_EMAIL) ?: '';
+        $indivCount   = max(2, min(30, (int)($_POST['individual_count'] ?? 2)));
+
+        $result = $this->game->create(
+            $rounds, $questionTime, $genre, $showLinks, $embedYoutube, $autoplay,
+            $pinMode, $email, $pinMode === 'individual' ? $indivCount : 0
+        );
+
+        if (empty($result['error'])) {
+            require_once __DIR__ . '/../Modelo/EmailService.php';
+            if ($pinMode === 'shared' && $email) {
+                EmailService::sendGameCreated($email, $result['pin'], BASE_URL, 'shared', []);
+            } elseif ($pinMode === 'individual' && !empty($result['individual_pins'])) {
+                $playerEmails = $_POST['player_emails'] ?? [];
+                foreach ($result['individual_pins'] as $idx => $pin) {
+                    $pEmail = filter_var(trim($playerEmails[$idx] ?? ''), FILTER_VALIDATE_EMAIL) ?: '';
+                    if ($pEmail) EmailService::sendPlayerPin($pEmail, $pin, BASE_URL, $idx + 1);
+                }
+            }
+        }
+
+        return $result;
     }
 
     public function getGameState(): array {

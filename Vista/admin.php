@@ -15,7 +15,7 @@
   <div class="container py-4 d-flex flex-column" style="max-width:500px">
 
     <div class="text-center mb-4">
-      <img src="<?= BASE_URL ?>/Imagenes/Logo.png" alt="Hitstoric" style="width:100%;max-width:100%;display:block">
+      <img src="<?= BASE_URL ?>/assets/images/Logo.png" alt="Hitstoric" style="width:100%;max-width:100%;display:block">
     </div>
     <p class="text-secondary text-center mb-2">Panel del Dinamizador</p>
 
@@ -33,9 +33,9 @@
       <div class="mb-4">
         <label class="form-label text-secondary small fw-semibold text-uppercase">Tiempo por ronda (segundos)</label>
         <div class="text-center fw-black mb-1" style="font-size:3rem;color:var(--accent)" id="time-display">30</div>
-        <input type="range" class="form-range" id="time-input" min="10" max="60" value="30" step="5"
+        <input type="range" class="form-range" id="time-input" min="20" max="90" value="30" step="5"
                oninput="document.getElementById('time-display').textContent=this.value">
-        <div class="d-flex justify-content-between text-secondary small"><span>10s</span><span>60s</span></div>
+        <div class="d-flex justify-content-between text-secondary small"><span>20s</span><span>90s</span></div>
       </div>
 
       <div class="mb-4">
@@ -69,26 +69,59 @@
           </div>
         </div>
 
-        <div class="d-flex align-items-center justify-content-between py-2 border-bottom border-secondary border-opacity-25" id="row-embed">
+        <div class="d-flex align-items-center justify-content-between py-2 border-bottom border-secondary border-opacity-25" id="row-audio">
           <div>
-            <div class="fw-semibold small">YouTube embebido</div>
-            <div class="small" style="color:var(--muted);opacity:.75">Reproduce el vídeo dentro de la app</div>
+            <div class="fw-semibold small">Audio de la canción</div>
+            <div class="small" style="color:var(--muted);opacity:.75">Muestra el reproductor de audio en partida</div>
           </div>
           <div class="form-check form-switch mb-0">
-            <input class="form-check-input" type="checkbox" id="toggle-embed" role="switch"
-                   onchange="onEmbedToggle()">
+            <input class="form-check-input" type="checkbox" id="toggle-audio" role="switch"
+                   onchange="onAudioToggle()">
           </div>
         </div>
 
-        <div class="d-flex align-items-center justify-content-between py-2" id="row-autoplay" style="display:none!important">
+        <div class="d-flex align-items-center justify-content-between py-2" id="row-autoplay">
           <div>
-            <div class="fw-semibold small">Autoplay al cambiar ronda</div>
-            <div class="small" style="color:var(--muted);opacity:.75">El vídeo empieza solo al iniciar cada ronda</div>
+            <div class="fw-semibold small">Autoplay al cargar audio</div>
+            <div class="small" style="color:var(--muted);opacity:.75">El audio empieza al cargar el archivo</div>
           </div>
           <div class="form-check form-switch mb-0">
             <input class="form-check-input" type="checkbox" id="toggle-autoplay" role="switch">
           </div>
         </div>
+      </div>
+
+      <!-- Modo PIN -->
+      <div class="mb-4">
+        <label class="form-label text-secondary small fw-semibold text-uppercase">Modo de acceso</label>
+        <div class="d-flex gap-2 mt-2" id="pin-mode-selector">
+          <button type="button" class="btn btn-sm rounded-pill genre-btn active"
+                  onclick="setPinMode(this,'shared')" data-mode="shared">🔑 PIN compartido</button>
+          <button type="button" class="btn btn-sm rounded-pill genre-btn"
+                  onclick="setPinMode(this,'individual')" data-mode="individual">🎟️ PINs individuales</button>
+        </div>
+        <div class="small mt-2" id="pin-mode-desc" style="color:var(--muted)">
+          Un único PIN para toda la sala — todos lo comparten
+        </div>
+        <input type="hidden" id="pin-mode" value="shared">
+      </div>
+
+      <!-- Email organizador (modo compartido) -->
+      <div class="mb-4" id="section-shared-email">
+        <label class="form-label text-secondary small fw-semibold text-uppercase">Tu email <span style="font-weight:400;text-transform:none">(opcional)</span></label>
+        <input type="email" id="organizer-email" class="form-control" placeholder="tucorreo@ejemplo.com">
+        <div class="form-text small" style="color:var(--muted)">Recibirás el PIN al crear la partida</div>
+      </div>
+
+      <!-- Emails individuales (modo individual, oculto por defecto) -->
+      <div class="d-none" id="section-indiv-emails">
+        <div class="mb-3">
+          <label class="form-label text-secondary small fw-semibold text-uppercase">Número de jugadores</label>
+          <input type="number" id="indiv-count-input" class="form-control" min="2" max="30" value="2"
+                 oninput="updatePlayerEmailFields(parseInt(this.value)||2)">
+            <div class="form-text small" style="color:var(--muted)">Máximo 30 — cada jugador recibirá su PIN por email (obligatorio)</div>
+        </div>
+        <div id="indiv-email-fields" class="d-flex flex-column gap-2 mb-4"></div>
       </div>
 
       <button class="btn btn-game btn-lg w-100 rounded-pill fw-bold" onclick="createGame()">
@@ -101,7 +134,7 @@
     </div>
 
     <div class="text-center mt-3">
-      <a href="<?= BASE_URL ?>/" class="btn btn-outline-secondary btn-sm rounded-pill px-4">‹ Volver al inicio</a>
+      <a href="<?= BASE_URL ?>/Vista/index.php" class="btn btn-outline-secondary btn-sm rounded-pill px-4">‹ Volver al inicio</a>
     </div>
 
   </div>
@@ -112,11 +145,23 @@
   <div class="container py-4 d-flex flex-column align-items-center gap-4" style="max-width:640px">
 
     <div class="card w-100 p-4 text-center">
-      <div class="text-secondary small text-uppercase fw-semibold mb-1">PIN de la partida</div>
+      <div class="text-secondary small text-uppercase fw-semibold mb-1" id="w-pin-label">PIN de la partida</div>
       <div class="pin-box" id="w-pin">----</div>
       <div class="text-secondary small mt-2">
         Jugadores: <strong><?= BASE_URL ?>/player</strong>
       </div>
+    </div>
+
+    <!-- Panel PINs individuales (oculto en modo compartido) -->
+    <div class="card w-100 p-4 d-none" id="w-indiv-pins">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="text-secondary small text-uppercase fw-semibold">Cartones / PINs individuales</div>
+        <button class="btn btn-sm btn-outline-secondary rounded-pill" id="btn-copy-all" onclick="copyAllPins()">
+          📋 Copiar todos
+        </button>
+      </div>
+      <div class="d-flex flex-wrap gap-2 justify-content-center" id="w-pins-grid"></div>
+      <div class="text-secondary small mt-3 text-center">Haz clic en un cartón para copiar su PIN</div>
     </div>
 
     <div class="w-100">
@@ -175,16 +220,6 @@
         <div class="rsc-year year-hidden" id="q-year">—</div>
         <div class="rsc-genre"  id="q-genre"></div>
         <div class="text-secondary small mt-2">El año se desvela al terminar el tiempo</div>
-        <!-- Zona streaming (question) -->
-        <div id="q-streaming" class="mt-3 d-none">
-          <div id="q-yt-embed" class="mb-2 d-none">
-            <div class="ratio ratio-16x9" style="max-height:220px">
-              <iframe id="q-yt-iframe" src="" allow="autoplay; encrypted-media" allowfullscreen
-                      style="border-radius:8px;border:none"></iframe>
-            </div>
-          </div>
-          <div id="q-stream-btns" class="d-flex gap-2 justify-content-center flex-wrap"></div>
-        </div>
       </div>
 
       <div class="d-flex justify-content-between align-items-center">
@@ -194,6 +229,38 @@
         </button>
       </div>
 
+    </div>
+
+    <!-- Columna media: streaming + audio -->
+    <div class="col-media">
+      <div id="q-streaming" class="card p-3 d-none">
+        <div class="text-secondary small text-uppercase fw-semibold mb-2">Streaming</div>
+        <div id="q-yt-embed" class="mb-2 d-none">
+          <div class="ratio ratio-16x9">
+            <iframe id="q-yt-iframe" src="" allow="autoplay; encrypted-media" allowfullscreen
+                    style="border-radius:8px;border:none"></iframe>
+          </div>
+        </div>
+        <div id="q-stream-btns" class="d-flex gap-2 flex-wrap"></div>
+      </div>
+      <div class="card p-3 d-none" id="q-audio-card">
+        <div class="text-secondary small text-uppercase fw-semibold mb-2">🎵 Audio de la canción</div>
+        <audio id="q-audio"></audio>
+        <div class="audio-ctrl">
+          <button class="a-play" id="q-play" onclick="audioToggle('q')" title="Play/Pausa">
+            <svg id="q-play-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <div class="a-bar" id="q-bar" onclick="audioSeek('q',event,this)">
+            <div class="a-fill" id="q-afill"></div>
+          </div>
+          <span class="a-time" id="q-atime">0:00</span>
+        </div>
+        <div class="audio-vol mt-2">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="opacity:.5;flex-shrink:0"><path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
+          <input type="range" class="audio-vol-range" id="q-vol" min="0" max="100" value="80" oninput="setVolume(this.value)">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="opacity:.5;flex-shrink:0"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+        </div>
+      </div>
     </div>
 
     <div class="col-side">
@@ -222,10 +289,6 @@
         <div class="rsc-artist" id="r-artist">—</div>
         <div class="rsc-year year-revealed" id="r-year">—</div>
         <div class="rsc-genre"  id="r-genre"></div>
-        <!-- Zona streaming (results) -->
-        <div id="r-streaming" class="mt-3 d-none">
-          <div id="r-stream-btns" class="d-flex gap-2 justify-content-center flex-wrap"></div>
-        </div>
       </div>
 
       <div>
@@ -242,6 +305,32 @@
 
     </div>
 
+    <!-- Columna media: audio + links -->
+    <div class="col-media">
+      <div class="card p-3 d-none" id="r-audio-card">
+        <div class="text-secondary small text-uppercase fw-semibold mb-2">🎵 Audio de la canción</div>
+        <audio id="r-audio"></audio>
+        <div class="audio-ctrl">
+          <button class="a-play" id="r-play" onclick="audioToggle('r')" title="Play/Pausa">
+            <svg id="r-play-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <div class="a-bar" id="r-bar" onclick="audioSeek('r',event,this)">
+            <div class="a-fill" id="r-afill"></div>
+          </div>
+          <span class="a-time" id="r-atime">0:00</span>
+        </div>
+        <div class="audio-vol mt-2">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="opacity:.5;flex-shrink:0"><path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
+          <input type="range" class="audio-vol-range" id="r-vol" min="0" max="100" value="80" oninput="setVolume(this.value)">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="opacity:.5;flex-shrink:0"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+        </div>
+      </div>
+      <div id="r-streaming" class="card p-3 d-none">
+        <div class="text-secondary small text-uppercase fw-semibold mb-2">🔗 Links</div>
+        <div id="r-stream-btns" class="d-flex gap-2 flex-wrap"></div>
+      </div>
+    </div>
+
     <div class="col-side">
       <div class="text-secondary text-uppercase small fw-semibold">Clasificación</div>
       <div id="r-leaderboard" class="leaderboard"></div>
@@ -253,7 +342,7 @@
 <!-- ══ FINISHED ══ -->
 <div id="screen-finished" class="screen align-items-center justify-content-center">
   <div class="container py-4 d-flex flex-column align-items-center gap-4 text-center" style="max-width:560px">
-    <img src="<?= BASE_URL ?>/Imagenes/Logo.png" alt="Hitstoric" style="width:180px;max-width:100%">
+    <img src="<?= BASE_URL ?>/assets/images/Logo.png" alt="Hitstoric" style="width:180px;max-width:100%">
     <h2 class="fw-black display-5 mb-0">🏆 Fin de la partida</h2>
     <div id="f-podium" class="podium w-100"></div>
     <div id="f-leaderboard" class="leaderboard w-100"></div>
@@ -267,6 +356,6 @@
   const GK  = 'hitstoric_gid';
   const TK  = 'hitstoric_tok';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=11"></script>
 </body>
 </html>

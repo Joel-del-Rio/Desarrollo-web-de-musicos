@@ -26,7 +26,7 @@
   <div class="container py-4 d-flex flex-column" style="max-width:380px">
 
     <div class="text-center mb-4">
-      <img src="<?= BASE_URL ?>/Imagenes/Logo.png" alt="Hitstoric" style="width:100%;max-width:100%;display:block">
+      <img src="<?= BASE_URL ?>/assets/images/Logo.png" alt="Hitstoric" style="width:100%;max-width:100%;display:block">
     </div>
 
     <div class="card p-4">
@@ -49,7 +49,7 @@
     </div>
 
     <div class="text-center mt-3">
-      <a href="<?= BASE_URL ?>/" class="btn btn-outline-secondary btn-sm rounded-pill px-4">‹ Volver al inicio</a>
+      <a href="<?= BASE_URL ?>/Vista/index.php" class="btn btn-outline-secondary btn-sm rounded-pill px-4">‹ Volver al inicio</a>
     </div>
 
   </div>
@@ -69,7 +69,7 @@
     <div class="text-secondary small mb-1">Jugadores en la sala</div>
     <div class="fw-black" style="font-size:2.5rem;color:var(--accent)" id="lobby-count">0</div>
   </div>
-  <button class="btn btn-outline-secondary btn-sm rounded-pill px-4" onclick="goToJoin()">‹ Salir de la sala</button>
+  <button class="btn btn-outline-secondary btn-sm rounded-pill px-4" onclick="goToJoin()">‹ Salir</button>
 </div>
 
 <!-- ══ QUESTION (timeline) ══ -->
@@ -104,8 +104,12 @@
     <button id="confirm-btn" class="btn btn-game btn-lg w-100 rounded-pill fw-bold" disabled onclick="confirmAnswer()">
       Confirmar posición
     </button>
-    <div class="text-secondary text-center mt-1" style="font-size:.75rem" id="confirm-hint">
-      Toca una posición en tu línea del tiempo
+    <div class="d-flex align-items-center justify-content-between mt-2">
+      <div class="text-secondary" style="font-size:.75rem" id="confirm-hint">
+        Toca una posición en tu línea del tiempo
+      </div>
+      <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" style="font-size:.72rem"
+              onclick="leaveGame()">Salir</button>
     </div>
   </div>
 
@@ -116,6 +120,7 @@
   <div class="game-spinner"></div>
   <div class="fw-semibold fs-5">Respuesta enviada</div>
   <div class="text-secondary small">Esperando a los demás jugadores…</div>
+  <button class="btn btn-outline-secondary btn-sm rounded-pill px-4 mt-2" onclick="leaveGame()">‹ Salir</button>
 </div>
 
 <!-- ══ RESULTS ══ -->
@@ -145,6 +150,8 @@
       <div id="res-timeline"></div>
     </div>
 
+    <button class="btn btn-outline-secondary btn-sm rounded-pill px-4 mt-1" onclick="leaveGame()">‹ Salir</button>
+
   </div>
 </div>
 
@@ -156,7 +163,7 @@
     <div class="pts-badge"    id="f-score"></div>
     <div id="f-leaderboard" class="leaderboard w-100"></div>
     <button class="btn btn-game rounded-pill px-5 mt-2 fw-bold" onclick="goToJoin()">🎮 Jugar de nuevo</button>
-    <a href="<?= BASE_URL ?>/" class="btn btn-outline-secondary rounded-pill px-5">‹ Inicio</a>
+    <a href="<?= BASE_URL ?>/Vista/index.php" class="btn btn-outline-secondary rounded-pill px-5">‹ Inicio</a>
   </div>
 </div>
 

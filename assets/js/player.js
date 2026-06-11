@@ -380,6 +380,10 @@ function goToJoin() {
   document.getElementById('pin-input').value  = '';
   document.getElementById('name-input').value = '';
 }
+function leaveGame() {
+  if (!confirm('¿Seguro que quieres salir de la partida?')) return;
+  goToJoin();
+}
 function clearSession() {
   localStorage.removeItem(PK); localStorage.removeItem(GK);
   playerId = null; lastStatus = null; selectedPos = null;

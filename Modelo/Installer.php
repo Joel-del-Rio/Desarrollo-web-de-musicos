@@ -13,14 +13,56 @@ class Installer {
         $row = $pdo->query("SELECT version FROM schema_version LIMIT 1")->fetch(PDO::FETCH_ASSOC);
         $currentVersion = $row ? (int)$row['version'] : 0;
 
-        // Migración a v4: añadir columnas de streaming si falta
+        // Migración a v4: añadir columnas de streaming
         if ($currentVersion === 3) {
             try { $pdo->exec("ALTER TABLE songs ADD COLUMN spotify_url VARCHAR(500) NULL, ADD COLUMN youtube_url VARCHAR(500) NULL"); } catch (\Exception $e) {}
             try { $pdo->exec("ALTER TABLE games ADD COLUMN show_links TINYINT(1) DEFAULT 0, ADD COLUMN embed_youtube TINYINT(1) DEFAULT 0, ADD COLUMN autoplay TINYINT(1) DEFAULT 0"); } catch (\Exception $e) {}
             $pdo->exec("UPDATE schema_version SET version=4");
+            $currentVersion = 4;
+        }
+
+        // Migración a v5: añadir modo PIN, email organizador, tabla individual_pins
+        if ($currentVersion === 4) {
+            try { $pdo->exec("ALTER TABLE games ADD COLUMN pin_mode ENUM('shared','individual') DEFAULT 'shared'"); } catch (\Exception $e) {}
+            try { $pdo->exec("ALTER TABLE games ADD COLUMN organizer_email VARCHAR(255) NULL"); } catch (\Exception $e) {}
+            try {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS individual_pins (
+                        id         INT AUTO_INCREMENT PRIMARY KEY,
+                        game_id    INT NOT NULL,
+                        pin        CHAR(4) NOT NULL,
+                        used       TINYINT(1) DEFAULT 0,
+                        player_id  INT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE KEY unique_pin_per_game (game_id, pin),
+                        FOREIGN KEY (game_id)   REFERENCES games(id) ON DELETE CASCADE,
+                        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ");
+            } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=5");
             return;
         }
-        if ($currentVersion >= 4) return; // Ya instalado
+        if ($currentVersion >= 5) {
+            // Verificar que la tabla individual_pins existe (por si la migración falló parcialmente)
+            $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
+            if (empty($tables)) {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS individual_pins (
+                        id         INT AUTO_INCREMENT PRIMARY KEY,
+                        game_id    INT NOT NULL,
+                        pin        CHAR(4) NOT NULL,
+                        used       TINYINT(1) DEFAULT 0,
+                        player_id  INT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE KEY unique_pin_per_game (game_id, pin),
+                        FOREIGN KEY (game_id)   REFERENCES games(id) ON DELETE CASCADE,
+                        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ");
+            }
+            return;
+        }
 
         // Borrar tablas antiguas para garantizar esquema limpio
         $pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
@@ -43,6 +85,8 @@ class Installer {
                 show_links          TINYINT(1) DEFAULT 0,
                 embed_youtube       TINYINT(1) DEFAULT 0,
                 autoplay            TINYINT(1) DEFAULT 0,
+                pin_mode            ENUM('shared','individual') DEFAULT 'shared',
+                organizer_email     VARCHAR(255) NULL,
                 question_started_at TIMESTAMP NULL,
                 created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_pin (pin)
@@ -115,8 +159,22 @@ class Installer {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
 
+        $pdo->exec("
+            CREATE TABLE individual_pins (
+                id         INT AUTO_INCREMENT PRIMARY KEY,
+                game_id    INT NOT NULL,
+                pin        CHAR(4) NOT NULL,
+                used       TINYINT(1) DEFAULT 0,
+                player_id  INT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_pin_per_game (game_id, pin),
+                FOREIGN KEY (game_id)   REFERENCES games(id) ON DELETE CASCADE,
+                FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
         $pdo->exec("CREATE TABLE schema_version (version INT DEFAULT 0)");
-        $pdo->exec("INSERT INTO schema_version (version) VALUES (4)");
+        $pdo->exec("INSERT INTO schema_version (version) VALUES (5)");
 
         // ── Canciones de muestra ───────────────────────────
         $ins = $pdo->prepare("INSERT INTO songs (title, artist, year, genre) VALUES (?,?,?,?)");

@@ -15,7 +15,7 @@
   <div class="container" style="max-width:440px">
 
     <div class="text-center mb-4">
-      <img src="<?= BASE_URL ?>/Imagenes/Logo.png" alt="Hitstoric" style="width:100%;max-width:100%;display:block">
+      <img src="<?= BASE_URL ?>/assets/images/Logo.png" alt="Hitstoric" style="width:100%;max-width:100%;display:block">
     </div>
 
     <div class="d-flex flex-column gap-3 mb-4">
