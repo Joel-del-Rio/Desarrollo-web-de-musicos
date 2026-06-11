@@ -20,7 +20,7 @@
 
     <div class="d-flex flex-column gap-3 mb-4">
 
-      <a href="<?= BASE_URL ?>/admin" class="card text-decoration-none p-3 d-flex flex-row align-items-center gap-3"
+      <a href="<?= BASE_URL ?>/Vista/admin.php" class="card text-decoration-none p-3 d-flex flex-row align-items-center gap-3"
         style="border:2px solid transparent !important;transition:border-color .2s,transform .15s"
         onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-2px)'"
         onmouseout="this.style.borderColor='transparent';this.style.transform=''">
@@ -32,7 +32,7 @@
         <span class="ms-auto text-secondary fs-4">›</span>
       </a>
 
-      <a href="<?= BASE_URL ?>/player" class="card text-decoration-none p-3 d-flex flex-row align-items-center gap-3"
+      <a href="<?= BASE_URL ?>/Vista/player.php" class="card text-decoration-none p-3 d-flex flex-row align-items-center gap-3"
         style="border:2px solid transparent !important;transition:border-color .2s,transform .15s"
         onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-2px)'"
         onmouseout="this.style.borderColor='transparent';this.style.transform=''">

@@ -95,7 +95,7 @@
         🎮 Crear Partida
       </button>
       <div class="text-center mt-2">
-        <a href="<?= BASE_URL ?>/songs" class="small" style="color:var(--accent)">🎵 Gestionar catálogo de canciones</a>
+        <a href="<?= BASE_URL ?>/Vista/songs.php" class="small" style="color:var(--accent)">🎵 Gestionar catálogo de canciones</a>
       </div>
       <div id="setup-error" class="alert alert-danger mt-3 py-2 small d-none"></div>
     </div>
