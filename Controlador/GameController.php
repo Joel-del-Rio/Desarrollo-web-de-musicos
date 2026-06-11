@@ -13,7 +13,7 @@ class GameController {
 
     public function createGame(): array {
         $rounds       = max(5, min(20, (int)($_POST['total_rounds']   ?? 10)));
-        $questionTime = max(10, min(60, (int)($_POST['question_time'] ?? 30)));
+        $questionTime = max(20, min(90, (int)($_POST['question_time'] ?? 30)));
         $genre        = in_array($_POST['genre'] ?? '', GENRES, true) ? $_POST['genre'] : 'Todos';
         $showLinks    = ($_POST['show_links']    ?? '0') === '1' ? 1 : 0;
         $embedYoutube = ($_POST['embed_youtube'] ?? '0') === '1' ? 1 : 0;

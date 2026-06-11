@@ -356,6 +356,6 @@
   const GK  = 'hitstoric_gid';
   const TK  = 'hitstoric_tok';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=11"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=12"></script>
 </body>
 </html>
