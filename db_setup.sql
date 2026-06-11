@@ -8,27 +8,17 @@ CREATE DATABASE IF NOT EXISTS hitster_musicos
     COLLATE utf8mb4_unicode_ci;
 USE hitster_musicos;
 
-SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS answers;
-DROP TABLE IF EXISTS player_timeline;
-DROP TABLE IF EXISTS game_songs;
-DROP TABLE IF EXISTS individual_pins;
-DROP TABLE IF EXISTS players;
-DROP TABLE IF EXISTS songs;
-DROP TABLE IF EXISTS games;
-DROP TABLE IF EXISTS schema_version;
-SET FOREIGN_KEY_CHECKS = 1;
-
 -- ── Control de versión del esquema ──────────────────────────
-CREATE TABLE schema_version (
+CREATE TABLE IF NOT EXISTS schema_version (
     version INT DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO schema_version (version) VALUES (5);
+INSERT INTO schema_version (version)
+SELECT 5 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM schema_version);
 
 -- ── Partidas ────────────────────────────────────────────────
 -- embed_youtube se usa como "audio habilitado" (1 = sí)
-CREATE TABLE games (
+CREATE TABLE IF NOT EXISTS games (
     id                  INT AUTO_INCREMENT PRIMARY KEY,
     pin                 CHAR(4) NOT NULL,
     admin_token         VARCHAR(64) NOT NULL,
@@ -48,18 +38,19 @@ CREATE TABLE games (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ── Canciones del catálogo ───────────────────────────────────
-CREATE TABLE songs (
+CREATE TABLE IF NOT EXISTS songs (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     title       VARCHAR(200) NOT NULL,
     artist      VARCHAR(200) NOT NULL,
     year        INT NOT NULL,
     genre       VARCHAR(100),
     spotify_url VARCHAR(500) NULL,   -- reservado (no usado actualmente)
-    youtube_url VARCHAR(500) NULL    -- reservado (no usado actualmente)
+    youtube_url VARCHAR(500) NULL,   -- reservado (no usado actualmente)
+    UNIQUE KEY unique_song (title, artist)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ── Jugadores ────────────────────────────────────────────────
-CREATE TABLE players (
+CREATE TABLE IF NOT EXISTS players (
     id           INT AUTO_INCREMENT PRIMARY KEY,
     game_id      INT NOT NULL,
     name         VARCHAR(50) NOT NULL,
@@ -71,7 +62,7 @@ CREATE TABLE players (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ── Canciones asignadas a cada partida (orden de rondas) ─────
-CREATE TABLE game_songs (
+CREATE TABLE IF NOT EXISTS game_songs (
     id           INT AUTO_INCREMENT PRIMARY KEY,
     game_id      INT NOT NULL,
     song_id      INT NOT NULL,
@@ -81,7 +72,7 @@ CREATE TABLE game_songs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ── Línea del tiempo de cada jugador (canciones ya colocadas) ─
-CREATE TABLE player_timeline (
+CREATE TABLE IF NOT EXISTS player_timeline (
     id        INT AUTO_INCREMENT PRIMARY KEY,
     player_id INT NOT NULL,
     game_id   INT NOT NULL,
@@ -93,7 +84,7 @@ CREATE TABLE player_timeline (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ── Respuestas de jugadores por ronda ────────────────────────
-CREATE TABLE answers (
+CREATE TABLE IF NOT EXISTS answers (
     id             INT AUTO_INCREMENT PRIMARY KEY,
     game_id        INT NOT NULL,
     player_id      INT NOT NULL,
@@ -109,7 +100,7 @@ CREATE TABLE answers (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ── PINs individuales (modo de acceso individual) ────────────
-CREATE TABLE individual_pins (
+CREATE TABLE IF NOT EXISTS individual_pins (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     game_id    INT NOT NULL,
     pin        CHAR(4) NOT NULL,
@@ -124,7 +115,7 @@ CREATE TABLE individual_pins (
 -- ============================================================
 --  Canciones de muestra (8 géneros, ~160 canciones)
 -- ============================================================
-INSERT INTO songs (title, artist, year, genre) VALUES
+INSERT IGNORE INTO songs (title, artist, year, genre) VALUES
 
 -- Rock Internacional
 ('Stairway to Heaven',         'Led Zeppelin',                1971, 'Rock Internacional'),
