@@ -46,6 +46,48 @@ try {
             echo json_encode((new GameController())->nextRound());
             break;
 
+        /* ── Auth admin premios ── */
+        case 'admin_login':
+            require_once __DIR__ . '/PrizeController.php';
+            echo json_encode((new PrizeController())->login());
+            break;
+
+        /* ── Premios globales ── */
+        case 'get_prizes_catalog':
+            require_once __DIR__ . '/PrizeController.php';
+            echo json_encode((new PrizeController())->getCatalog());
+            break;
+
+        case 'get_prizes_all':
+            require_once __DIR__ . '/PrizeController.php';
+            echo json_encode((new PrizeController())->getAll());
+            break;
+
+        case 'save_prize':
+            require_once __DIR__ . '/PrizeController.php';
+            echo json_encode((new PrizeController())->save());
+            break;
+
+        case 'toggle_prize':
+            require_once __DIR__ . '/PrizeController.php';
+            echo json_encode((new PrizeController())->toggle());
+            break;
+
+        case 'delete_prize':
+            require_once __DIR__ . '/PrizeController.php';
+            echo json_encode((new PrizeController())->delete());
+            break;
+
+        case 'get_global_leaderboard':
+            require_once __DIR__ . '/PrizeController.php';
+            echo json_encode((new PrizeController())->getLeaderboard());
+            break;
+
+        case 'get_my_score':
+            require_once __DIR__ . '/PrizeController.php';
+            echo json_encode((new PrizeController())->getMyScore());
+            break;
+
         /* ── Canciones ── */
         case 'get_songs':
             require_once __DIR__ . '/SongController.php';

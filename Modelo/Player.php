@@ -9,11 +9,11 @@ class Player {
         $this->db = Database::getInstance()->pdo();
     }
 
-    public function create(int $gameId, string $name): array {
+    public function create(int $gameId, string $name, string $email = ''): array {
         $color = self::COLORS[random_int(0, count(self::COLORS) - 1)];
         $this->db->prepare(
-            "INSERT INTO players (game_id, name, avatar_color) VALUES (?,?,?)"
-        )->execute([$gameId, $name, $color]);
+            "INSERT INTO players (game_id, name, avatar_color, email) VALUES (?,?,?,?)"
+        )->execute([$gameId, $name, $color, $email ?: null]);
         return ['id' => (int)$this->db->lastInsertId(), 'name' => $name, 'color' => $color];
     }
 
@@ -85,8 +85,22 @@ class Player {
             $this->db->prepare(
                 "INSERT IGNORE INTO player_timeline (player_id, game_id, song_id) VALUES (?,?,?)"
             )->execute([$playerId, $gameId, $songId]);
-            // Sumar puntos
+            // Sumar puntos en partida
             $this->db->prepare("UPDATE players SET score=score+? WHERE id=?")->execute([$points, $playerId]);
+            // Acumular en puntuación global solo en partidas de PIN individual
+            $gmSt = $this->db->prepare("SELECT pin_mode FROM games WHERE id=?");
+            $gmSt->execute([$gameId]);
+            $gameRow = $gmSt->fetch();
+            if (($gameRow['pin_mode'] ?? '') === 'individual') {
+                $pl = $this->getById($playerId);
+                if (!empty($pl['email'])) {
+                    $this->db->prepare(
+                        "INSERT INTO global_scores (email, name, total_points)
+                         VALUES (?, ?, ?)
+                         ON DUPLICATE KEY UPDATE total_points = total_points + ?, name = VALUES(name)"
+                    )->execute([$pl['email'], $pl['name'], $points, $points]);
+                }
+            }
         }
 
         return ['correct' => $isCorrect, 'points' => $points];

@@ -9,6 +9,7 @@ let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0 };
 
 /* ── Arranque ── */
 (function init() {
+  onAudioToggle(); // estado inicial correcto del toggle de autoplay
   if (gameId && adminToken) {
     fetchState().then(state => {
       if (state && !state.error) applyState(state);
@@ -325,9 +326,13 @@ function onLinksToggle() {
   // independiente — no afecta a las otras opciones
 }
 function onAudioToggle() {
-  const on = document.getElementById('toggle-audio').checked;
-  document.getElementById('row-autoplay').classList.toggle('visible', on);
-  if (!on) document.getElementById('toggle-autoplay').checked = false;
+  const on       = document.getElementById('toggle-audio').checked;
+  const autoplay = document.getElementById('toggle-autoplay');
+  const row      = document.getElementById('row-autoplay');
+  if (!on) { autoplay.checked = false; }
+  autoplay.disabled = !on;
+  row.style.opacity = on ? '1' : '0.35';
+  row.style.pointerEvents = on ? '' : 'none';
 }
 
 /* ── Streaming helpers ── */
@@ -431,9 +436,6 @@ async function createGame() {
       total_rounds: rounds, question_time: time, genre,
       show_links: showLinks, embed_youtube: embedYoutube, autoplay,
       pin_mode: pinMode, organizer_email: organizerEmail, individual_count: individualCount,
-      prize_1: document.getElementById('prize-1')?.value.trim() || '',
-      prize_2: document.getElementById('prize-2')?.value.trim() || '',
-      prize_3: document.getElementById('prize-3')?.value.trim() || '',
     });
     if (pinMode === 'individual') {
       document.querySelectorAll('#indiv-email-fields input').forEach(inp => {

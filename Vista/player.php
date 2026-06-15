@@ -37,7 +37,7 @@
                placeholder="· · · ·" autocomplete="off"
                style="font-size:2.5rem;letter-spacing:.3em">
       </div>
-      <div class="mb-4">
+      <div class="mb-3">
         <label class="form-label text-secondary small fw-semibold text-uppercase">Tu nombre</label>
         <input id="name-input" type="text" class="form-control form-control-lg"
                placeholder="¿Cómo te llamas?" maxlength="30" autocomplete="off">
@@ -174,6 +174,6 @@
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=6"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=9"></script>
 </body>
 </html>

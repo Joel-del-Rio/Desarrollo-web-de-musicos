@@ -13,7 +13,8 @@ class Game {
         int $showLinks = 0, int $embedYoutube = 0, int $autoplay = 0,
         string $pinMode = 'shared', string $organizerEmail = '',
         int $individualCount = 0,
-        string $prize1 = '', string $prize2 = '', string $prize3 = ''
+        string $prize1 = '', string $prize2 = '', string $prize3 = '',
+        array $playerEmails = []
     ): array {
         // PIN único entre partidas activas
         do {
@@ -49,15 +50,15 @@ class Game {
         $result = ['id' => $gameId, 'pin' => $pin, 'admin_token' => $token, 'pin_mode' => $pinMode];
 
         if ($pinMode === 'individual' && $individualCount > 0) {
-            $result['individual_pins'] = $this->generateIndividualPins($gameId, $individualCount);
+            $result['individual_pins'] = $this->generateIndividualPins($gameId, $individualCount, $playerEmails);
         }
 
         return $result;
     }
 
-    private function generateIndividualPins(int $gameId, int $count): array {
+    private function generateIndividualPins(int $gameId, int $count, array $emails = []): array {
         $pins      = [];
-        $ins       = $this->db->prepare("INSERT INTO individual_pins (game_id, pin) VALUES (?,?)");
+        $ins       = $this->db->prepare("INSERT INTO individual_pins (game_id, pin, email) VALUES (?,?,?)");
         $generated = 0;
         $attempts  = 0;
 
@@ -65,12 +66,10 @@ class Game {
             $attempts++;
             $candidate = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
 
-            // No puede coincidir con un PIN de partida activa (shared)
             $st = $this->db->prepare("SELECT 1 FROM games WHERE pin=? AND status!='finished'");
             $st->execute([$candidate]);
             if ($st->fetch()) continue;
 
-            // No puede coincidir con otro PIN individual activo
             $st = $this->db->prepare(
                 "SELECT 1 FROM individual_pins ip
                  JOIN games g ON ip.game_id=g.id
@@ -80,7 +79,8 @@ class Game {
             if ($st->fetch()) continue;
 
             try {
-                $ins->execute([$gameId, $candidate]);
+                $email = filter_var($emails[$generated] ?? '', FILTER_VALIDATE_EMAIL) ?: null;
+                $ins->execute([$gameId, $candidate, $email]);
                 $pins[] = $candidate;
                 $generated++;
             } catch (\Exception $e) { /* race condition, skip */ }
@@ -91,7 +91,7 @@ class Game {
 
     public function getByIndividualPin(string $pin): ?array {
         $st = $this->db->prepare(
-            "SELECT g.* FROM individual_pins ip
+            "SELECT g.*, ip.email AS player_email FROM individual_pins ip
              JOIN games g ON ip.game_id=g.id
              WHERE ip.pin=? AND ip.used=0 AND g.status!='finished'"
         );

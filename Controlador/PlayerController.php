@@ -18,11 +18,12 @@ class PlayerController {
         if (strlen($pin) !== 4 || !ctype_digit($pin)) return ['error' => 'PIN inválido (4 dígitos)'];
         if ($name === '' || strlen($name) > 30)        return ['error' => 'Nombre inválido (máx 30 caracteres)'];
 
-        // Primero buscar como PIN individual
+        // Primero buscar como PIN individual — el email viene guardado en la tabla
         $gameByIndiv = $this->game->getByIndividualPin($pin);
         if ($gameByIndiv) {
             if ($gameByIndiv['status'] !== 'waiting') return ['error' => 'La partida ya ha comenzado'];
-            $pl = $this->player->create((int)$gameByIndiv['id'], $name);
+            $email = $gameByIndiv['player_email'] ?? '';
+            $pl    = $this->player->create((int)$gameByIndiv['id'], $name, $email);
             $this->game->claimIndividualPin($pin, $pl['id']);
             return [
                 'success'      => true,
@@ -33,7 +34,7 @@ class PlayerController {
             ];
         }
 
-        // Buscar como PIN compartido
+        // Buscar como PIN compartido — sin email
         $game = $this->game->getByPin($pin);
         if (!$game) return ['error' => 'PIN no encontrado'];
         if ($game['status'] !== 'waiting') return ['error' => 'La partida ya ha comenzado'];

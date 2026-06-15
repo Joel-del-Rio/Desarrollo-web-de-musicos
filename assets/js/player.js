@@ -281,15 +281,12 @@ function renderFinished(state) {
   document.getElementById('f-rank').textContent  = `Posición final: ${state.player_rank} / ${state.total_players}`;
   document.getElementById('f-score').textContent = `${p.score} pts`;
 
-  // Mostrar premio si existe para esta posición
-  const prizes = [state.prize_1, state.prize_2, state.prize_3];
-  const rank   = parseInt(state.player_rank, 10);
+  // Mostrar mensaje de puntos acumulados en modo PIN individual
   const prizeEl = document.getElementById('f-prize');
   if (prizeEl) {
-    const icons  = ['🥇','🥈','🥉'];
-    const myPrize = prizes[rank - 1];
-    if (myPrize) {
-      prizeEl.textContent = `${icons[rank - 1]} Tu premio: ${myPrize}`;
+    if (state.pin_mode === 'individual') {
+      const p = state.player || {};
+      prizeEl.innerHTML = `🏆 ¡Has acumulado <strong>${p.score} pts</strong> en el ranking global!<br><span style="font-size:.85rem;font-weight:400">Visita <a href="premios" style="color:var(--accent)">Premios</a> para ver cuántos tienes y canjearlos.</span>`;
       prizeEl.classList.remove('d-none');
     } else {
       prizeEl.classList.add('d-none');
@@ -369,8 +366,8 @@ function stopCountdown() { clearInterval(countdown); countdown = null; }
 
 /* ── Join ── */
 async function joinGame() {
-  const pin  = document.getElementById('pin-input').value.trim();
-  const name = document.getElementById('name-input').value.trim();
+  const pin   = document.getElementById('pin-input').value.trim();
+  const name  = document.getElementById('name-input').value.trim();
   const errEl = document.getElementById('join-error');
   errEl.classList.add('d-none');
 

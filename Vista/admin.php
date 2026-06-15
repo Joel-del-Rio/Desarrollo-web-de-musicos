@@ -33,9 +33,9 @@
       <div class="mb-4">
         <label class="form-label text-secondary small fw-semibold text-uppercase">Tiempo por ronda (segundos)</label>
         <div class="text-center fw-black mb-1" style="font-size:3rem;color:var(--accent)" id="time-display">30</div>
-        <input type="range" class="form-range" id="time-input" min="20" max="90" value="30" step="5"
+        <input type="range" class="form-range" id="time-input" min="20" max="60" value="30" step="5"
                oninput="document.getElementById('time-display').textContent=this.value">
-        <div class="d-flex justify-content-between text-secondary small"><span>20s</span><span>90s</span></div>
+        <div class="d-flex justify-content-between text-secondary small"><span>20s</span><span>60s</span></div>
       </div>
 
       <div class="mb-4">
@@ -123,24 +123,6 @@
         </div>
         <div id="indiv-email-fields" class="d-flex flex-column gap-2 mb-3"></div>
 
-        <!-- Premios (modo individual) -->
-        <div class="mb-4">
-          <label class="form-label text-secondary small fw-semibold text-uppercase">Premios <span style="font-weight:400;text-transform:none">(opcional)</span></label>
-          <div class="d-flex flex-column gap-2">
-            <div class="d-flex align-items-center gap-2">
-              <span style="font-size:1.4rem;min-width:28px">🥇</span>
-              <input type="text" id="prize-1" class="form-control form-control-sm" placeholder="Premio 1er lugar" maxlength="200">
-            </div>
-            <div class="d-flex align-items-center gap-2">
-              <span style="font-size:1.4rem;min-width:28px">🥈</span>
-              <input type="text" id="prize-2" class="form-control form-control-sm" placeholder="Premio 2do lugar" maxlength="200">
-            </div>
-            <div class="d-flex align-items-center gap-2">
-              <span style="font-size:1.4rem;min-width:28px">🥉</span>
-              <input type="text" id="prize-3" class="form-control form-control-sm" placeholder="Premio 3er lugar" maxlength="200">
-            </div>
-          </div>
-        </div>
       </div>
 
       <button class="btn btn-game btn-lg w-100 rounded-pill fw-bold" onclick="createGame()">
@@ -375,6 +357,6 @@
   const GK  = 'hitstoric_gid';
   const TK  = 'hitstoric_tok';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=14"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=16"></script>
 </body>
 </html>

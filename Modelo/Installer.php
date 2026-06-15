@@ -43,14 +43,62 @@ class Installer {
             $pdo->exec("UPDATE schema_version SET version=5");
             return;
         }
-        // Migración a v6: columnas de premios
+        // Migración a v6: columnas de premios por partida
         if ($currentVersion === 5) {
             try { $pdo->exec("ALTER TABLE games ADD COLUMN prize_1 VARCHAR(200) NULL, ADD COLUMN prize_2 VARCHAR(200) NULL, ADD COLUMN prize_3 VARCHAR(200) NULL"); } catch (\Exception $e) {}
             $pdo->exec("UPDATE schema_version SET version=6");
             $currentVersion = 6;
         }
 
-        if ($currentVersion >= 6) {
+        // Migración a v7: email en jugadores, puntuación global, catálogo de premios
+        if ($currentVersion === 6) {
+            try { $pdo->exec("ALTER TABLE players ADD COLUMN email VARCHAR(255) NULL"); } catch (\Exception $e) {}
+            try { $pdo->exec("
+                CREATE TABLE IF NOT EXISTS global_scores (
+                    id           INT AUTO_INCREMENT PRIMARY KEY,
+                    email        VARCHAR(255) NOT NULL,
+                    name         VARCHAR(50)  NOT NULL,
+                    total_points INT DEFAULT 0,
+                    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY uk_email (email)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            "); } catch (\Exception $e) {}
+            try { $pdo->exec("
+                CREATE TABLE IF NOT EXISTS prizes_catalog (
+                    id          INT AUTO_INCREMENT PRIMARY KEY,
+                    name        VARCHAR(200) NOT NULL,
+                    description VARCHAR(500) NULL,
+                    points_cost INT NOT NULL DEFAULT 1000,
+                    stock       INT DEFAULT -1,
+                    active      TINYINT(1) DEFAULT 1,
+                    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            "); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=7");
+            $currentVersion = 7;
+        }
+
+        if ($currentVersion === 7) {
+            try { $pdo->exec("ALTER TABLE prizes_catalog ADD COLUMN emoji VARCHAR(16) NULL AFTER description"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=8");
+            $currentVersion = 8;
+        }
+
+        if ($currentVersion === 8) {
+            // Renombrar emoji → image y ampliar tamaño para guardar nombre de archivo
+            try { $pdo->exec("ALTER TABLE prizes_catalog CHANGE COLUMN emoji image VARCHAR(255) NULL"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=9");
+            $currentVersion = 9;
+        }
+
+        if ($currentVersion === 9) {
+            // Guardar email del jugador en su PIN individual para recuperarlo al hacer join
+            try { $pdo->exec("ALTER TABLE individual_pins ADD COLUMN email VARCHAR(255) NULL"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=10");
+            $currentVersion = 10;
+        }
+
+        if ($currentVersion >= 10) {
             // Verificar que la tabla individual_pins existe (por si la migración falló parcialmente)
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
