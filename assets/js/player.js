@@ -27,7 +27,7 @@ let questionTime = 30;
 /* ── API ── */
 async function fetchState() {
   try {
-    const r = await fetch(`${API}?action=player_state&player_id=${playerId}`);
+    const r = await fetch(`${API}?action=player_state&player_id=${playerId}&_t=${Date.now()}`, { cache: 'no-store' });
     return r.json();
   } catch { return null; }
 }

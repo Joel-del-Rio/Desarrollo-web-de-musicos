@@ -21,7 +21,7 @@ let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0 };
 
 /* ── API ── */
 async function apiGet(action) {
-  const r = await fetch(`${API}?action=${action}&game_id=${gameId}`);
+  const r = await fetch(`${API}?action=${action}&game_id=${gameId}&_t=${Date.now()}`, { cache: 'no-store' });
   return r.json();
 }
 async function apiPost(action, extra = {}) {
