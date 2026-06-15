@@ -8,10 +8,11 @@ require_once __DIR__ . '/config.php';
 
 // ── Páginas disponibles ───────────────────────────────
 const PAGES = [
-    'home'   => __DIR__ . '/Vista/index.php',
-    'admin'  => __DIR__ . '/Vista/admin.php',
-    'player' => __DIR__ . '/Vista/player.php',
-    'songs'  => __DIR__ . '/Vista/songs.php',
+    'home'    => __DIR__ . '/Vista/index.php',
+    'admin'   => __DIR__ . '/Vista/admin.php',
+    'player'  => __DIR__ . '/Vista/player.php',
+    'songs'   => __DIR__ . '/Vista/songs.php',
+    'premios' => __DIR__ . '/Vista/premios.php',
 ];
 
 // ── Si lleva ?action= es una llamada a la API ─────────

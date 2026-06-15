@@ -121,7 +121,26 @@
                  oninput="updatePlayerEmailFields(parseInt(this.value)||2)">
             <div class="form-text small" style="color:var(--muted)">Máximo 30 — cada jugador recibirá su PIN por email (obligatorio)</div>
         </div>
-        <div id="indiv-email-fields" class="d-flex flex-column gap-2 mb-4"></div>
+        <div id="indiv-email-fields" class="d-flex flex-column gap-2 mb-3"></div>
+
+        <!-- Premios (modo individual) -->
+        <div class="mb-4">
+          <label class="form-label text-secondary small fw-semibold text-uppercase">Premios <span style="font-weight:400;text-transform:none">(opcional)</span></label>
+          <div class="d-flex flex-column gap-2">
+            <div class="d-flex align-items-center gap-2">
+              <span style="font-size:1.4rem;min-width:28px">🥇</span>
+              <input type="text" id="prize-1" class="form-control form-control-sm" placeholder="Premio 1er lugar" maxlength="200">
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span style="font-size:1.4rem;min-width:28px">🥈</span>
+              <input type="text" id="prize-2" class="form-control form-control-sm" placeholder="Premio 2do lugar" maxlength="200">
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span style="font-size:1.4rem;min-width:28px">🥉</span>
+              <input type="text" id="prize-3" class="form-control form-control-sm" placeholder="Premio 3er lugar" maxlength="200">
+            </div>
+          </div>
+        </div>
       </div>
 
       <button class="btn btn-game btn-lg w-100 rounded-pill fw-bold" onclick="createGame()">
@@ -356,6 +375,6 @@
   const GK  = 'hitstoric_gid';
   const TK  = 'hitstoric_tok';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=13"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=14"></script>
 </body>
 </html>

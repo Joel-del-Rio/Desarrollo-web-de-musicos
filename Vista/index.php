@@ -44,6 +44,18 @@
         <span class="ms-auto fs-4">›</span>
       </a>
 
+      <a href="<?= BASE_URL ?>/Vista/premios.php" class="card text-decoration-none p-3 d-flex flex-row align-items-center gap-3"
+        style="border:2px solid transparent !important;transition:border-color .2s,transform .15s"
+        onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-2px)'"
+        onmouseout="this.style.borderColor='transparent';this.style.transform=''">
+        <span style="font-size:2.5rem">🏆</span>
+        <div>
+          <div class="fw-bold fs-5 text-white mb-1">Premios</div>
+          <div class="small">Consulta la clasificación y los premios de una partida</div>
+        </div>
+        <span class="ms-auto text-secondary fs-4">›</span>
+      </a>
+
     </div>
 
     <div class="card p-3">

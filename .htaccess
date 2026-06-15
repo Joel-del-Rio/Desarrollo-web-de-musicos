@@ -32,6 +32,7 @@ RewriteRule ^home/?$           index.php?page=home    [L,QSA]
 RewriteRule ^admin/?$          index.php?page=admin   [L,QSA]
 RewriteRule ^player/?$         index.php?page=player  [L,QSA]
 RewriteRule ^songs/?$          index.php?page=songs   [L,QSA]
+RewriteRule ^premios/?$        index.php?page=premios [L,QSA]
 RewriteRule ^api/?$            index.php?page=api     [L,QSA]
 
 # ── Cualquier otra ruta → front controller ────────────

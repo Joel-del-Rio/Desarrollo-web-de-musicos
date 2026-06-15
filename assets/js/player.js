@@ -281,6 +281,21 @@ function renderFinished(state) {
   document.getElementById('f-rank').textContent  = `Posición final: ${state.player_rank} / ${state.total_players}`;
   document.getElementById('f-score').textContent = `${p.score} pts`;
 
+  // Mostrar premio si existe para esta posición
+  const prizes = [state.prize_1, state.prize_2, state.prize_3];
+  const rank   = parseInt(state.player_rank, 10);
+  const prizeEl = document.getElementById('f-prize');
+  if (prizeEl) {
+    const icons  = ['🥇','🥈','🥉'];
+    const myPrize = prizes[rank - 1];
+    if (myPrize) {
+      prizeEl.textContent = `${icons[rank - 1]} Tu premio: ${myPrize}`;
+      prizeEl.classList.remove('d-none');
+    } else {
+      prizeEl.classList.add('d-none');
+    }
+  }
+
   const board = document.getElementById('f-leaderboard');
   board.innerHTML = '';
   (state.leaderboard || []).forEach((pl, i) => {

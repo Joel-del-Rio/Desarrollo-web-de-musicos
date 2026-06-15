@@ -161,6 +161,7 @@
     <h2 class="fw-black display-5">🏆 ¡Fin!</h2>
     <div class="fw-bold fs-5" id="f-rank"></div>
     <div class="pts-badge"    id="f-score"></div>
+    <div id="f-prize" class="d-none w-100 text-center py-2 px-3 rounded-3 fw-bold" style="background:rgba(233,69,96,.15);border:2px solid var(--accent);font-size:1.05rem"></div>
     <div id="f-leaderboard" class="leaderboard w-100"></div>
     <button class="btn btn-game rounded-pill px-5 mt-2 fw-bold" onclick="goToJoin()">🎮 Jugar de nuevo</button>
     <a href="<?= BASE_URL ?>/Vista/index.php" class="btn btn-outline-secondary rounded-pill px-5">‹ Inicio</a>
@@ -173,6 +174,6 @@
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=5"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=6"></script>
 </body>
 </html>

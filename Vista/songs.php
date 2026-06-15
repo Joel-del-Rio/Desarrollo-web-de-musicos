@@ -86,8 +86,8 @@ function renderSongs(songs) {
     <div class="card mb-3 p-0 overflow-hidden">
     <table class="table table-dark table-hover mb-0" style="--bs-table-bg:var(--card);--bs-table-hover-bg:rgba(255,255,255,.04)">
       <thead><tr>
-        <th class="small" style="width:40%">Canción</th>
-        <th class="small" style="width:10%">Año</th>
+        <th class="small" style="width:38%">Canción</th>
+        <th class="small" style="width:8%">Año</th>
         <th class="small">Links</th>
       </tr></thead>
       <tbody>`;
@@ -101,7 +101,12 @@ function renderSongs(songs) {
         </td>
         <td class="small">${s.year}</td>
         <td>
-          <div class="d-flex gap-2">
+          <div class="d-flex gap-1 flex-wrap">
+            <button class="btn-stream" data-title="${esc(s.title)}" data-artist="${esc(s.artist)}"
+                    onclick="playPreview(this)"
+                    style="background:var(--bg2);color:var(--accent);border:1px solid rgba(233,69,96,.4);font-size:.75rem;padding:.25rem .55rem;cursor:pointer">
+              ▶
+            </button>
             <a href="https://open.spotify.com/search/${q}" target="_blank" rel="noopener"
                class="btn-stream btn-spotify" style="font-size:.75rem;padding:.25rem .6rem">
               Spotify
@@ -121,6 +126,46 @@ function renderSongs(songs) {
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ── Preview de audio (iTunes 30s) ── */
+let previewAudio = null;
+let activeBtn    = null;
+
+async function playPreview(btn) {
+  // Mismo botón → pausar
+  if (activeBtn === btn && previewAudio && !previewAudio.paused) {
+    previewAudio.pause();
+    btn.textContent = '▶';
+    activeBtn = null;
+    return;
+  }
+  // Parar reproducción anterior
+  if (previewAudio && !previewAudio.paused) {
+    previewAudio.pause();
+    if (activeBtn) activeBtn.textContent = '▶';
+  }
+  activeBtn = btn;
+  btn.textContent = '…';
+  btn.disabled = true;
+
+  try {
+    const q   = encodeURIComponent(btn.dataset.title + ' ' + btn.dataset.artist);
+    const res = await fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=5`);
+    const d   = await res.json();
+    const hit = d.results?.find(t => t.previewUrl);
+    if (!hit?.previewUrl) { btn.textContent = '—'; btn.disabled = false; return; }
+
+    if (!previewAudio) previewAudio = new Audio();
+    previewAudio.src    = hit.previewUrl;
+    previewAudio.volume = 0.7;
+    previewAudio.onended = () => { btn.textContent = '▶'; activeBtn = null; };
+    await previewAudio.play();
+    btn.textContent = '⏸';
+  } catch {
+    btn.textContent = '▶';
+  }
+  btn.disabled = false;
 }
 
 loadSongs();

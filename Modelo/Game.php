@@ -12,7 +12,8 @@ class Game {
         int $totalRounds, int $questionTime, string $genre = 'Todos',
         int $showLinks = 0, int $embedYoutube = 0, int $autoplay = 0,
         string $pinMode = 'shared', string $organizerEmail = '',
-        int $individualCount = 0
+        int $individualCount = 0,
+        string $prize1 = '', string $prize2 = '', string $prize3 = ''
     ): array {
         // PIN único entre partidas activas
         do {
@@ -23,9 +24,9 @@ class Game {
 
         $token = bin2hex(random_bytes(32));
         $this->db->prepare(
-            "INSERT INTO games (pin, admin_token, total_rounds, question_time, selected_genre, show_links, embed_youtube, autoplay, pin_mode, organizer_email)
-             VALUES (?,?,?,?,?,?,?,?,?,?)"
-        )->execute([$pin, $token, $totalRounds, $questionTime, $genre, $showLinks, $embedYoutube, $autoplay, $pinMode, $organizerEmail ?: null]);
+            "INSERT INTO games (pin, admin_token, total_rounds, question_time, selected_genre, show_links, embed_youtube, autoplay, pin_mode, organizer_email, prize_1, prize_2, prize_3)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
+        )->execute([$pin, $token, $totalRounds, $questionTime, $genre, $showLinks, $embedYoutube, $autoplay, $pinMode, $organizerEmail ?: null, $prize1 ?: null, $prize2 ?: null, $prize3 ?: null]);
         $gameId = (int)$this->db->lastInsertId();
 
         // Seleccionar canciones para las rondas (filtradas por género si aplica)
@@ -237,6 +238,9 @@ class Game {
             'embed_youtube' => (int)($game['embed_youtube'] ?? 0),
             'autoplay'      => (int)($game['autoplay']      ?? 0),
             'pin_mode'      => $game['pin_mode'] ?? 'shared',
+            'prize_1'       => $game['prize_1'] ?? null,
+            'prize_2'       => $game['prize_2'] ?? null,
+            'prize_3'       => $game['prize_3'] ?? null,
         ];
     }
 }

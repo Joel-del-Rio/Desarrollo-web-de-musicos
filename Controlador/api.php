@@ -26,6 +26,11 @@ try {
             echo json_encode((new GameController())->getGameState());
             break;
 
+        case 'game_state_by_pin':
+            require_once __DIR__ . '/GameController.php';
+            echo json_encode((new GameController())->getGameStateByPin());
+            break;
+
         case 'start_game':
             require_once __DIR__ . '/GameController.php';
             echo json_encode((new GameController())->startGame());

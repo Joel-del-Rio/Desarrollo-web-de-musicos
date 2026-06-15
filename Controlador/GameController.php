@@ -22,9 +22,14 @@ class GameController {
         $email        = filter_var(trim($_POST['organizer_email'] ?? ''), FILTER_VALIDATE_EMAIL) ?: '';
         $indivCount   = max(2, min(30, (int)($_POST['individual_count'] ?? 2)));
 
+        $prize1 = substr(trim($_POST['prize_1'] ?? ''), 0, 200);
+        $prize2 = substr(trim($_POST['prize_2'] ?? ''), 0, 200);
+        $prize3 = substr(trim($_POST['prize_3'] ?? ''), 0, 200);
+
         $result = $this->game->create(
             $rounds, $questionTime, $genre, $showLinks, $embedYoutube, $autoplay,
-            $pinMode, $email, $pinMode === 'individual' ? $indivCount : 0
+            $pinMode, $email, $pinMode === 'individual' ? $indivCount : 0,
+            $prize1, $prize2, $prize3
         );
 
         if (empty($result['error'])) {
@@ -64,6 +69,25 @@ class GameController {
             }
         }
 
+        return $state;
+    }
+
+    public function getGameStateByPin(): array {
+        $pin = trim($_GET['pin'] ?? '');
+        if (strlen($pin) !== 4 || !ctype_digit($pin)) return ['error' => 'PIN inválido'];
+
+        $game = $this->game->getByPin($pin);
+        if (!$game) {
+            // Intentar por PIN individual
+            $game = $this->game->getByIndividualPin($pin);
+            if (!$game) return ['error' => 'PIN no encontrado o partida finalizada'];
+        }
+        $gameId  = (int)$game['id'];
+        $state   = $this->game->getState($gameId);
+        $players = $this->player->getByGame($gameId);
+        $state['id']           = $gameId;
+        $state['players']      = $players;
+        $state['player_count'] = count($players);
         return $state;
     }
 

@@ -43,7 +43,14 @@ class Installer {
             $pdo->exec("UPDATE schema_version SET version=5");
             return;
         }
-        if ($currentVersion >= 5) {
+        // Migración a v6: columnas de premios
+        if ($currentVersion === 5) {
+            try { $pdo->exec("ALTER TABLE games ADD COLUMN prize_1 VARCHAR(200) NULL, ADD COLUMN prize_2 VARCHAR(200) NULL, ADD COLUMN prize_3 VARCHAR(200) NULL"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=6");
+            $currentVersion = 6;
+        }
+
+        if ($currentVersion >= 6) {
             // Verificar que la tabla individual_pins existe (por si la migración falló parcialmente)
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {

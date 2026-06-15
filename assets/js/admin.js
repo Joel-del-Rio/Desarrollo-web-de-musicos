@@ -431,6 +431,9 @@ async function createGame() {
       total_rounds: rounds, question_time: time, genre,
       show_links: showLinks, embed_youtube: embedYoutube, autoplay,
       pin_mode: pinMode, organizer_email: organizerEmail, individual_count: individualCount,
+      prize_1: document.getElementById('prize-1')?.value.trim() || '',
+      prize_2: document.getElementById('prize-2')?.value.trim() || '',
+      prize_3: document.getElementById('prize-3')?.value.trim() || '',
     });
     if (pinMode === 'individual') {
       document.querySelectorAll('#indiv-email-fields input').forEach(inp => {
