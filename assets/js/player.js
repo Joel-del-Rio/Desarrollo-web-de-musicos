@@ -9,6 +9,13 @@ let questionTime = 30;
 
 /* ── Arranque ── */
 (function init() {
+  // Pre-rellenar PIN desde URL (?pin=XXXX)
+  const urlPin = new URLSearchParams(window.location.search).get('pin');
+  if (urlPin) {
+    const pinInput = document.getElementById('pin-input');
+    if (pinInput) pinInput.value = urlPin.replace(/\D/g, '').slice(0, 4);
+  }
+
   if (playerId) {
     fetchState().then(state => {
       if (state && !state.error) applyState(state);

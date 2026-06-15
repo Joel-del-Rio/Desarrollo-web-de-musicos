@@ -79,20 +79,28 @@ function renderWaiting(state) {
   const pinMode    = state.pin_mode || localStorage.getItem(GK + '_pinMode') || 'shared';
   const pinLabel   = document.getElementById('w-pin-label');
 
+  const pinCard    = document.getElementById('w-pin-card');
+  const playerUrl  = document.getElementById('w-player-url');
+  const gamePin    = localStorage.getItem(GK + '_pin') || '----';
+  const baseOrigin = API.replace('/Controlador/api.php', '');
+
   if (indivPins && indivPins.length && pinMode === 'individual') {
+    // Modo individual: ocultar card de PIN admin, mostrar cartones difuminados
+    if (pinCard)   pinCard.classList.add('d-none');
     indivPanel.classList.remove('d-none');
-    if (pinLabel) pinLabel.textContent = 'PIN admin (referencia)';
     if (!pinsGrid.hasChildNodes()) {
       pinsGrid.innerHTML = indivPins.map((pin, i) =>
-        `<div class="pin-ticket" onclick="copyPin(this,'${pin}')" title="Clic para copiar">
+        `<div class="pin-ticket" onclick="copyPin(this,'${pin}')" title="Pasar el ratón para ver · Clic para copiar">
            <div class="pin-ticket-num">Cartón ${i + 1}</div>
-           <div class="pin-ticket-code">${pin}</div>
+           <div class="pin-ticket-code pin-blurred">${pin}</div>
          </div>`
       ).join('');
     }
   } else {
+    // Modo compartido: mostrar PIN con enlace directo
+    if (pinCard)  pinCard.classList.remove('d-none');
     indivPanel.classList.add('d-none');
-    if (pinLabel) pinLabel.textContent = 'PIN de la partida';
+    if (playerUrl) playerUrl.textContent = `${baseOrigin}/player?pin=${gamePin}`;
   }
 
   const list = document.getElementById('w-players');

@@ -173,6 +173,6 @@
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=4"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=5"></script>
 </body>
 </html>

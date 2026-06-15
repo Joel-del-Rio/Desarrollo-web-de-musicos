@@ -144,11 +144,11 @@
 <div id="screen-waiting" class="screen">
   <div class="container py-4 d-flex flex-column align-items-center gap-4" style="max-width:640px">
 
-    <div class="card w-100 p-4 text-center">
-      <div class="text-secondary small text-uppercase fw-semibold mb-1" id="w-pin-label">PIN de la partida</div>
+    <div class="card w-100 p-4 text-center" id="w-pin-card">
+      <div class="text-secondary small text-uppercase fw-semibold mb-1">PIN de la partida</div>
       <div class="pin-box" id="w-pin">----</div>
       <div class="text-secondary small mt-2">
-        Jugadores: <strong><?= BASE_URL ?>/player</strong>
+        Jugadores: <strong id="w-player-url"><?= BASE_URL ?>/player</strong>
       </div>
     </div>
 
@@ -356,6 +356,6 @@
   const GK  = 'hitstoric_gid';
   const TK  = 'hitstoric_tok';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=12"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=13"></script>
 </body>
 </html>

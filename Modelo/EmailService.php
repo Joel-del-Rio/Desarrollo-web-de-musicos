@@ -22,19 +22,18 @@ class EmailService {
         if ($pinMode === 'individual') {
             $pinLines = [];
             foreach ($individualPins as $i => $pin) {
-                $pinLines[] = '  Cartón ' . ($i + 1) . ': ' . $pin;
+                $pinLines[] = '  Cartón ' . ($i + 1) . ': ' . $baseUrl . '/player?pin=' . $pin;
             }
             $body = implode("\r\n", array_merge([
                 '¡Tu partida de Hitstoric ha sido creada!',
                 '',
                 'Modo: PINs individuales (' . count($individualPins) . ' cartones)',
                 '',
-                'PINs de los participantes:',
+                'Enlaces de acceso (cada jugador recibe el suyo):',
             ], $pinLines, [
                 '',
-                'Reparte cada PIN a su jugador correspondiente antes de iniciar.',
+                'Cada enlace abre el juego con el PIN ya introducido — solo hace falta poner el nombre.',
                 '',
-                'Enlace para jugadores: ' . $baseUrl . '/player',
                 'Panel de control (admin): ' . $baseUrl . '/admin',
                 '',
                 'Guarda este correo — contiene todos los códigos.',
@@ -45,9 +44,9 @@ class EmailService {
                 '',
                 'PIN de la partida: ' . $gamePin,
                 '',
-                'Comparte este PIN con los jugadores para que puedan unirse.',
+                'Comparte este enlace con los jugadores (el PIN ya va incluido):',
+                $baseUrl . '/player?pin=' . $gamePin,
                 '',
-                'Enlace para jugadores: ' . $baseUrl . '/player',
                 'Panel de control (admin): ' . $baseUrl . '/admin',
             ]);
         }
@@ -71,11 +70,10 @@ class EmailService {
         $body = implode("\r\n", [
             '¡Tu cartón de Hitstoric está listo!',
             '',
-            'Tu PIN personal: ' . $pin,
+            'Haz clic en el enlace para unirte — solo necesitas poner tu nombre:',
+            $baseUrl . '/player?pin=' . $pin,
             '',
-            'Introdúcelo en la pantalla de jugador para unirte a la partida.',
-            '',
-            'Enlace: ' . $baseUrl . '/player',
+            '(Tu PIN personal es ' . $pin . ' por si lo necesitas manualmente)',
             '',
             '¡Buena suerte!',
         ]);

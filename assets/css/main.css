@@ -252,6 +252,8 @@ body { background: var(--bg) !important; color: var(--text); }
 .pin-ticket.copied { background: rgba(46,204,113,.15); border-color: var(--success); }
 .pin-ticket-num  { font-size: .62rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
 .pin-ticket-code { font-size: 1.35rem; font-weight: 900; letter-spacing: .12em; color: var(--accent); }
+.pin-blurred { filter: blur(6px); transition: filter .2s; user-select: none; }
+.pin-ticket:hover .pin-blurred { filter: none; }
 
 /* ── Reproductor de audio personalizado ── */
 .audio-ctrl { display:flex; align-items:center; gap:.6rem; background:var(--bg2); border:1px solid rgba(255,255,255,.1); border-radius:8px; padding:.5rem .75rem; }
