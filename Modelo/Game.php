@@ -177,7 +177,7 @@ class Game {
         }
 
         $this->db->prepare(
-            "UPDATE games SET status='question', current_round=1, question_started_at=NOW() WHERE id=?"
+            "UPDATE games SET status='question', current_round=1, question_started_at=UTC_TIMESTAMP() WHERE id=?"
         )->execute([$gameId]);
     }
 
@@ -193,7 +193,7 @@ class Game {
             return 'finished';
         }
         $this->db->prepare(
-            "UPDATE games SET status='question', current_round=?, question_started_at=NOW() WHERE id=?"
+            "UPDATE games SET status='question', current_round=?, question_started_at=UTC_TIMESTAMP() WHERE id=?"
         )->execute([$next, $gameId]);
         return 'question';
     }
@@ -214,7 +214,7 @@ class Game {
         // Auto-transición cuando se acaba el tiempo
         $game = $this->getById($gameId);
         if ($game && $game['status'] === 'question' && $game['question_started_at']) {
-            $elapsed = time() - strtotime($game['question_started_at']);
+            $elapsed = time() - strtotime($game['question_started_at'] . ' UTC');
             if ($elapsed >= (int)$game['question_time']) {
                 $this->db->prepare("UPDATE games SET status='results' WHERE id=?")->execute([$gameId]);
                 $game = $this->getById($gameId);
@@ -224,7 +224,7 @@ class Game {
 
         $timeLeft = (int)$game['question_time'];
         if ($game['status'] === 'question' && $game['question_started_at']) {
-            $elapsed  = time() - strtotime($game['question_started_at']);
+            $elapsed  = time() - strtotime($game['question_started_at'] . ' UTC');
             $timeLeft = max(0, (int)$game['question_time'] - $elapsed);
         }
 
