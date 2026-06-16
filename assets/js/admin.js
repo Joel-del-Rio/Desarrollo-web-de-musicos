@@ -285,7 +285,16 @@ function startTimerRing(seconds, total) {
     circle.style.stroke = s <= 5 ? '#e21b3c' : s <= total * 0.33 ? '#d89e00' : 'var(--accent)';
   }
   tick();
-  timerInterval = setInterval(() => { s -= 1; if (s < 0) { stopTimer(); return; } tick(); }, 1000);
+  timerInterval = setInterval(() => {
+    s -= 1;
+    if (s < 0) {
+      stopTimer();
+      // Revelar automáticamente cuando se acaba el tiempo
+      if (lastStatus === 'question') showResults();
+      return;
+    }
+    tick();
+  }, 1000);
 }
 function stopTimer() { clearInterval(timerInterval); timerInterval = null; }
 
@@ -474,12 +483,32 @@ async function startGame() {
   const s = await fetchState(); applyState(s);
 }
 async function showResults() {
-  await apiPost('show_results');
-  const s = await fetchState(); applyState(s);
+  const btn = document.querySelector('#screen-question .btn-game');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const d = await apiPost('show_results');
+    if (d.error) { alert('Error al revelar: ' + d.error); }
+    const s = await fetchState(); applyState(s);
+  } catch (e) {
+    alert('Error de conexión al revelar resultados. Reintentando…');
+    setTimeout(showResults, 2000);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Revelar año y ver resultados →'; }
+  }
 }
 async function nextRound() {
-  await apiPost('next_round');
-  const s = await fetchState(); applyState(s);
+  const btn = document.getElementById('btn-next');
+  if (btn) btn.disabled = true;
+  try {
+    const d = await apiPost('next_round');
+    if (d.error) { alert('Error al avanzar ronda: ' + d.error); }
+    const s = await fetchState(); applyState(s);
+  } catch (e) {
+    alert('Error de conexión al avanzar. Reintentando…');
+    setTimeout(nextRound, 2000);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 function newGame() { clearSession(); showScreen('setup'); }
 

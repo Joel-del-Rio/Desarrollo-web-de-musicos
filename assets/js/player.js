@@ -63,6 +63,10 @@ function applyState(state) {
     if (lastStatus !== 'answered') { showScreen('answered'); lastStatus = 'answered'; }
     return;
   }
+  // Acabamos de confirmar localmente — esperar a que el servidor lo registre
+  // antes de re-renderizar la pregunta (evita que reaparezca el timeline)
+  if (lastStatus === 'answered' && st === 'question') return;
+
   if (st === 'waiting' && lastStatus === 'waiting') { renderLobbyCount(state); return; }
 
   // Durante la pregunta solo actualizar timer y contador, NO reconstruir el timeline
