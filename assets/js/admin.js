@@ -4,6 +4,7 @@ let adminToken = localStorage.getItem(TK);
 let pollTimer  = null;
 let timerInterval = null;
 let lastStatus = null;
+let lastQuestionRound = -1;
 let questionTime = 30;
 let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0 };
 
@@ -55,9 +56,18 @@ function showScreen(name) {
 
 /* ── Dispatcher ── */
 function applyState(state) {
-  const st = state.status;
-  // waiting siempre re-renderiza (lista de jugadores cambia)
-  if (st === lastStatus && st !== 'waiting' && st !== 'question') return;
+  const st    = state.status;
+  const round = state.current_round;
+
+  // Misma ronda en curso → actualización ligera (sin reiniciar timer ni DOM completo)
+  if (st === 'question' && lastStatus === 'question' && round === lastQuestionRound) {
+    updateQuestionPoll(state);
+    return;
+  }
+
+  // Mismo estado no dinámico → nada que hacer
+  if (st === lastStatus && st !== 'waiting') return;
+
   lastStatus = st;
   switch (st) {
     case 'waiting':  renderWaiting(state);  break;
@@ -137,6 +147,7 @@ function copyAllPins() {
 
 /* ── Question ── */
 function renderQuestion(state) {
+  lastQuestionRound = state.current_round;
   showScreen('question');
   const song    = state.song    || {};
   const players = state.players || [];
@@ -173,6 +184,21 @@ function renderQuestion(state) {
   startTimerRing(state.time_left ?? questionTime, questionTime);
   renderLeaderboard('q-leaderboard', players);
   startPolling(1000);
+}
+
+/** Actualización ligera durante la misma ronda (no reinicia el timer ni reconstruye la UI) */
+function updateQuestionPoll(state) {
+  const players = state.players || [];
+  document.getElementById('q-players').textContent  = players.length;
+  document.getElementById('q-answered').textContent = state.answer_count || 0;
+  const pct = players.length > 0
+    ? Math.round(((state.answer_count || 0) / players.length) * 100) : 0;
+  document.getElementById('q-progress').style.width = pct + '%';
+  renderLeaderboard('q-leaderboard', players);
+
+  // Auto-reveal cuando el servidor dice que se acabó el tiempo
+  const tl = state.time_left ?? questionTime;
+  if (tl <= 0) { stopTimer(); showResults(); }
 }
 
 /* ── Results ── */
@@ -483,15 +509,16 @@ async function startGame() {
   const s = await fetchState(); applyState(s);
 }
 async function showResults() {
+  if (lastStatus !== 'question') return; // evitar doble llamada
   const btn = document.querySelector('#screen-question .btn-game');
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
   try {
     const d = await apiPost('show_results');
-    if (d.error) { alert('Error al revelar: ' + d.error); }
-    const s = await fetchState(); applyState(s);
+    if (d.error) { showAdminError('Error al revelar: ' + d.error); }
+    else { const s = await fetchState(); if (s) applyState(s); }
   } catch (e) {
-    alert('Error de conexión al revelar resultados. Reintentando…');
-    setTimeout(showResults, 2000);
+    showAdminError('Error de red al revelar. Inténtalo de nuevo.');
+    console.error('showResults:', e);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Revelar año y ver resultados →'; }
   }
@@ -501,14 +528,29 @@ async function nextRound() {
   if (btn) btn.disabled = true;
   try {
     const d = await apiPost('next_round');
-    if (d.error) { alert('Error al avanzar ronda: ' + d.error); }
-    const s = await fetchState(); applyState(s);
+    if (d.error) { showAdminError('Error al avanzar ronda: ' + d.error); }
+    else { const s = await fetchState(); if (s) applyState(s); }
   } catch (e) {
-    alert('Error de conexión al avanzar. Reintentando…');
-    setTimeout(nextRound, 2000);
+    showAdminError('Error de red al avanzar. Inténtalo de nuevo.');
+    console.error('nextRound:', e);
   } finally {
     if (btn) btn.disabled = false;
   }
+}
+
+function showAdminError(msg) {
+  console.error('[Admin]', msg);
+  let el = document.getElementById('admin-error-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'admin-error-toast';
+    el.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#e94560;color:#fff;padding:10px 20px;border-radius:8px;z-index:9999;font-size:.9rem;max-width:90vw;text-align:center';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.display = 'none'; }, 4000);
 }
 function newGame() { clearSession(); showScreen('setup'); }
 

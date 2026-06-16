@@ -222,20 +222,34 @@ async function confirmAnswer() {
   if (selectedPos === null) return;
   const pos = selectedPos;
 
-  // Deshabilitar todo inmediatamente
   document.getElementById('confirm-btn').disabled = true;
   document.querySelectorAll('.pos-btn').forEach(b => b.disabled = true);
   stopCountdown();
-  showScreen('answered');
-  lastStatus = 'answered';
 
   try {
-    await fetch(`${API}?action=submit_answer`, {
+    const r = await fetch(`${API}?action=submit_answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ player_id: playerId, position: pos }),
     });
-  } catch { /* red inestable, ignorar */ }
+    const d = await r.json();
+    if (d.error) {
+      // El servidor rechazó la respuesta — reactivar la UI para que pueda reintentar
+      console.error('[Player] submit_answer rechazado:', d.error);
+      document.getElementById('confirm-btn').disabled = false;
+      document.querySelectorAll('.pos-btn').forEach(b => b.disabled = false);
+      const hint = document.getElementById('confirm-hint');
+      if (hint) hint.textContent = 'Error al enviar — vuelve a confirmar';
+      return;
+    }
+    // Éxito: ir a pantalla de espera
+    showScreen('answered');
+    lastStatus = 'answered';
+  } catch {
+    // Red inestable: ir a espera igualmente (el polling detectará el estado real)
+    showScreen('answered');
+    lastStatus = 'answered';
+  }
 }
 
 /* ── Results ── */
