@@ -239,7 +239,7 @@ async function confirmAnswer() {
       document.getElementById('confirm-btn').disabled = false;
       document.querySelectorAll('.pos-btn').forEach(b => b.disabled = false);
       const hint = document.getElementById('confirm-hint');
-      if (hint) hint.textContent = 'Error al enviar — vuelve a confirmar';
+      if (hint) hint.textContent = 'Error: ' + d.error;
       return;
     }
     // Éxito: ir a pantalla de espera
