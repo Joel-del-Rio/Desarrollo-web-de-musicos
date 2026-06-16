@@ -98,7 +98,16 @@ class Installer {
             $currentVersion = 10;
         }
 
-        if ($currentVersion >= 10) {
+        if ($currentVersion === 10) {
+            // Añadir columnas de posición y puntuación a answers (ausentes en instalaciones antiguas)
+            try { $pdo->exec("ALTER TABLE answers ADD COLUMN position_guess INT NOT NULL DEFAULT 0"); } catch (\Exception $e) {}
+            try { $pdo->exec("ALTER TABLE answers ADD COLUMN is_correct TINYINT(1) DEFAULT 0");      } catch (\Exception $e) {}
+            try { $pdo->exec("ALTER TABLE answers ADD COLUMN points_earned INT DEFAULT 0");           } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=11");
+            $currentVersion = 11;
+        }
+
+        if ($currentVersion >= 11) {
             // Verificar que la tabla individual_pins existe (por si la migración falló parcialmente)
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
