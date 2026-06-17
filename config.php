@@ -15,7 +15,7 @@ if (PHP_OS_FAMILY === 'Windows') {
 }
 
 // ── Configuración de correo ──────────────────────────
-define('SMTP_FROM',      'noreply@nite.black');
+define('SMTP_FROM',      'noreply@hitstoric.nite.black');
 define('SMTP_FROM_NAME', 'Hitstoric');
 define('SMTP_ENABLED',   PHP_OS_FAMILY !== 'Windows'); // false en local, true en producción
 
