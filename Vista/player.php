@@ -55,13 +55,6 @@
   </div>
 </div>
 
-<!-- ══ PAYMENT (verificando pago Stripe) ══ -->
-<div id="screen-payment" class="screen align-items-center justify-content-center gap-3">
-  <div class="game-spinner"></div>
-  <div class="fw-semibold fs-5">Verificando pago…</div>
-  <div class="text-secondary small">Un momento, por favor</div>
-</div>
-
 <!-- ══ LOBBY ══ -->
 <div id="screen-lobby" class="screen align-items-center justify-content-center gap-3">
   <div id="lobby-avatar"
@@ -181,6 +174,6 @@
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=13"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=14"></script>
 </body>
 </html>

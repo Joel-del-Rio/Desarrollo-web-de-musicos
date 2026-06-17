@@ -105,11 +105,6 @@ try {
             echo json_encode((new PlayerController())->joinGame());
             break;
 
-        case 'complete_join':
-            require_once __DIR__ . '/PlayerController.php';
-            echo json_encode((new PlayerController())->completeJoin());
-            break;
-
         case 'player_state':
             require_once __DIR__ . '/PlayerController.php';
             echo json_encode((new PlayerController())->getPlayerState());

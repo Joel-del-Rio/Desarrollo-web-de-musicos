@@ -18,23 +18,10 @@ class PlayerController {
         if (strlen($pin) !== 4 || !ctype_digit($pin)) return ['error' => 'PIN inválido (4 dígitos)'];
         if ($name === '' || strlen($name) > 30)        return ['error' => 'Nombre inválido (máx 30 caracteres)'];
 
-        // Primero buscar como PIN individual
+        // Primero buscar como PIN individual — el email viene guardado en la tabla
         $gameByIndiv = $this->game->getByIndividualPin($pin);
         if ($gameByIndiv) {
             if ($gameByIndiv['status'] !== 'waiting') return ['error' => 'La partida ya ha comenzado'];
-
-            // PIN individual = de pago → redirigir a Stripe (salvo que esté desactivado)
-            if (STRIPE_ENABLED) {
-                require_once __DIR__ . '/../Modelo/StripeHelper.php';
-                $session = StripeHelper::createCheckoutSession($pin, $name);
-                if (empty($session['url'])) {
-                    $msg = $session['error']['message'] ?? 'Error al crear sesión de pago';
-                    return ['error' => $msg];
-                }
-                return ['checkout_url' => $session['url']];
-            }
-
-            // Local sin Stripe: unirse directamente
             $email = $gameByIndiv['player_email'] ?? '';
             $pl    = $this->player->create((int)$gameByIndiv['id'], $name, $email);
             $this->game->claimIndividualPin($pin, $pl['id']);
@@ -62,37 +49,6 @@ class PlayerController {
             'game_id'      => (int)$game['id'],
             'player_name'  => $name,
             'player_color' => $pl['color'],
-        ];
-    }
-
-    public function completeJoin(): array {
-        $sessionId = trim($_POST['stripe_session'] ?? '');
-        if (!$sessionId) return ['error' => 'Sesión de pago inválida'];
-
-        require_once __DIR__ . '/../Modelo/StripeHelper.php';
-        $session = StripeHelper::getSession($sessionId);
-
-        if (($session['payment_status'] ?? '') !== 'paid') {
-            return ['error' => 'El pago no se ha completado'];
-        }
-
-        $pin  = $session['metadata']['pin']         ?? '';
-        $name = $session['metadata']['player_name'] ?? '';
-        if (!$pin || !$name) return ['error' => 'Datos de sesión incompletos'];
-
-        $gameByIndiv = $this->game->getByIndividualPin($pin);
-        if (!$gameByIndiv) return ['error' => 'PIN ya usado o no encontrado'];
-        if ($gameByIndiv['status'] !== 'waiting') return ['error' => 'La partida ya ha comenzado'];
-
-        $email = $gameByIndiv['player_email'] ?? '';
-        $pl    = $this->player->create((int)$gameByIndiv['id'], $name, $email);
-        $this->game->claimIndividualPin($pin, $pl['id']);
-        $this->player->ping($pl['id']);
-
-        return [
-            'success'   => true,
-            'player_id' => $pl['id'],
-            'game_id'   => (int)$gameByIndiv['id'],
         ];
     }
 
