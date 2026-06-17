@@ -64,9 +64,56 @@
     <div id="prizes-list">
       <div class="text-center py-5"><div class="game-spinner mx-auto"></div></div>
     </div>
-    <div class="card p-3 mt-4 small" style="color:var(--muted)">
-      <div class="fw-semibold mb-1" style="color:var(--text)">¿Cómo canjear un premio?</div>
-      Juega partidas con PIN individual, acumula puntos poniendo tu email al unirte. Cuando tengas suficientes, contacta con el organizador.
+    <!-- Cómo conseguir puntos -->
+    <div class="card p-4 mt-4">
+      <div class="fw-black mb-3" style="font-size:1.1rem">🎯 ¿Cómo conseguir puntos?</div>
+      <div class="d-flex flex-column gap-3">
+
+        <div class="d-flex gap-3 align-items-start">
+          <div style="background:var(--accent);color:#fff;border-radius:50%;width:32px;height:32px;
+                      display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0">1</div>
+          <div>
+            <div class="fw-semibold">Juega con PIN individual</div>
+            <div class="small mt-1" style="color:var(--muted)">
+              Pide a tu organizador que te asigne un PIN personal. Solo las partidas con PIN individual suman puntos al ranking global.
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-3 align-items-start">
+          <div style="background:var(--accent);color:#fff;border-radius:50%;width:32px;height:32px;
+                      display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0">2</div>
+          <div>
+            <div class="fw-semibold">Introduce tu email al unirte</div>
+            <div class="small mt-1" style="color:var(--muted)">
+              Al entrar a la partida con tu PIN, pon tu dirección de email. Es la única forma de que tus puntos queden registrados a tu nombre.
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-3 align-items-start">
+          <div style="background:var(--accent);color:#fff;border-radius:50%;width:32px;height:32px;
+                      display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0">3</div>
+          <div>
+            <div class="fw-semibold">Acierta canciones y sube en el ranking</div>
+            <div class="small mt-1" style="color:var(--muted)">
+              Cada canción que coloques correctamente en tu línea del tiempo te da puntos. Cuanto más rápido respondas, más puntos consigues.
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-3 align-items-start">
+          <div style="background:var(--accent);color:#fff;border-radius:50%;width:32px;height:32px;
+                      display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0">4</div>
+          <div>
+            <div class="fw-semibold">Canjea tu premio</div>
+            <div class="small mt-1" style="color:var(--muted)">
+              Cuando acumules suficientes puntos, contacta con el organizador para reclamar tu premio. Puedes consultar tu saldo en la pestaña <strong>Mis puntos</strong>.
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
 
