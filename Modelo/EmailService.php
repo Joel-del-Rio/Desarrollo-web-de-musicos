@@ -7,93 +7,23 @@ class EmailService {
      *  y cualquier proveedor estándar
      * ────────────────────────────────────────── */
     private static function sendSmtp(string $to, string $subject, string $htmlBody): bool {
-        if (!SMTP_ENABLED) return true; // en local no enviamos, simulamos éxito
+        if (!SMTP_ENABLED) return true;
 
-        $host     = SMTP_HOST;
-        $port     = SMTP_PORT;
-        $user     = SMTP_USER;
-        $pass     = SMTP_PASS;
         $from     = SMTP_FROM;
         $fromName = SMTP_FROM_NAME;
 
-        try {
-            // Conexión inicial (sin cifrar — STARTTLS)
-            $sock = @fsockopen($host, $port, $errno, $errstr, 10);
-            if (!$sock) throw new \RuntimeException("Conexión fallida: $errstr ($errno)");
+        $headers = implode("\r\n", [
+            "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$from}>",
+            "Reply-To: {$from}",
+            "MIME-Version: 1.0",
+            "Content-Type: text/html; charset=UTF-8",
+            "Content-Transfer-Encoding: base64",
+        ]);
 
-            stream_set_timeout($sock, 10);
+        $encodedSubject = "=?UTF-8?B?" . base64_encode($subject) . "?=";
+        $encodedBody    = chunk_split(base64_encode($htmlBody));
 
-            $read = function() use ($sock): string {
-                $buf = '';
-                while ($line = fgets($sock, 512)) {
-                    $buf .= $line;
-                    if ($line[3] === ' ') break; // fin de respuesta multi-línea
-                }
-                return $buf;
-            };
-            $send = function(string $cmd) use ($sock, $read): string {
-                fwrite($sock, $cmd . "\r\n");
-                return $read();
-            };
-
-            $read(); // banner de bienvenida
-
-            // EHLO
-            $send("EHLO " . (gethostname() ?: 'localhost'));
-
-            // STARTTLS
-            $send("STARTTLS");
-            stream_socket_enable_crypto($sock, true, STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT);
-
-            // EHLO de nuevo tras TLS
-            $send("EHLO " . (gethostname() ?: 'localhost'));
-
-            // AUTH LOGIN
-            $send("AUTH LOGIN");
-            $send(base64_encode($user));
-            $r = $send(base64_encode($pass));
-            if (!str_starts_with(trim($r), '235')) throw new \RuntimeException("Auth fallida: $r");
-
-            // Envío
-            $send("MAIL FROM:<{$from}>");
-            $send("RCPT TO:<{$to}>");
-            $send("DATA");
-
-            $boundary = md5(uniqid('', true));
-            $headers  = implode("\r\n", [
-                "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$from}>",
-                "To: {$to}",
-                "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=",
-                "MIME-Version: 1.0",
-                "Content-Type: multipart/alternative; boundary=\"{$boundary}\"",
-                "Message-ID: <" . uniqid('msg', true) . "@" . parse_url('http://' . $host, PHP_URL_HOST) . ">",
-                "Date: " . date('r'),
-            ]);
-
-            // Texto plano (sin HTML)
-            $plain = strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>', '</div>'], "\n", $htmlBody));
-            $plain = html_entity_decode($plain, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-            $body  = "--{$boundary}\r\n";
-            $body .= "Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n";
-            $body .= chunk_split(base64_encode($plain)) . "\r\n";
-            $body .= "--{$boundary}\r\n";
-            $body .= "Content-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n";
-            $body .= chunk_split(base64_encode($htmlBody)) . "\r\n";
-            $body .= "--{$boundary}--";
-
-            fwrite($sock, $headers . "\r\n\r\n" . $body . "\r\n.\r\n");
-            $r = $read();
-
-            $send("QUIT");
-            fclose($sock);
-
-            return str_starts_with(trim($r), '250');
-
-        } catch (\Throwable $e) {
-            error_log("[EmailService] " . $e->getMessage());
-            return false;
-        }
+        return @mail($to, $encodedSubject, $encodedBody, $headers);
     }
 
     /* ──────────────────────────────────────────
