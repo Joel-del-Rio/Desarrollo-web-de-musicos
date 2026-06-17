@@ -14,6 +14,12 @@ if (PHP_OS_FAMILY === 'Windows') {
     define('DB_NAME', 'dbe7oc67cjh788');
 }
 
+// ── Stripe ───────────────────────────────────────────
+// Claves test: https://dashboard.stripe.com/test/apikeys
+// Para probar usa tarjeta 4242 4242 4242 4242, cualquier fecha/CVC
+define('STRIPE_SECRET_KEY', ''); // ← pon tu clave en el servidor, nunca en git
+define('STRIPE_ENABLED',    PHP_OS_FAMILY !== 'Windows');        // false en local, true en producción
+
 // ── Configuración de correo ──────────────────────────
 define('SMTP_FROM',      'noreply@hitstoric.nite.black');
 define('SMTP_FROM_NAME', 'Hitstoric');

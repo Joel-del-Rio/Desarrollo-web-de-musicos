@@ -9,8 +9,27 @@ let questionTime = 30;
 
 /* ── Arranque ── */
 (function init() {
-  // Pre-rellenar PIN desde URL (?pin=XXXX)
-  const urlPin = new URLSearchParams(window.location.search).get('pin');
+  const params        = new URLSearchParams(window.location.search);
+  const stripeSession = params.get('stripe_session');
+  const stripeCancel  = params.get('stripe_cancel');
+  const urlPin        = params.get('pin');
+
+  if (stripeSession) {
+    showScreen('payment');
+    completeJoin(stripeSession);
+    return;
+  }
+
+  if (stripeCancel) {
+    showScreen('join');
+    if (urlPin) {
+      const pinInput = document.getElementById('pin-input');
+      if (pinInput) pinInput.value = urlPin.replace(/\D/g, '').slice(0, 4);
+    }
+    showJoinError('Pago cancelado. Puedes intentarlo de nuevo.');
+    return;
+  }
+
   if (urlPin) {
     const pinInput = document.getElementById('pin-input');
     if (pinInput) pinInput.value = urlPin.replace(/\D/g, '').slice(0, 4);
@@ -386,11 +405,9 @@ function stopCountdown() { clearInterval(countdown); countdown = null; }
 async function joinGame() {
   const pin   = document.getElementById('pin-input').value.trim();
   const name  = document.getElementById('name-input').value.trim();
-  const errEl = document.getElementById('join-error');
-  errEl.classList.add('d-none');
 
-  if (pin.length !== 4)  { showErr('El PIN debe tener 4 dígitos'); return; }
-  if (!name)             { showErr('Escribe tu nombre'); return; }
+  if (pin.length !== 4) { showJoinError('El PIN debe tener 4 dígitos'); return; }
+  if (!name)            { showJoinError('Escribe tu nombre'); return; }
 
   try {
     const data = await fetch(`${API}?action=join_game`, {
@@ -399,7 +416,13 @@ async function joinGame() {
       body: new URLSearchParams({ pin, name }),
     }).then(r => r.json());
 
-    if (data.error) { showErr(data.error); return; }
+    if (data.error) { showJoinError(data.error); return; }
+
+    // PIN individual de pago → redirigir a Stripe Checkout
+    if (data.checkout_url) {
+      window.location.href = data.checkout_url;
+      return;
+    }
 
     playerId = data.player_id;
     localStorage.setItem(PK, playerId);
@@ -407,9 +430,41 @@ async function joinGame() {
 
     const state = await fetchState();
     if (state && !state.error) applyState(state);
-  } catch { showErr('Error de conexión'); }
+  } catch { showJoinError('Error de conexión'); }
+}
 
-  function showErr(msg) { errEl.textContent = msg; errEl.classList.remove('d-none'); }
+async function completeJoin(stripeSession) {
+  try {
+    const data = await fetch(`${API}?action=complete_join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ stripe_session: stripeSession }),
+    }).then(r => r.json());
+
+    if (data.error) {
+      showScreen('join');
+      showJoinError(data.error);
+      return;
+    }
+
+    // Limpiar params de Stripe de la URL
+    window.history.replaceState({}, '', window.location.pathname);
+
+    playerId = data.player_id;
+    localStorage.setItem(PK, playerId);
+    localStorage.setItem(GK, data.game_id);
+
+    const state = await fetchState();
+    if (state && !state.error) applyState(state);
+  } catch {
+    showScreen('join');
+    showJoinError('Error al verificar el pago. Contacta con el organizador.');
+  }
+}
+
+function showJoinError(msg) {
+  const errEl = document.getElementById('join-error');
+  if (errEl) { errEl.textContent = msg; errEl.classList.remove('d-none'); }
 }
 
 function goToJoin() {
