@@ -100,12 +100,6 @@ body { background: var(--bg) !important; color: var(--text); }
 /* ══════════════════════════════════════════
    TIMELINE DEL JUGADOR
 ══════════════════════════════════════════ */
-.timeline-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: .5rem 0 1rem;
-}
 
 /* Canción en el timeline (ya colocada) */
 .timeline-song {
@@ -270,12 +264,8 @@ body { background: var(--bg) !important; color: var(--text); }
 .a-bar { flex:1; height:4px; background:rgba(255,255,255,.15); border-radius:2px; cursor:pointer; position:relative; }
 .a-fill { height:100%; background:var(--accent); border-radius:2px; width:0%; pointer-events:none; transition:width .1s linear; }
 .a-time { font-size:.7rem; color:var(--muted); white-space:nowrap; min-width:72px; text-align:right; }
-.a-file { cursor:pointer; font-size:.85rem; padding:.2rem .35rem; border:1px solid rgba(255,255,255,.2); border-radius:5px; transition:border-color .15s; flex-shrink:0; line-height:1; }
-.a-file:hover { border-color:var(--accent); }
 .audio-vol { display:flex; align-items:center; gap:.5rem; }
 .audio-vol-range { flex:1; height:3px; accent-color:var(--accent); cursor:pointer; }
-#row-autoplay { display:none; }
-#row-autoplay.visible { display:flex; }
 
 /* ── Botones de streaming ── */
 .btn-stream {
