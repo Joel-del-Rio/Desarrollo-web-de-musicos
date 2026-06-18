@@ -1,14 +1,29 @@
 <?php
+/**
+ * Player.php — Modelo de jugador
+ *
+ * Gestiona la creación de jugadores, su línea del tiempo personal,
+ * el envío y evaluación de respuestas, y la acumulación de puntos
+ * tanto en la partida como en el ranking global.
+ */
 require_once __DIR__ . '/Database.php';
 
 class Player {
     private PDO $db;
+
+    // Paleta de colores para los avatares (asignación aleatoria al crear jugador)
     private const COLORS = ['#e94560','#4ECDC4','#45B7D1','#FF6B35','#DDA0DD','#2ecc71','#f39c12'];
 
     public function __construct() {
         $this->db = Database::getInstance()->pdo();
     }
 
+    // ── CRUD básico ───────────────────────────────────
+
+    /**
+     * Crea un nuevo jugador en la partida con un color de avatar aleatorio.
+     * @return array  id, name y color del jugador creado
+     */
     public function create(int $gameId, string $name, string $email = ''): array {
         $color = self::COLORS[random_int(0, count(self::COLORS) - 1)];
         $this->db->prepare(
@@ -17,25 +32,36 @@ class Player {
         return ['id' => (int)$this->db->lastInsertId(), 'name' => $name, 'color' => $color];
     }
 
+    /** Devuelve todos los datos de un jugador por su ID */
     public function getById(int $id): ?array {
         $st = $this->db->prepare("SELECT * FROM players WHERE id=?");
         $st->execute([$id]);
         return $st->fetch() ?: null;
     }
 
+    /** Devuelve todos los jugadores de una partida, ordenados por puntuación */
     public function getByGame(int $gameId): array {
         $st = $this->db->prepare(
-            "SELECT id, name, score, avatar_color FROM players WHERE game_id=? ORDER BY score DESC, name ASC"
+            "SELECT id, name, score, avatar_color
+             FROM players
+             WHERE game_id=?
+             ORDER BY score DESC, name ASC"
         );
         $st->execute([$gameId]);
         return $st->fetchAll();
     }
 
+    /** Actualiza el timestamp de última actividad del jugador (keep-alive) */
     public function ping(int $playerId): void {
         $this->db->prepare("UPDATE players SET last_seen=NOW() WHERE id=?")->execute([$playerId]);
     }
 
-    /** Devuelve el timeline del jugador ordenado cronológicamente */
+    // ── Timeline ──────────────────────────────────────
+
+    /**
+     * Devuelve las canciones ya colocadas en la línea del tiempo del jugador,
+     * ordenadas cronológicamente por año para mostrarlas en la UI.
+     */
     public function getTimeline(int $playerId, int $gameId): array {
         $st = $this->db->prepare(
             "SELECT s.id, s.title, s.artist, s.year, s.genre
@@ -48,6 +74,9 @@ class Player {
         return $st->fetchAll();
     }
 
+    // ── Respuestas ────────────────────────────────────
+
+    /** Comprueba si el jugador ya respondió la canción de esta ronda */
     public function hasAnswered(int $playerId, int $gameId, int $songId): bool {
         $st = $this->db->prepare(
             "SELECT 1 FROM answers WHERE player_id=? AND game_id=? AND song_id=?"
@@ -57,43 +86,57 @@ class Player {
     }
 
     /**
-     * Evalúa si la posición elegida es cronológicamente correcta en el timeline del jugador.
-     * position=0 → antes de todo, position=N → después de todo.
+     * Procesa la respuesta de posición del jugador:
+     * 1. Evalúa si la posición elegida es cronológicamente correcta.
+     * 2. Calcula los puntos (base 500 + bonus por velocidad).
+     * 3. Guarda la respuesta en BD.
+     * 4. Si es correcta: añade la canción al timeline y suma puntos.
+     * 5. En partidas de PIN individual: acumula puntos en el ranking global.
+     *
+     * @param int $position  Índice en el timeline donde el jugador coloca la canción
+     *                       (0 = antes de todo, N = después de todo)
      */
     public function submitPositionAnswer(
         int $playerId, int $gameId, int $songId,
         int $position, int $songYear,
         int $timeLeft, int $questionTime
     ): array {
-        $timeline = $this->getTimeline($playerId, $gameId);
-        $years    = array_column($timeline, 'year');
-
+        $timeline  = $this->getTimeline($playerId, $gameId);
+        $years     = array_column($timeline, 'year');
         $isCorrect = $this->isPositionCorrect($years, $position, $songYear);
-        $points    = 0;
+
+        // Puntos: 500 base + hasta 500 bonus según velocidad de respuesta
+        $points = 0;
         if ($isCorrect) {
             $points = 500 + (int)round(500 * ($timeLeft / max(1, $questionTime)));
         }
 
+        // Guardar respuesta (INSERT IGNORE evita duplicados si el jugador reenvía)
         $st = $this->db->prepare(
-            "INSERT IGNORE INTO answers (game_id, player_id, song_id, position_guess, is_correct, points_earned)
+            "INSERT IGNORE INTO answers
+             (game_id, player_id, song_id, position_guess, is_correct, points_earned)
              VALUES (?,?,?,?,?,?)"
         );
         $st->execute([$gameId, $playerId, $songId, $position, $isCorrect ? 1 : 0, $points]);
 
         if ($isCorrect && $this->db->lastInsertId() > 0) {
-            // Añadir al timeline
+            // Añadir la canción acertada a la línea del tiempo del jugador
             $this->db->prepare(
                 "INSERT IGNORE INTO player_timeline (player_id, game_id, song_id) VALUES (?,?,?)"
             )->execute([$playerId, $gameId, $songId]);
-            // Sumar puntos en partida
+
+            // Sumar puntos a la puntuación de la partida
             $this->db->prepare("UPDATE players SET score=score+? WHERE id=?")->execute([$points, $playerId]);
-            // Acumular en puntuación global solo en partidas de PIN individual
+
+            // Acumular en ranking global solo si la partida es de PIN individual
             $gmSt = $this->db->prepare("SELECT pin_mode FROM games WHERE id=?");
             $gmSt->execute([$gameId]);
             $gameRow = $gmSt->fetch();
+
             if (($gameRow['pin_mode'] ?? '') === 'individual') {
                 $pl = $this->getById($playerId);
                 if (!empty($pl['email'])) {
+                    // UPSERT: si ya existe el email, suma los puntos; si no, lo crea
                     $this->db->prepare(
                         "INSERT INTO global_scores (email, name, total_points)
                          VALUES (?, ?, ?)
@@ -106,17 +149,19 @@ class Player {
         return ['correct' => $isCorrect, 'points' => $points];
     }
 
+    /** Cuenta cuántos jugadores han respondido ya la canción actual */
     public function getAnswerCount(int $gameId, int $songId): int {
         $st = $this->db->prepare("SELECT COUNT(*) FROM answers WHERE game_id=? AND song_id=?");
         $st->execute([$gameId, $songId]);
         return (int)$st->fetchColumn();
     }
 
+    /** Devuelve los resultados de todos los jugadores para la ronda actual */
     public function getRoundResults(int $gameId, int $songId): array {
         $st = $this->db->prepare(
             "SELECT p.name, p.avatar_color, a.position_guess, a.is_correct, a.points_earned
              FROM answers a
-             JOIN players p ON a.player_id=p.id
+             JOIN players p ON a.player_id = p.id
              WHERE a.game_id=? AND a.song_id=?
              ORDER BY a.points_earned DESC, a.answered_at ASC"
         );
@@ -124,7 +169,18 @@ class Player {
         return $st->fetchAll();
     }
 
-    /** Posición correcta: newYear debe quedar entre prev y next en el timeline ordenado */
+    // ── Lógica de evaluación ──────────────────────────
+
+    /**
+     * Determina si la posición elegida es cronológicamente válida.
+     * La canción nueva debe quedar entre la canción anterior y la siguiente
+     * del timeline ya ordenado. Permite empates de año (>=, <=).
+     *
+     * Ejemplos con timeline [1980, 1995, 2010]:
+     *   position=0, newYear=1975 → antes de 1980 → correcto
+     *   position=1, newYear=1985 → entre 1980 y 1995 → correcto
+     *   position=2, newYear=2020 → no encaja entre 1995 y 2010 → incorrecto
+     */
     private function isPositionCorrect(array $years, int $position, int $newYear): bool {
         sort($years);
         $n    = count($years);

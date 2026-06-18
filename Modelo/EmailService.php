@@ -1,17 +1,26 @@
 <?php
+/**
+ * EmailService.php — Servicio de envío de emails
+ *
+ * Usa la función PHP mail() del servidor (SiteGround) sin credenciales SMTP.
+ * El remitente debe coincidir con el dominio que tiene los registros SPF/DKIM
+ * configurados (hitstoric.nite.black) para evitar que los correos vayan a spam.
+ */
 class EmailService {
 
-    /* ──────────────────────────────────────────
-     *  SMTP client (sin librerías externas)
-     *  Compatible con Gmail (STARTTLS :587)
-     *  y cualquier proveedor estándar
-     * ────────────────────────────────────────── */
+    /**
+     * Envía un email HTML usando la función mail() nativa de PHP.
+     * El asunto y el cuerpo van codificados en Base64 UTF-8 para
+     * soportar tildes y caracteres especiales sin problemas.
+     */
     private static function sendSmtp(string $to, string $subject, string $htmlBody): bool {
+        // SMTP_ENABLED es false en Windows (desarrollo local), true en producción
         if (!SMTP_ENABLED) return true;
 
-        $from     = SMTP_FROM;
-        $fromName = SMTP_FROM_NAME;
+        $from     = SMTP_FROM;      // noreply@hitstoric.nite.black
+        $fromName = SMTP_FROM_NAME; // Hitstoric
 
+        // Cabeceras necesarias para email HTML con codificación UTF-8
         $headers = implode("\r\n", [
             "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$from}>",
             "Reply-To: {$from}",
@@ -20,15 +29,17 @@ class EmailService {
             "Content-Transfer-Encoding: base64",
         ]);
 
+        // Codificación Base64 del asunto y del cuerpo para soportar UTF-8
         $encodedSubject = "=?UTF-8?B?" . base64_encode($subject) . "?=";
         $encodedBody    = chunk_split(base64_encode($htmlBody));
 
         return @mail($to, $encodedSubject, $encodedBody, $headers);
     }
 
-    /* ──────────────────────────────────────────
-     *  Plantilla HTML base
-     * ────────────────────────────────────────── */
+    /**
+     * Plantilla HTML base para todos los emails.
+     * Inserta el contenido pasado como parámetro dentro del bloque central.
+     */
     private static function html(string $content): string {
         return <<<HTML
 <!DOCTYPE html>
@@ -54,6 +65,7 @@ class EmailService {
 HTML;
     }
 
+    /** Genera un botón CTA con enlace para incluir en el cuerpo del email */
     private static function btn(string $url, string $label): string {
         return "<div style=\"text-align:center;margin:24px 0\">
           <a href=\"{$url}\" style=\"background:#e94560;color:#fff;text-decoration:none;
@@ -63,11 +75,13 @@ HTML;
         </div>";
     }
 
-    /* ──────────────────────────────────────────
-     *  Emails públicos
-     * ────────────────────────────────────────── */
+    // ── Emails públicos ───────────────────────────────────
 
-    /** Envía el resumen de la partida al organizador (modo compartido) */
+    /**
+     * Envía el resumen de la partida al organizador tras crearla.
+     * - Modo compartido: muestra el PIN grande y el enlace de sala.
+     * - Modo individual: tabla con los enlaces personales de cada jugador.
+     */
     public static function sendGameCreated(
         string $to, string $gamePin, string $baseUrl,
         string $pinMode, array $individualPins = []
@@ -75,6 +89,7 @@ HTML;
         if (!filter_var($to, FILTER_VALIDATE_EMAIL)) return false;
 
         if ($pinMode === 'individual') {
+            // Construir tabla de cartones con un enlace directo por jugador
             $rows = '';
             foreach ($individualPins as $i => $pin) {
                 $url   = $baseUrl . '/player?pin=' . $pin;
@@ -98,6 +113,7 @@ HTML;
               <p style=\"color:#9ca3af;font-size:13px;margin:20px 0 0\">Cada jugador solo tiene que clicar su enlace y poner su nombre.</p>
               " . self::btn($baseUrl . '/admin', 'Ir al panel de control');
         } else {
+            // Modo compartido: un PIN para todos
             $url     = $baseUrl . '/player?pin=' . $gamePin;
             $content = "
               <p style=\"font-size:18px;font-weight:700;margin:0 0 8px\">¡Partida creada con éxito! 🎉</p>
@@ -111,7 +127,10 @@ HTML;
         return self::sendSmtp($to, 'Hitstoric — Partida creada', self::html($content));
     }
 
-    /** Envía el PIN individual a un jugador */
+    /**
+     * Envía el PIN individual a un jugador invitado.
+     * El enlace ya incluye el PIN como parámetro para que no tenga que escribirlo.
+     */
     public static function sendPlayerPin(
         string $to, string $pin, string $baseUrl, int $playerNum
     ): bool {

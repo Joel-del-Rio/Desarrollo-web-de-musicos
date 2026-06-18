@@ -1,25 +1,35 @@
 <?php
-// ── Credenciales de base de datos ─────────────────────
+/**
+ * config.php — Configuración global de la aplicación
+ *
+ * Define constantes de base de datos, correo y géneros.
+ * Se carga en todos los puntos de entrada (api.php, vistas).
+ */
+
+// ── Base de datos ─────────────────────────────────────
+// Se diferencia entre Windows (XAMPP local) y Linux (SiteGround producción)
 if (PHP_OS_FAMILY === 'Windows') {
-    // XAMPP local
     define('DB_HOST', 'localhost');
     define('DB_USER', 'root');
     define('DB_PASS', '');
     define('DB_NAME', 'hitster_musicos');
 } else {
-    // SiteGround (Linux)
     define('DB_HOST', 'localhost');
     define('DB_USER', 'ug5qzildxb4vc');
     define('DB_PASS', '0lx5wdgggcri');
     define('DB_NAME', 'dbe7oc67cjh788');
 }
 
-// ── Configuración de correo ──────────────────────────
-define('SMTP_FROM',      'noreply@hitstoric.nite.black');
+// ── Correo saliente ───────────────────────────────────
+// Usa PHP mail() del servidor — no requiere credenciales SMTP externas.
+// En local (Windows) el envío está desactivado para no depender de configuración extra.
+define('SMTP_FROM',    'noreply@hitstoric.nite.black');
 define('SMTP_FROM_NAME', 'Hitstoric');
-define('SMTP_ENABLED',   PHP_OS_FAMILY !== 'Windows'); // false en local, true en producción
+define('SMTP_ENABLED', PHP_OS_FAMILY !== 'Windows');
 
 // ── Géneros disponibles ───────────────────────────────
+// Lista completa de géneros que el dinamizador puede elegir al crear partida.
+// 'Todos' significa sin filtrar por género.
 const GENRES = [
     'Todos',
     'Rock Internacional',
@@ -32,7 +42,9 @@ const GENRES = [
     'Actualidad',
 ];
 
-// ── BASE_URL dinámica (XAMPP subfolder y SiteGround root) ──
+// ── URL base dinámica ─────────────────────────────────
+// Calcula automáticamente la URL raíz del proyecto, tanto en XAMPP
+// (donde puede estar en una subcarpeta) como en SiteGround (raíz del dominio).
 $scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $host     = $_SERVER['HTTP_HOST'] ?? 'localhost';
 $docRoot  = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? ''), '/');

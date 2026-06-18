@@ -1,4 +1,11 @@
-/* ── Variables ── */
+/* ═══════════════════════════════════════════════════════════════
+ * main.css — Estilos globales de Hitstoric
+ *
+ * Paleta oscura azul marino con acento rojo (#e94560).
+ * Sobreescribe los valores por defecto de Bootstrap 5 (dark theme).
+ * ═══════════════════════════════════════════════════════════════ */
+
+/* ── Variables de color y espaciado ──────────────────────────── */
 :root {
   --bg:         #1a1a2e;
   --bg2:        #16213e;

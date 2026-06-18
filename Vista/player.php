@@ -1,4 +1,17 @@
-<?php require_once __DIR__ . '/../config.php'; ?>
+<?php
+/**
+ * player.php — Vista del jugador (móvil)
+ *
+ * SPA optimizada para móvil con altura dinámica (dvh) y sin zoom.
+ * Pantallas en orden: join → lobby → question → answered → results → finished.
+ * El JS (player.js) gestiona las transiciones mediante polling al servidor.
+ *
+ * Constantes JS exportadas al script:
+ *   API = URL de la API (Controlador/api.php)
+ *   PK  = clave localStorage para el ID del jugador
+ *   GK  = clave localStorage para el ID de la partida
+ */
+require_once __DIR__ . '/../config.php'; ?>
 <!DOCTYPE html>
 <html lang="es" data-bs-theme="dark">
 <head>

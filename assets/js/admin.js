@@ -1,17 +1,26 @@
-/* ── Estado ── */
-let gameId     = localStorage.getItem(GK);
-let adminToken = localStorage.getItem(TK);
-let pollTimer  = null;
-let timerInterval = null;
-let lastStatus = null;
-let lastQuestionRound = -1;
-let questionTime = 30;
-let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0 };
+/* ═══════════════════════════════════════════════════════════════
+ * admin.js — Panel del dinamizador (admin)
+ *
+ * Gestiona el ciclo completo de una partida desde el lado del admin:
+ * crear partida, esperar jugadores, controlar rondas y ver resultados.
+ * Usa polling cada 1-2s para sincronizar el estado con el servidor.
+ * ═══════════════════════════════════════════════════════════════ */
+
+/* ── Estado global ────────────────────────────────────────────── */
+let gameId     = localStorage.getItem(GK);   // ID de la partida activa
+let adminToken = localStorage.getItem(TK);   // Token secreto del admin
+let pollTimer  = null;                        // Intervalo de polling
+let timerInterval = null;                     // Cuenta atrás del anillo SVG
+let lastStatus = null;                        // Último estado procesado (evita re-renders)
+let lastQuestionRound = -1;                   // Última ronda renderizada
+let questionTime = 30;                        // Duración de la pregunta en segundos
+let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0 }; // Opciones de la partida
 
 /* ── Arranque ── */
 (function init() {
-  onAudioToggle(); // estado inicial correcto del toggle de autoplay
+  onAudioToggle(); // sincronizar estado inicial del toggle de autoplay
   if (gameId && adminToken) {
+    // Hay una partida guardada en localStorage — intentar recuperarla
     fetchState().then(state => {
       if (state && !state.error) applyState(state);
       else { clearSession(); showScreen('setup'); }
@@ -21,7 +30,7 @@ let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0 };
   }
 })();
 
-/* ── API ── */
+/* ── Llamadas API ─────────────────────────────────────────────── */
 async function apiGet(action) {
   const r = await fetch(`${API}?action=${action}&game_id=${gameId}&_t=${Date.now()}`, { cache: 'no-store' });
   return r.json();
@@ -38,7 +47,7 @@ async function fetchState() {
   try { return await apiGet('game_state'); } catch { return null; }
 }
 
-/* ── Polling ── */
+/* ── Polling periódico ────────────────────────────────────────── */
 function startPolling(ms = 1500) {
   stopPolling();
   pollTimer = setInterval(async () => {
@@ -48,24 +57,24 @@ function startPolling(ms = 1500) {
 }
 function stopPolling() { clearInterval(pollTimer); pollTimer = null; }
 
-/* ── Pantallas ── */
+/* ── Gestión de pantallas ─────────────────────────────────────── */
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`).classList.add('active');
 }
 
-/* ── Dispatcher ── */
+/* ── Dispatcher de estado ─────────────────────────────────────── */
 function applyState(state) {
   const st    = state.status;
   const round = state.current_round;
 
-  // Misma ronda en curso → actualización ligera (sin reiniciar timer ni DOM completo)
+  // Misma ronda en pregunta → actualización ligera (no reiniciar timer ni reconstruir DOM)
   if (st === 'question' && lastStatus === 'question' && round === lastQuestionRound) {
     updateQuestionPoll(state);
     return;
   }
 
-  // Mismo estado no dinámico → nada que hacer
+  // Estado no dinámico sin cambio → nada que hacer
   if (st === lastStatus && st !== 'waiting') return;
 
   lastStatus = st;
@@ -77,18 +86,16 @@ function applyState(state) {
   }
 }
 
-/* ── Waiting ── */
+/* ── Sala de espera ───────────────────────────────────────────── */
 function renderWaiting(state) {
   showScreen('waiting');
   document.getElementById('w-pin').textContent   = localStorage.getItem(GK + '_pin') || '----';
   document.getElementById('w-count').textContent = state.player_count || 0;
 
-  // Panel de PINs individuales
   const indivPanel = document.getElementById('w-indiv-pins');
   const pinsGrid   = document.getElementById('w-pins-grid');
   const indivPins  = JSON.parse(localStorage.getItem(GK + '_indivPins') || 'null');
   const pinMode    = state.pin_mode || localStorage.getItem(GK + '_pinMode') || 'shared';
-  const pinLabel   = document.getElementById('w-pin-label');
 
   const pinCard    = document.getElementById('w-pin-card');
   const playerUrl  = document.getElementById('w-player-url');
@@ -96,8 +103,8 @@ function renderWaiting(state) {
   const baseOrigin = API.replace('/Controlador/api.php', '');
 
   if (indivPins && indivPins.length && pinMode === 'individual') {
-    // Modo individual: ocultar card de PIN admin, mostrar cartones difuminados
-    if (pinCard)   pinCard.classList.add('d-none');
+    // Modo individual: ocultar card de PIN, mostrar cartones difuminados al pasar el ratón
+    if (pinCard) pinCard.classList.add('d-none');
     indivPanel.classList.remove('d-none');
     if (!pinsGrid.hasChildNodes()) {
       pinsGrid.innerHTML = indivPins.map((pin, i) =>
@@ -108,12 +115,13 @@ function renderWaiting(state) {
       ).join('');
     }
   } else {
-    // Modo compartido: mostrar PIN con enlace directo
-    if (pinCard)  pinCard.classList.remove('d-none');
+    // Modo compartido: mostrar PIN único con enlace directo a la sala
+    if (pinCard) pinCard.classList.remove('d-none');
     indivPanel.classList.add('d-none');
     if (playerUrl) playerUrl.textContent = `${baseOrigin}/player?pin=${gamePin}`;
   }
 
+  // Renderizar chips de jugadores conectados
   const list = document.getElementById('w-players');
   list.innerHTML = '';
   (state.players || []).forEach(p => {
@@ -130,6 +138,7 @@ function renderWaiting(state) {
   startPolling(1500);
 }
 
+/** Copia el PIN individual al portapapeles y muestra feedback visual */
 function copyPin(el, pin) {
   navigator.clipboard?.writeText(pin).then(() => {
     el.classList.add('copied');
@@ -137,6 +146,7 @@ function copyPin(el, pin) {
   });
 }
 
+/** Copia todos los PINs individuales formateados al portapapeles */
 function copyAllPins() {
   const pins = JSON.parse(localStorage.getItem(GK + '_indivPins') || '[]');
   const text = pins.map((p, i) => `Cartón ${i + 1}: ${p}`).join('\n');
@@ -145,7 +155,7 @@ function copyAllPins() {
   if (btn) { btn.textContent = '✓ Copiados'; setTimeout(() => btn.textContent = '📋 Copiar todos', 1500); }
 }
 
-/* ── Question ── */
+/* ── Pantalla de pregunta ─────────────────────────────────────── */
 function renderQuestion(state) {
   lastQuestionRound = state.current_round;
   showScreen('question');
@@ -153,14 +163,14 @@ function renderQuestion(state) {
   const players = state.players || [];
   questionTime  = state.question_time || 30;
 
-  // Guardar settings de la partida
+  // Guardar opciones de la partida para saber si mostrar audio/links
   if (state.show_links !== undefined) gameSettings = { show_links: state.show_links, embed_youtube: state.embed_youtube, autoplay: state.autoplay };
   updateGridLayout();
 
   const qAudioCard = document.getElementById('q-audio-card');
   if (qAudioCard) qAudioCard.classList.toggle('d-none', !gameSettings.embed_youtube);
 
-  // Si audio activo y round nuevo sin links, cargamos el audio igualmente
+  // Cargar audio aunque no haya links habilitados (solo reproductor)
   if (gameSettings.embed_youtube && !gameSettings.show_links && state.current_round !== lastRenderedRound && (state.song || {}).title) {
     audioLoad('q', state.song);
   }
@@ -174,19 +184,19 @@ function renderQuestion(state) {
   document.getElementById('q-players').textContent  = players.length;
   document.getElementById('q-answered').textContent = state.answer_count || 0;
 
+  // Barra de progreso de respuestas recibidas
   const pct = players.length > 0
     ? Math.round(((state.answer_count || 0) / players.length) * 100) : 0;
   document.getElementById('q-progress').style.width = pct + '%';
 
-  // Streaming
   renderStreamingQuestion(song, state.current_round);
 
   startTimerRing(state.time_left ?? questionTime, questionTime);
   renderLeaderboard('q-leaderboard', players);
-  startPolling(1000);
+  startPolling(1000); // polling más rápido durante la pregunta
 }
 
-/** Actualización ligera durante la misma ronda (no reinicia el timer ni reconstruye la UI) */
+/** Actualización ligera durante la misma ronda (no reinicia el timer ni reconstruye el layout) */
 function updateQuestionPoll(state) {
   const players = state.players || [];
   document.getElementById('q-players').textContent  = players.length;
@@ -196,12 +206,12 @@ function updateQuestionPoll(state) {
   document.getElementById('q-progress').style.width = pct + '%';
   renderLeaderboard('q-leaderboard', players);
 
-  // Auto-reveal cuando el servidor dice que se acabó el tiempo
+  // Si el servidor indica que se acabó el tiempo, revelar automáticamente
   const tl = state.time_left ?? questionTime;
   if (tl <= 0) { stopTimer(); showResults(); }
 }
 
-/* ── Results ── */
+/* ── Pantalla de resultados ───────────────────────────────────── */
 function renderResults(state) {
   stopTimer();
   showScreen('results');
@@ -221,12 +231,12 @@ function renderResults(state) {
   const rAudioCard = document.getElementById('r-audio-card');
   if (rAudioCard) rAudioCard.classList.toggle('d-none', !gameSettings.embed_youtube);
 
-  // Si audio activo y no hay links, cargamos igualmente
+  // Cargar audio en pantalla de resultados también
   if (gameSettings.embed_youtube && !gameSettings.show_links && (state.song || {}).title) {
     audioLoad('r', state.song);
   }
 
-  // Lista de respuestas
+  // Lista de respuestas por jugador (correcto/incorrecto + puntos)
   const list = document.getElementById('r-results');
   list.innerHTML = '';
   (state.round_results || []).forEach(r => {
@@ -240,6 +250,7 @@ function renderResults(state) {
     list.appendChild(row);
   });
 
+  // Cambiar texto del botón si es la última ronda
   const isLast = state.current_round >= state.total_rounds;
   document.getElementById('btn-next').textContent = isLast ? '🏆 Resultados finales' : 'Siguiente Ronda →';
 
@@ -247,7 +258,7 @@ function renderResults(state) {
   startPolling(2000);
 }
 
-/* ── Finished ── */
+/* ── Pantalla final ───────────────────────────────────────────── */
 function renderFinished(state) {
   stopPolling(); stopTimer();
   showScreen('finished');
@@ -255,7 +266,9 @@ function renderFinished(state) {
   renderLeaderboard('f-leaderboard', state.players || []);
 }
 
-/* ── Helpers render ── */
+/* ── Helpers de renderizado ───────────────────────────────────── */
+
+/** Renderiza la tabla de clasificación en el elemento con el ID dado */
 function renderLeaderboard(id, players) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -273,11 +286,11 @@ function renderLeaderboard(id, players) {
   });
 }
 
+/** Renderiza el podio visual: 2º izquierda, 1º centro, 3º derecha */
 function renderPodium(id, players) {
   const el = document.getElementById(id);
   if (!el) return;
   const top3 = players.slice(0, 3);
-  // Orden visual: 2º izq, 1º centro, 3º dcha — con sus índices originales
   const slots = [
     { p: top3[1], cls: 'podium-2nd', medal: '🥈' },
     { p: top3[0], cls: 'podium-1st', medal: '🥇' },
@@ -297,17 +310,18 @@ function renderPodium(id, players) {
   });
 }
 
-/* ── Timer ring ── */
+/* ── Cuenta atrás circular (anillo SVG) ───────────────────────── */
 function startTimerRing(seconds, total) {
   stopTimer();
   const circle = document.getElementById('timer-circle');
   const label  = document.getElementById('q-timer');
   if (!circle || !label) return;
-  const circ = 2 * Math.PI * 35;
+  const circ = 2 * Math.PI * 35; // circunferencia del anillo (radio=35)
   let s = seconds;
   function tick() {
     label.textContent = Math.ceil(s);
     circle.style.strokeDashoffset = circ * (1 - s / total);
+    // Cambio de color según tiempo restante: verde → naranja → rojo
     circle.style.stroke = s <= 5 ? '#e21b3c' : s <= total * 0.33 ? '#d89e00' : 'var(--accent)';
   }
   tick();
@@ -315,7 +329,7 @@ function startTimerRing(seconds, total) {
     s -= 1;
     if (s < 0) {
       stopTimer();
-      // Revelar automáticamente cuando se acaba el tiempo
+      // Revelar automáticamente si el admin no ha pulsado el botón
       if (lastStatus === 'question') showResults();
       return;
     }
@@ -324,13 +338,14 @@ function startTimerRing(seconds, total) {
 }
 function stopTimer() { clearInterval(timerInterval); timerInterval = null; }
 
-/* ── Grid layout dinámico ── */
+/* ── Grid layout según opciones de media ─────────────────────── */
 function updateGridLayout() {
   const hasMedia = gameSettings.embed_youtube || gameSettings.show_links;
+  // Añadir clase 'no-media' cuando no hay audio ni links para usar todo el ancho
   document.querySelectorAll('.admin-grid').forEach(g => g.classList.toggle('no-media', !hasMedia));
 }
 
-/* ── Setup toggles ── */
+/* ── Formulario de configuración de la partida ───────────────── */
 function setPinMode(btn, mode) {
   document.querySelectorAll('#pin-mode-selector .genre-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -344,6 +359,7 @@ function setPinMode(btn, mode) {
   if (isIndiv) updatePlayerEmailFields(parseInt(document.getElementById('indiv-count-input').value) || 2);
 }
 
+/** Regenera dinámicamente los campos de email según el número de jugadores */
 function updatePlayerEmailFields(count) {
   count = Math.max(2, Math.min(30, count));
   document.getElementById('indiv-count-input').value = count;
@@ -358,9 +374,10 @@ function updatePlayerEmailFields(count) {
 }
 
 function onLinksToggle() {
-  // independiente — no afecta a las otras opciones
+  // independiente — no afecta al resto de opciones
 }
 function onAudioToggle() {
+  // Si se desactiva el audio, también desactivar autoplay y deshabilitarlo
   const on       = document.getElementById('toggle-audio').checked;
   const autoplay = document.getElementById('toggle-autoplay');
   const row      = document.getElementById('row-autoplay');
@@ -370,7 +387,7 @@ function onAudioToggle() {
   row.style.pointerEvents = on ? '' : 'none';
 }
 
-/* ── Streaming helpers ── */
+/* ── Botones de streaming (Spotify/YouTube) ───────────────────── */
 let lastRenderedRound = -1;
 
 const SVG_SPOTIFY = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>`;
@@ -380,6 +397,7 @@ function streamingBtn(url, cls, svg, label) {
   return `<a href="${url}" target="_blank" rel="noopener" class="btn-stream ${cls}">${svg} ${label}</a>`;
 }
 
+/** Genera los URLs de búsqueda en Spotify y YouTube para una canción */
 function songSearchLinks(song) {
   const q = encodeURIComponent((song.title || '') + ' ' + (song.artist || ''));
   return {
@@ -401,10 +419,10 @@ function renderStreamingQuestion(song, round) {
   }
   zone.classList.remove('d-none');
 
+  // No re-renderizar si ya se mostró esta ronda
   if (round === lastRenderedRound) return;
   lastRenderedRound = round;
 
-  // Sin URL directa de YT ya no hay embed
   embed.classList.add('d-none');
   iframe.src = '';
 
@@ -413,7 +431,6 @@ function renderStreamingQuestion(song, round) {
   btns.insertAdjacentHTML('beforeend', streamingBtn(links.spotify, 'btn-spotify', SVG_SPOTIFY, 'Spotify'));
   btns.insertAdjacentHTML('beforeend', streamingBtn(links.youtube, 'btn-youtube', SVG_YOUTUBE, 'YouTube'));
 
-  // Cargar audio de la canción automáticamente
   if (gameSettings.embed_youtube && song.title) audioLoad('q', song);
 }
 
@@ -428,16 +445,16 @@ function renderStreamingResults(song) {
   btns.insertAdjacentHTML('beforeend', streamingBtn(links.youtube, 'btn-youtube', SVG_YOUTUBE, 'YouTube'));
   zone.classList.remove('d-none');
 
-  // Cargar audio de la canción automáticamente
   if (gameSettings.embed_youtube && song.title) audioLoad('r', song);
 }
 
-/* ── Acciones admin ── */
+/* ── Acciones del admin ───────────────────────────────────────── */
 function selectGenre(btn) {
   document.querySelectorAll('#genre-selector .genre-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 }
 
+/** Crea una nueva partida con la configuración del formulario */
 async function createGame() {
   const rounds = parseInt(document.getElementById('rounds-input').value, 10);
   const time   = parseInt(document.getElementById('time-input').value,   10);
@@ -452,7 +469,7 @@ async function createGame() {
   const errEl = document.getElementById('setup-error');
   errEl.classList.add('d-none');
 
-  // Validar emails obligatorios en modo individual
+  // En modo individual, validar que todos los emails estén rellenos
   if (pinMode === 'individual') {
     const inputs = [...document.querySelectorAll('#indiv-email-fields .player-email-input')];
     const invalids = inputs.filter(inp => !inp.value.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inp.value.trim()));
@@ -485,6 +502,7 @@ async function createGame() {
 
     if (data.error) { errEl.textContent = data.error; errEl.classList.remove('d-none'); return; }
 
+    // Guardar credenciales en localStorage para recuperar la sesión si se recarga
     gameId = String(data.id); adminToken = data.admin_token;
     localStorage.setItem(GK, gameId);
     localStorage.setItem(TK, adminToken);
@@ -508,6 +526,8 @@ async function startGame() {
   if (d.error) { alert(d.error); return; }
   const s = await fetchState(); applyState(s);
 }
+
+/** Llama a show_results para revelar el año; desactiva el botón durante la petición */
 async function showResults() {
   if (lastStatus !== 'question') return; // evitar doble llamada
   const btn = document.querySelector('#screen-question .btn-game');
@@ -523,6 +543,7 @@ async function showResults() {
     if (btn) { btn.disabled = false; btn.textContent = 'Revelar año y ver resultados →'; }
   }
 }
+
 async function nextRound() {
   const btn = document.getElementById('btn-next');
   if (btn) btn.disabled = true;
@@ -538,6 +559,7 @@ async function nextRound() {
   }
 }
 
+/** Muestra un toast de error en la parte inferior de la pantalla (4 segundos) */
 function showAdminError(msg) {
   console.error('[Admin]', msg);
   let el = document.getElementById('admin-error-toast');
@@ -552,23 +574,28 @@ function showAdminError(msg) {
   clearTimeout(el._t);
   el._t = setTimeout(() => { el.style.display = 'none'; }, 4000);
 }
+
 function newGame() { clearSession(); showScreen('setup'); }
 
+/** Limpia toda la sesión de admin del localStorage */
 function clearSession() {
   [GK, TK, GK+'_pin', GK+'_pinMode', GK+'_indivPins'].forEach(k => localStorage.removeItem(k));
   gameId = adminToken = null; lastStatus = null; stopPolling(); stopTimer();
 }
+
+/** Escapa caracteres HTML para evitar XSS al insertar texto de usuario en el DOM */
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-/* ── Reproductor de audio (iTunes Preview API) ── */
+/* ── Reproductor de audio (iTunes Preview API) ────────────────── */
 const SVG_PLAY  = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
 const SVG_PAUSE = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
 
 const VOL_KEY = 'hitstoric_vol';
 let audioVolume = parseFloat(localStorage.getItem(VOL_KEY) ?? '0.8');
 
+/** Sincroniza el volumen entre ambos reproductores (pregunta y resultados) */
 function setVolume(val) {
   audioVolume = val / 100;
   localStorage.setItem(VOL_KEY, audioVolume);
@@ -580,6 +607,7 @@ function setVolume(val) {
   });
 }
 
+/** Busca una preview de 30s en la API de iTunes por título y artista */
 async function fetchItunesPreview(title, artist) {
   try {
     const q = encodeURIComponent((title || '') + ' ' + (artist || ''));
@@ -592,6 +620,11 @@ async function fetchItunesPreview(title, artist) {
   }
 }
 
+/**
+ * Carga y opcionalmente reproduce el preview de una canción.
+ * Detiene cualquier audio en curso antes de cargar el nuevo.
+ * @param {string} p  Prefijo del reproductor: 'q' (pregunta) o 'r' (resultados)
+ */
 async function audioLoad(p, song) {
   const a    = document.getElementById(p + '-audio');
   const time = document.getElementById(p + '-atime');
@@ -606,7 +639,6 @@ async function audioLoad(p, song) {
   });
   a.src = '';
 
-  // Reset UI a estado de carga
   document.getElementById(p + '-play').innerHTML = SVG_PLAY;
   document.getElementById(p + '-afill').style.width = '0%';
   time.textContent = '…';
@@ -628,7 +660,7 @@ async function audioLoad(p, song) {
       a.oncanplay = null;
       a.play()
         .then(() => { document.getElementById(p + '-play').innerHTML = SVG_PAUSE; })
-        .catch(() => {});
+        .catch(() => {}); // autoplay bloqueado por el navegador — silencioso
     };
   }
 }
@@ -646,6 +678,7 @@ function audioToggle(p) {
   }
 }
 
+/** Mueve la posición de reproducción según dónde hizo clic el usuario en la barra */
 function audioSeek(p, e, bar) {
   const a = document.getElementById(p + '-audio');
   if (!a.duration) return;
@@ -659,10 +692,10 @@ function fmtTime(s) {
   return `${m}:${ss}`;
 }
 
+/** Registra listeners de timeupdate/ended/loadedmetadata en el elemento <audio> */
 function initAudio(p) {
   const a = document.getElementById(p + '-audio');
   if (!a) return;
-  // Restaurar volumen guardado y sincronizar slider
   a.volume = audioVolume;
   const slider = document.getElementById(p + '-vol');
   if (slider) slider.value = Math.round(audioVolume * 100);

@@ -1,4 +1,18 @@
-<?php require_once __DIR__ . '/../config.php'; ?>
+<?php
+/**
+ * admin.php — Panel del dinamizador
+ *
+ * SPA de una sola página que muestra las pantallas de la partida en orden:
+ * setup → waiting → question → results → finished.
+ * El JS (admin.js) controla qué pantalla está visible en cada momento
+ * mediante polling al servidor y la clase CSS 'active' en .screen.
+ *
+ * Constantes JS exportadas al script:
+ *   API = URL de la API (Controlador/api.php)
+ *   GK  = clave localStorage para el ID de la partida
+ *   TK  = clave localStorage para el token de admin
+ */
+require_once __DIR__ . '/../config.php'; ?>
 <!DOCTYPE html>
 <html lang="es" data-bs-theme="dark">
 <head>

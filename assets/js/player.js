@@ -1,15 +1,24 @@
-/* ── Estado ── */
+/* ═══════════════════════════════════════════════════════════════
+ * player.js — Vista del jugador
+ *
+ * Gestiona toda la interacción del jugador: unirse con PIN,
+ * ver el lobby, colocar canciones en su línea del tiempo,
+ * enviar la respuesta y ver los resultados de cada ronda.
+ * Usa polling cada 1-2s para sincronizar el estado con el servidor.
+ * ═══════════════════════════════════════════════════════════════ */
+
+/* ── Estado global ────────────────────────────────────────────── */
 let playerId     = parseInt(localStorage.getItem(PK), 10) || null;
 let pollTimer    = null;
-let countdown    = null;
-let lastStatus   = null;
-let selectedPos  = null;   // posición seleccionada en el timeline
-let currentSong  = null;   // canción de la ronda actual
-let questionTime = 30;
+let countdown    = null;        // Intervalo de la barra de cuenta atrás
+let lastStatus   = null;        // Último estado procesado (evita re-renders duplicados)
+let selectedPos  = null;        // Posición seleccionada en el timeline (índice)
+let currentSong  = null;        // Canción de la ronda actual
+let questionTime = 30;          // Duración de la pregunta en segundos
 
 /* ── Arranque ── */
 (function init() {
-  // Pre-rellenar PIN desde URL (?pin=XXXX)
+  // Pre-rellenar el input del PIN si viene en la URL (?pin=XXXX)
   const urlPin = new URLSearchParams(window.location.search).get('pin');
   if (urlPin) {
     const pinInput = document.getElementById('pin-input');
@@ -17,6 +26,7 @@ let questionTime = 30;
   }
 
   if (playerId) {
+    // Sesión guardada — intentar recuperar el estado
     fetchState().then(state => {
       if (state && !state.error) applyState(state);
       else { clearSession(); showScreen('join'); }
@@ -24,14 +34,17 @@ let questionTime = 30;
   } else {
     showScreen('join');
   }
+
+  // Forzar que el PIN solo acepte dígitos (máx 4)
   document.getElementById('pin-input')?.addEventListener('input', e => {
     e.target.value = e.target.value.replace(/\D/g,'').slice(0,4);
   });
+  // Enviar con Enter en el formulario de join
   document.getElementById('pin-input')?.addEventListener('keydown',  e => { if(e.key==='Enter') joinGame(); });
   document.getElementById('name-input')?.addEventListener('keydown', e => { if(e.key==='Enter') joinGame(); });
 })();
 
-/* ── API ── */
+/* ── Llamada API ──────────────────────────────────────────────── */
 async function fetchState() {
   try {
     const r = await fetch(`${API}?action=player_state&player_id=${playerId}&_t=${Date.now()}`, { cache: 'no-store' });
@@ -39,7 +52,7 @@ async function fetchState() {
   } catch { return null; }
 }
 
-/* ── Polling ── */
+/* ── Polling periódico ────────────────────────────────────────── */
 function startPolling(ms = 1500) {
   stopPolling();
   pollTimer = setInterval(async () => {
@@ -49,33 +62,34 @@ function startPolling(ms = 1500) {
 }
 function stopPolling() { clearInterval(pollTimer); pollTimer = null; }
 
-/* ── Pantallas ── */
+/* ── Gestión de pantallas ─────────────────────────────────────── */
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`)?.classList.add('active');
 }
 
-/* ── Dispatcher ── */
+/* ── Dispatcher de estado ─────────────────────────────────────── */
 function applyState(state) {
   const st = state.status;
 
+  // Si el jugador ya respondió, ir a pantalla de espera
   if (st === 'question' && state.has_answered) {
     if (lastStatus !== 'answered') { showScreen('answered'); lastStatus = 'answered'; }
     return;
   }
-  // Acabamos de confirmar localmente — esperar a que el servidor lo registre
-  // antes de re-renderizar la pregunta (evita que reaparezca el timeline)
+  // Transición local 'answered' → evitar que reaparezca el timeline antes de que el
+  // servidor confirme el cambio (el siguiente poll mostrará 'results')
   if (lastStatus === 'answered' && st === 'question') return;
 
+  // Actualización ligera del contador del lobby
   if (st === 'waiting' && lastStatus === 'waiting') { renderLobbyCount(state); return; }
 
-  // Durante la pregunta solo actualizar timer y contador, NO reconstruir el timeline
+  // Durante la pregunta solo actualizar el timer local, no reconstruir el timeline
   if (st === 'question' && lastStatus === 'question') {
     updateQuestionTick(state);
     return;
   }
 
-  // El estado cambió de 'question' a otra cosa (ej: 'results') → renderizar
   if (st === lastStatus) return;
   lastStatus = st;
 
@@ -87,15 +101,14 @@ function applyState(state) {
   }
 }
 
-/** Actualización ligera cada tick de polling durante la pregunta (no toca el DOM del timeline) */
+/** Actualización ligera cada poll durante la pregunta (no toca el DOM del timeline) */
 function updateQuestionTick(state) {
-  // Solo actualizar el contador de segundos; el countdown local ya gestiona la barra
+  // El countdown local ya gestiona la barra visual; aquí no hay más widgets que actualizar
   const pct = state.total_players > 0
     ? Math.round(((state.answer_count || 0) / state.total_players) * 100) : 0;
-  // (no hay barra de respuestas en la vista player, pero dejamos el hook por si se añade)
 }
 
-/* ── Lobby ── */
+/* ── Lobby ────────────────────────────────────────────────────── */
 function renderLobby(state) {
   showScreen('lobby');
   const p = state.player || {};
@@ -106,12 +119,14 @@ function renderLobby(state) {
   av.textContent = (p.name || '?')[0].toUpperCase();
   startPolling(1500);
 }
+
+/** Actualiza solo el contador de jugadores en el lobby sin re-renderizar toda la pantalla */
 function renderLobbyCount(state) {
   const el = document.getElementById('lobby-count');
   if (el) el.textContent = state.total_players || 0;
 }
 
-/* ── Question (timeline) ── */
+/* ── Pantalla de pregunta (timeline interactivo) ──────────────── */
 function renderQuestion(state) {
   selectedPos  = null;
   currentSong  = state.song || {};
@@ -124,23 +139,22 @@ function renderQuestion(state) {
   document.getElementById('q-round').textContent  = state.current_round;
   document.getElementById('q-total').textContent  = state.total_rounds;
 
-  // Reset confirm
+  // Reset del botón de confirmación
   const btn  = document.getElementById('confirm-btn');
   const hint = document.getElementById('confirm-hint');
   btn.disabled  = true;
   hint.textContent = 'Toca una posición en tu línea del tiempo';
 
-  // Renderizar timeline con botones de posición
   buildTimeline(state.timeline || []);
 
-  // Timer
   startTimerBar(state.time_left ?? questionTime, questionTime);
   startPolling(1000);
 }
 
 /**
  * Construye el DOM del timeline interactivo.
- * timeline: [{id, title, artist, year, genre}, ...]  — ya ordenado por año
+ * Alterna entre botones de posición y tarjetas de canción.
+ * El jugador pulsa un botón de posición para indicar dónde encaja la nueva canción.
  */
 function buildTimeline(timeline) {
   const area = document.getElementById('timeline-area');
@@ -149,20 +163,17 @@ function buildTimeline(timeline) {
   const n = timeline.length;
 
   if (n === 0) {
-    // No debería ocurrir (siempre tienen canción inicial)
     area.innerHTML = '<p class="text-secondary text-center p-3">Sin canciones en tu línea del tiempo</p>';
     return;
   }
 
-  // Label
   const label = document.createElement('div');
   label.className = 'text-secondary small text-uppercase fw-semibold px-3 pt-3 pb-1';
   label.textContent = 'Tu línea del tiempo — toca dónde encaja';
   area.appendChild(label);
 
-  // Para cada posición 0..n
+  // Generar N+1 botones de posición intercalados con N tarjetas de canción
   for (let i = 0; i <= n; i++) {
-    // Botón de posición
     const posBtn = document.createElement('button');
     posBtn.className = 'pos-btn';
     posBtn.dataset.pos = i;
@@ -171,7 +182,6 @@ function buildTimeline(timeline) {
     posBtn.addEventListener('click', () => selectPosition(i));
     area.appendChild(posBtn);
 
-    // Canción (si existe en posición i)
     if (i < n) {
       const song = timeline[i];
       const card = document.createElement('div');
@@ -187,10 +197,10 @@ function buildTimeline(timeline) {
   }
 }
 
+/** Marca visualmente la posición seleccionada y habilita el botón de confirmar */
 function selectPosition(pos) {
   selectedPos = pos;
 
-  // Actualizar apariencia de todos los botones de posición
   document.querySelectorAll('.pos-btn').forEach(btn => {
     const isSelected = parseInt(btn.dataset.pos) === pos;
     btn.classList.toggle('selected', isSelected);
@@ -207,17 +217,20 @@ function selectPosition(pos) {
     }
   });
 
-  // Habilitar botón de confirmar
   const btn  = document.getElementById('confirm-btn');
   const hint = document.getElementById('confirm-hint');
   btn.disabled = false;
   hint.textContent = `Posición ${pos + 1} seleccionada — pulsa para confirmar`;
 
-  // Scroll al botón seleccionado
-  const selectedBtn = document.querySelector(`.pos-btn[data-pos="${pos}"]`);
-  selectedBtn?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  document.querySelector(`.pos-btn[data-pos="${pos}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+/**
+ * Envía la respuesta al servidor.
+ * Si el servidor la rechaza (ej: ya respondió), reactiva la UI para reintentar.
+ * Si hay error de red, igualmente muestra la pantalla de espera (el servidor
+ * puede haberla recibido aunque la respuesta no llegara al cliente).
+ */
 async function confirmAnswer() {
   if (selectedPos === null) return;
   const pos = selectedPos;
@@ -234,7 +247,7 @@ async function confirmAnswer() {
     });
     const d = await r.json();
     if (d.error) {
-      // El servidor rechazó la respuesta — reactivar la UI para que pueda reintentar
+      // El servidor rechazó la respuesta — reactivar la UI para reintentar
       console.error('[Player] submit_answer rechazado:', d.error);
       document.getElementById('confirm-btn').disabled = false;
       document.querySelectorAll('.pos-btn').forEach(b => b.disabled = false);
@@ -242,7 +255,6 @@ async function confirmAnswer() {
       if (hint) hint.textContent = 'Error: ' + d.error;
       return;
     }
-    // Éxito: ir a pantalla de espera
     showScreen('answered');
     lastStatus = 'answered';
   } catch {
@@ -252,7 +264,7 @@ async function confirmAnswer() {
   }
 }
 
-/* ── Results ── */
+/* ── Pantalla de resultados ───────────────────────────────────── */
 function renderResults(state) {
   stopCountdown();
   showScreen('results');
@@ -264,6 +276,7 @@ function renderResults(state) {
   document.getElementById('r-year').textContent   = song.year   || '—';
   document.getElementById('r-genre').textContent  = song.genre  || '';
 
+  // Mostrar si acertó o no, y los puntos ganados
   if (myRes) {
     const ok = !!myRes.is_correct;
     document.getElementById('res-icon').textContent = ok ? '✅' : '❌';
@@ -271,7 +284,7 @@ function renderResults(state) {
     document.getElementById('res-msg').style.color  = ok ? 'var(--success)' : 'var(--error)';
     document.getElementById('res-pts').textContent  = ok ? `+${myRes.points_earned} pts` : '0 pts';
   } else {
-    // No respondió
+    // No respondió a tiempo
     document.getElementById('res-icon').textContent = '⏱️';
     document.getElementById('res-msg').textContent  = 'Tiempo agotado';
     document.getElementById('res-msg').style.color  = 'var(--muted)';
@@ -282,16 +295,13 @@ function renderResults(state) {
   document.getElementById('res-rank').textContent =
     `Posición ${state.player_rank} / ${state.total_players}  •  Total: ${p.score} pts`;
 
-  // Mini leaderboard
   renderMiniLB('res-leaderboard', state.round_results || [], p.name);
-
-  // Timeline actualizado (ya incluye la canción si acertó)
   renderMiniTimeline('res-timeline', state.timeline || []);
 
   startPolling(2000);
 }
 
-/* ── Finished ── */
+/* ── Pantalla final ───────────────────────────────────────────── */
 function renderFinished(state) {
   stopPolling(); stopCountdown();
   showScreen('finished');
@@ -299,11 +309,10 @@ function renderFinished(state) {
   document.getElementById('f-rank').textContent  = `Posición final: ${state.player_rank} / ${state.total_players}`;
   document.getElementById('f-score').textContent = `${p.score} pts`;
 
-  // Mostrar mensaje de puntos acumulados en modo PIN individual
+  // En modo PIN individual, informar sobre el ranking global de premios
   const prizeEl = document.getElementById('f-prize');
   if (prizeEl) {
     if (state.pin_mode === 'individual') {
-      const p = state.player || {};
       prizeEl.innerHTML = `🏆 ¡Has acumulado <strong>${p.score} pts</strong> en el ranking global!<br><span style="font-size:.85rem;font-weight:400">Visita <a href="premios" style="color:var(--accent)">Premios</a> para ver cuántos tienes y canjearlos.</span>`;
       prizeEl.classList.remove('d-none');
     } else {
@@ -311,10 +320,12 @@ function renderFinished(state) {
     }
   }
 
+  // Tabla de clasificación final completa
   const board = document.getElementById('f-leaderboard');
   board.innerHTML = '';
   (state.leaderboard || []).forEach((pl, i) => {
     const row = document.createElement('div');
+    // Resaltar la fila del jugador actual
     row.className = 'lb-row' + (pl.name === p.name ? ' me' : '');
     const medal = ['🥇','🥈','🥉'][i] ?? `${i+1}.`;
     row.innerHTML = `
@@ -326,7 +337,9 @@ function renderFinished(state) {
   });
 }
 
-/* ── Helpers ── */
+/* ── Helpers de renderizado ───────────────────────────────────── */
+
+/** Mini-leaderboard de la ronda (top 5), resaltando la fila del jugador actual */
 function renderMiniLB(id, results, myName) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -346,6 +359,7 @@ function renderMiniLB(id, results, myName) {
   });
 }
 
+/** Renderiza el timeline actualizado del jugador en la pantalla de resultados */
 function renderMiniTimeline(id, timeline) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -364,7 +378,7 @@ function renderMiniTimeline(id, timeline) {
   });
 }
 
-/* ── Timer bar ── */
+/* ── Barra de cuenta atrás ────────────────────────────────────── */
 function startTimerBar(seconds, total) {
   stopCountdown();
   let s = seconds;
@@ -374,6 +388,7 @@ function startTimerBar(seconds, total) {
     if (fill) fill.style.width  = Math.max(0, (s / total) * 100) + '%';
     if (secs) {
       secs.textContent   = Math.ceil(s);
+      // Verde → naranja → rojo según tiempo restante
       secs.style.color   = s <= 5 ? 'var(--error)' : s <= total * 0.33 ? '#d89e00' : 'var(--accent)';
     }
   }
@@ -382,7 +397,7 @@ function startTimerBar(seconds, total) {
 }
 function stopCountdown() { clearInterval(countdown); countdown = null; }
 
-/* ── Join ── */
+/* ── Formulario de join ───────────────────────────────────────── */
 async function joinGame() {
   const pin   = document.getElementById('pin-input').value.trim();
   const name  = document.getElementById('name-input').value.trim();
@@ -421,11 +436,15 @@ function leaveGame() {
   if (!confirm('¿Seguro que quieres salir de la partida?')) return;
   goToJoin();
 }
+
+/** Borra la sesión del jugador del localStorage */
 function clearSession() {
   localStorage.removeItem(PK); localStorage.removeItem(GK);
   playerId = null; lastStatus = null; selectedPos = null;
   stopPolling(); stopCountdown();
 }
+
+/** Escapa caracteres HTML para evitar XSS al insertar texto de usuario en el DOM */
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }

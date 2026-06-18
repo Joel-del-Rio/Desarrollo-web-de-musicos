@@ -1,19 +1,34 @@
 <?php
+/**
+ * Installer.php — Instalador y sistema de migraciones de la BD
+ *
+ * Se ejecuta una sola vez al iniciar Database (vía run()).
+ * Detecta la versión actual del esquema en schema_version y aplica
+ * todas las migraciones pendientes de forma incremental.
+ * En instalaciones nuevas (versión 0), crea todas las tablas desde cero.
+ */
 class Installer {
 
+    /**
+     * Punto de entrada principal. Recibe las credenciales de conexión,
+     * crea la BD si no existe, detecta la versión del esquema y migra.
+     */
     public static function run(string $host, string $user, string $pass, string $dbName): void {
+        // Conectar sin seleccionar BD para poder crearla si no existe
         $pdo = new PDO("mysql:host={$host};charset=utf8mb4", $user, $pass,
             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 
         $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         $pdo->exec("USE `{$dbName}`");
 
-        // ── Versión de esquema ───────────────────────────────
+        // Leer versión actual; si la tabla no existe aún, la versión es 0
         $pdo->exec("CREATE TABLE IF NOT EXISTS schema_version (version INT DEFAULT 0)");
         $row = $pdo->query("SELECT version FROM schema_version LIMIT 1")->fetch(PDO::FETCH_ASSOC);
         $currentVersion = $row ? (int)$row['version'] : 0;
 
-        // Migración a v4: añadir columnas de streaming
+        // ── Migraciones incrementales ─────────────────────────────
+
+        // v4: columnas de streaming (Spotify/YouTube y opciones de partida)
         if ($currentVersion === 3) {
             try { $pdo->exec("ALTER TABLE songs ADD COLUMN spotify_url VARCHAR(500) NULL, ADD COLUMN youtube_url VARCHAR(500) NULL"); } catch (\Exception $e) {}
             try { $pdo->exec("ALTER TABLE games ADD COLUMN show_links TINYINT(1) DEFAULT 0, ADD COLUMN embed_youtube TINYINT(1) DEFAULT 0, ADD COLUMN autoplay TINYINT(1) DEFAULT 0"); } catch (\Exception $e) {}
@@ -21,7 +36,7 @@ class Installer {
             $currentVersion = 4;
         }
 
-        // Migración a v5: añadir modo PIN, email organizador, tabla individual_pins
+        // v5: modo PIN individual, email del organizador, tabla individual_pins
         if ($currentVersion === 4) {
             try { $pdo->exec("ALTER TABLE games ADD COLUMN pin_mode ENUM('shared','individual') DEFAULT 'shared'"); } catch (\Exception $e) {}
             try { $pdo->exec("ALTER TABLE games ADD COLUMN organizer_email VARCHAR(255) NULL"); } catch (\Exception $e) {}
@@ -43,14 +58,15 @@ class Installer {
             $pdo->exec("UPDATE schema_version SET version=5");
             return;
         }
-        // Migración a v6: columnas de premios por partida
+
+        // v6: premios por partida (1er, 2º y 3er puesto)
         if ($currentVersion === 5) {
             try { $pdo->exec("ALTER TABLE games ADD COLUMN prize_1 VARCHAR(200) NULL, ADD COLUMN prize_2 VARCHAR(200) NULL, ADD COLUMN prize_3 VARCHAR(200) NULL"); } catch (\Exception $e) {}
             $pdo->exec("UPDATE schema_version SET version=6");
             $currentVersion = 6;
         }
 
-        // Migración a v7: email en jugadores, puntuación global, catálogo de premios
+        // v7: email en jugadores, tabla global_scores y catálogo de premios
         if ($currentVersion === 6) {
             try { $pdo->exec("ALTER TABLE players ADD COLUMN email VARCHAR(255) NULL"); } catch (\Exception $e) {}
             try { $pdo->exec("
@@ -78,28 +94,30 @@ class Installer {
             $currentVersion = 7;
         }
 
+        // v8: columna emoji en prizes_catalog (luego renombrada a image en v9)
         if ($currentVersion === 7) {
             try { $pdo->exec("ALTER TABLE prizes_catalog ADD COLUMN emoji VARCHAR(16) NULL AFTER description"); } catch (\Exception $e) {}
             $pdo->exec("UPDATE schema_version SET version=8");
             $currentVersion = 8;
         }
 
+        // v9: renombrar emoji → image y ampliar tamaño para guardar nombre de archivo
         if ($currentVersion === 8) {
-            // Renombrar emoji → image y ampliar tamaño para guardar nombre de archivo
             try { $pdo->exec("ALTER TABLE prizes_catalog CHANGE COLUMN emoji image VARCHAR(255) NULL"); } catch (\Exception $e) {}
             $pdo->exec("UPDATE schema_version SET version=9");
             $currentVersion = 9;
         }
 
+        // v10: guardar email del jugador en individual_pins para recuperarlo al hacer join
         if ($currentVersion === 9) {
-            // Guardar email del jugador en su PIN individual para recuperarlo al hacer join
             try { $pdo->exec("ALTER TABLE individual_pins ADD COLUMN email VARCHAR(255) NULL"); } catch (\Exception $e) {}
             $pdo->exec("UPDATE schema_version SET version=10");
             $currentVersion = 10;
         }
 
+        // v11: añadir columnas de posición y puntuación a answers
+        // (ausentes en instalaciones antiguas que crearon answers sin estas columnas)
         if ($currentVersion === 10) {
-            // Añadir columnas de posición y puntuación a answers (ausentes en instalaciones antiguas)
             try { $pdo->exec("ALTER TABLE answers ADD COLUMN position_guess INT NOT NULL DEFAULT 0"); } catch (\Exception $e) {}
             try { $pdo->exec("ALTER TABLE answers ADD COLUMN is_correct TINYINT(1) DEFAULT 0");      } catch (\Exception $e) {}
             try { $pdo->exec("ALTER TABLE answers ADD COLUMN points_earned INT DEFAULT 0");           } catch (\Exception $e) {}
@@ -107,8 +125,9 @@ class Installer {
             $currentVersion = 11;
         }
 
+        // Esquema actualizado: verificar integridad y salir
         if ($currentVersion >= 11) {
-            // Verificar que la tabla individual_pins existe (por si la migración falló parcialmente)
+            // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
                 $pdo->exec("
@@ -128,14 +147,16 @@ class Installer {
             return;
         }
 
-        // Borrar tablas antiguas para garantizar esquema limpio
+        // ── Instalación desde cero (versión 0) ───────────────────
+
+        // Borrar tablas antiguas para garantizar esquema limpio en una reinstalación
         $pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
         foreach (['answers','player_timeline','game_songs','players','songs','games','schema_version'] as $t) {
             $pdo->exec("DROP TABLE IF EXISTS `{$t}`");
         }
         $pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
 
-        // ── Tablas ──────────────────────────────────────────
+        // Tabla principal de partidas
         $pdo->exec("
             CREATE TABLE games (
                 id                  INT AUTO_INCREMENT PRIMARY KEY,
@@ -157,6 +178,7 @@ class Installer {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
 
+        // Catálogo de canciones con sus URLs de streaming opcionales
         $pdo->exec("
             CREATE TABLE songs (
                 id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -169,6 +191,7 @@ class Installer {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
 
+        // Jugadores de cada partida
         $pdo->exec("
             CREATE TABLE players (
                 id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -176,12 +199,14 @@ class Installer {
                 name         VARCHAR(50) NOT NULL,
                 score        INT DEFAULT 0,
                 avatar_color VARCHAR(7) DEFAULT '#FF6B6B',
+                email        VARCHAR(255) NULL,
                 last_seen    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 joined_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
 
+        // Relación entre partidas y canciones (con número de ronda)
         $pdo->exec("
             CREATE TABLE game_songs (
                 id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -193,6 +218,7 @@ class Installer {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
 
+        // Línea del tiempo personal de cada jugador (canciones ya colocadas)
         $pdo->exec("
             CREATE TABLE player_timeline (
                 id        INT AUTO_INCREMENT PRIMARY KEY,
@@ -206,6 +232,7 @@ class Installer {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
 
+        // Respuestas de posición de cada jugador por ronda
         $pdo->exec("
             CREATE TABLE answers (
                 id             INT AUTO_INCREMENT PRIMARY KEY,
@@ -223,6 +250,7 @@ class Installer {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
 
+        // PINs de acceso individual (un PIN único por jugador en el modo individual)
         $pdo->exec("
             CREATE TABLE individual_pins (
                 id         INT AUTO_INCREMENT PRIMARY KEY,
@@ -230,6 +258,7 @@ class Installer {
                 pin        CHAR(4) NOT NULL,
                 used       TINYINT(1) DEFAULT 0,
                 player_id  INT NULL,
+                email      VARCHAR(255) NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY unique_pin_per_game (game_id, pin),
                 FOREIGN KEY (game_id)   REFERENCES games(id) ON DELETE CASCADE,
@@ -237,14 +266,44 @@ class Installer {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
 
-        $pdo->exec("CREATE TABLE schema_version (version INT DEFAULT 0)");
-        $pdo->exec("INSERT INTO schema_version (version) VALUES (5)");
+        // Puntuación global acumulada por email (para el ranking de premios)
+        $pdo->exec("
+            CREATE TABLE global_scores (
+                id           INT AUTO_INCREMENT PRIMARY KEY,
+                email        VARCHAR(255) NOT NULL,
+                name         VARCHAR(50)  NOT NULL,
+                total_points INT DEFAULT 0,
+                updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uk_email (email)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
 
-        // ── Canciones de muestra ───────────────────────────
+        // Catálogo de premios que se pueden canjear con puntos globales
+        $pdo->exec("
+            CREATE TABLE prizes_catalog (
+                id          INT AUTO_INCREMENT PRIMARY KEY,
+                name        VARCHAR(200) NOT NULL,
+                description VARCHAR(500) NULL,
+                image       VARCHAR(255) NULL,
+                points_cost INT NOT NULL DEFAULT 1000,
+                stock       INT DEFAULT -1,
+                active      TINYINT(1) DEFAULT 1,
+                created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        $pdo->exec("CREATE TABLE schema_version (version INT DEFAULT 0)");
+        $pdo->exec("INSERT INTO schema_version (version) VALUES (11)");
+
+        // Insertar las canciones de muestra del catálogo inicial
         $ins = $pdo->prepare("INSERT INTO songs (title, artist, year, genre) VALUES (?,?,?,?)");
         foreach (self::songs() as $s) { $ins->execute($s); }
     }
 
+    /**
+     * Catálogo inicial de canciones agrupadas por género.
+     * Se inserta solo en instalaciones nuevas (versión 0).
+     */
     private static function songs(): array {
         return [
             // Rock Internacional

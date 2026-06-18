@@ -1,4 +1,10 @@
 <?php
+/**
+ * PlayerController.php — Controlador del jugador
+ *
+ * Gestiona el join a la partida, el estado en tiempo real del jugador
+ * y el envío de respuestas de posición.
+ */
 require_once __DIR__ . '/../Modelo/Game.php';
 require_once __DIR__ . '/../Modelo/Player.php';
 
@@ -11,6 +17,11 @@ class PlayerController {
         $this->player = new Player();
     }
 
+    /**
+     * Une al jugador a una partida.
+     * - PIN individual: valida que esté disponible y no se haya usado.
+     * - PIN compartido: valida que la partida exista y acepte jugadores.
+     */
     public function joinGame(): array {
         $pin  = trim($_POST['pin']  ?? '');
         $name = trim($_POST['name'] ?? '');
@@ -18,13 +29,16 @@ class PlayerController {
         if (strlen($pin) !== 4 || !ctype_digit($pin)) return ['error' => 'PIN inválido (4 dígitos)'];
         if ($name === '' || strlen($name) > 30)        return ['error' => 'Nombre inválido (máx 30 caracteres)'];
 
-        // Primero buscar como PIN individual — el email viene guardado en la tabla
+        // Buscar primero como PIN individual — el email viene guardado en la tabla
         $gameByIndiv = $this->game->getByIndividualPin($pin);
         if ($gameByIndiv) {
             if ($gameByIndiv['status'] !== 'waiting') return ['error' => 'La partida ya ha comenzado'];
+
+            // Crear jugador y marcar el PIN como usado
             $email = $gameByIndiv['player_email'] ?? '';
             $pl    = $this->player->create((int)$gameByIndiv['id'], $name, $email);
             $this->game->claimIndividualPin($pin, $pl['id']);
+
             return [
                 'success'      => true,
                 'player_id'    => $pl['id'],
@@ -34,10 +48,12 @@ class PlayerController {
             ];
         }
 
-        // Buscar como PIN compartido — sin email
+        // Buscar como PIN compartido de sala
         $game = $this->game->getByPin($pin);
         if (!$game) return ['error' => 'PIN no encontrado'];
         if ($game['status'] !== 'waiting') return ['error' => 'La partida ya ha comenzado'];
+
+        // Evitar que alguien entre con el PIN de sala en una partida de PINs individuales
         if (($game['pin_mode'] ?? 'shared') === 'individual') {
             return ['error' => 'Esta partida usa PINs individuales. Usa tu código personal.'];
         }
@@ -52,21 +68,31 @@ class PlayerController {
         ];
     }
 
+    /**
+     * Devuelve el estado completo del jugador para su polling.
+     * Incluye: estado de la partida, su timeline, si ya respondió,
+     * la canción actual (sin año durante la pregunta), resultados de ronda,
+     * ranking y leaderboard final.
+     */
     public function getPlayerState(): array {
         $playerId = (int)($_GET['player_id'] ?? 0);
         if (!$playerId) return ['error' => 'Falta player_id'];
 
         $pl = $this->player->getById($playerId);
         if (!$pl) return ['error' => 'Jugador no encontrado'];
+
+        // Actualizar timestamp de actividad
         $this->player->ping($playerId);
 
         $gameId  = (int)$pl['game_id'];
         $state   = $this->game->getState($gameId);
         $players = $this->player->getByGame($gameId);
 
-        // Ranking del jugador
+        // Calcular posición en el ranking contando jugadores con más puntos
         $rank = 1;
-        foreach ($players as $p) { if ((int)$p['score'] > (int)$pl['score']) $rank++; }
+        foreach ($players as $p) {
+            if ((int)$p['score'] > (int)$pl['score']) $rank++;
+        }
 
         $state['player']        = $pl;
         $state['player_rank']   = $rank;
@@ -74,20 +100,23 @@ class PlayerController {
         $state['has_answered']  = false;
         $state['timeline']      = $this->player->getTimeline($playerId, $gameId);
 
-        if (in_array($state['status'], ['question','results'], true)) {
+        // Datos específicos del estado de pregunta o resultados
+        if (in_array($state['status'], ['question', 'results'], true)) {
             $song = $this->game->getCurrentSong($gameId);
             if ($song) {
                 $state['has_answered'] = $this->player->hasAnswered($playerId, $gameId, (int)$song['id']);
 
                 if ($state['status'] === 'question') {
-                    // Ocultar año al jugador durante la pregunta
+                    // Ocultar el año durante la pregunta para que no haga trampa
                     $songForPlayer = $song;
                     unset($songForPlayer['year']);
                     $state['song'] = $songForPlayer;
                 } else {
-                    $state['song']         = $song; // Año visible en resultados
+                    // En resultados sí se muestra el año y los resultados de la ronda
+                    $state['song']         = $song;
                     $results               = $this->player->getRoundResults($gameId, (int)$song['id']);
                     $state['round_results'] = $results;
+                    // Buscar el resultado específico de este jugador
                     foreach ($results as $r) {
                         if ($r['name'] === $pl['name']) { $state['my_result'] = $r; break; }
                     }
@@ -95,6 +124,7 @@ class PlayerController {
             }
         }
 
+        // En la pantalla final, enviar el leaderboard completo
         if ($state['status'] === 'finished') {
             $state['leaderboard'] = $players;
         }
@@ -102,6 +132,10 @@ class PlayerController {
         return $state;
     }
 
+    /**
+     * Procesa la respuesta de posición del jugador.
+     * Valida que la partida esté en fase de pregunta y que no haya respondido ya.
+     */
     public function submitAnswer(): array {
         $playerId = (int)($_POST['player_id'] ?? 0);
         $position = (int)($_POST['position']  ?? -1);

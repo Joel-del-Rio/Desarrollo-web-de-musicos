@@ -1,4 +1,11 @@
-<?php require_once __DIR__ . '/../config.php'; ?>
+<?php
+/**
+ * index.php — Página de inicio
+ *
+ * Muestra las tres opciones de navegación principales:
+ * Dinamizador, Jugador y Premios, junto con las instrucciones del juego.
+ */
+require_once __DIR__ . '/../config.php'; ?>
 <!DOCTYPE html>
 <html lang="es" data-bs-theme="dark">
 

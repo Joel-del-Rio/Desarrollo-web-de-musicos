@@ -1,4 +1,16 @@
-<?php require_once __DIR__ . '/../config.php'; ?>
+<?php
+/**
+ * premios.php — Página pública de premios y ranking global
+ *
+ * Tres pestañas:
+ *   - Premios: catálogo de premios canjeables con puntos
+ *   - Clasificación: ranking global top 50
+ *   - Mis puntos: consulta de puntos por email
+ *
+ * También incluye un panel de administración oculto (acceso con contraseña)
+ * para gestionar el catálogo de premios desde esta misma página.
+ */
+require_once __DIR__ . '/../config.php'; ?>
 <!DOCTYPE html>
 <html lang="es" data-bs-theme="dark">
 <head>

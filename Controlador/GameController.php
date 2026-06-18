@@ -1,4 +1,11 @@
 <?php
+/**
+ * GameController.php — Controlador de partida
+ *
+ * Recibe las peticiones del panel de admin, valida los datos de entrada
+ * y delega la lógica al modelo Game. También envía el email de confirmación
+ * al organizador al crear la partida.
+ */
 require_once __DIR__ . '/../Modelo/Game.php';
 require_once __DIR__ . '/../Modelo/Player.php';
 
@@ -11,8 +18,13 @@ class GameController {
         $this->player = new Player();
     }
 
+    /**
+     * Crea una nueva partida con los parámetros del formulario de configuración.
+     * Si se proporcionaron emails, envía los PINs por correo tras crear la partida.
+     */
     public function createGame(): array {
-        $rounds       = max(5, min(20, (int)($_POST['total_rounds']   ?? 10)));
+        // Validar y sanitizar parámetros (con rangos mínimos/máximos)
+        $rounds       = max(5,  min(20, (int)($_POST['total_rounds']   ?? 10)));
         $questionTime = max(20, min(60, (int)($_POST['question_time'] ?? 30)));
         $genre        = in_array($_POST['genre'] ?? '', GENRES, true) ? $_POST['genre'] : 'Todos';
         $showLinks    = ($_POST['show_links']    ?? '0') === '1' ? 1 : 0;
@@ -22,6 +34,7 @@ class GameController {
         $email        = filter_var(trim($_POST['organizer_email'] ?? ''), FILTER_VALIDATE_EMAIL) ?: '';
         $indivCount   = max(2, min(30, (int)($_POST['individual_count'] ?? 2)));
 
+        // Emails de los jugadores (modo individual) — se validan uno a uno
         $playerEmails = array_values(array_map(
             fn($e) => filter_var(trim($e), FILTER_VALIDATE_EMAIL) ?: '',
             $_POST['player_emails'] ?? []
@@ -34,11 +47,16 @@ class GameController {
             $playerEmails
         );
 
+        // Enviar emails de confirmación si la partida se creó correctamente
         if (empty($result['error'])) {
             require_once __DIR__ . '/../Modelo/EmailService.php';
+
             if ($pinMode === 'shared' && $email) {
+                // Modo compartido: un solo email al organizador con el PIN de sala
                 EmailService::sendGameCreated($email, $result['pin'], BASE_URL, 'shared', []);
+
             } elseif ($pinMode === 'individual' && !empty($result['individual_pins'])) {
+                // Modo individual: un email a cada jugador con su PIN personal
                 foreach ($result['individual_pins'] as $idx => $pin) {
                     $pEmail = $playerEmails[$idx] ?? '';
                     if ($pEmail) EmailService::sendPlayerPin($pEmail, $pin, BASE_URL, $idx + 1);
@@ -49,6 +67,10 @@ class GameController {
         return $result;
     }
 
+    /**
+     * Devuelve el estado completo de la partida para el polling del admin.
+     * Incluye jugadores, conteo de respuestas y resultados de ronda si aplica.
+     */
     public function getGameState(): array {
         $gameId = (int)($_GET['game_id'] ?? 0);
         if (!$gameId) return ['error' => 'Falta game_id'];
@@ -59,7 +81,8 @@ class GameController {
         $state['players']      = $players;
         $state['player_count'] = count($players);
 
-        if (in_array($state['status'], ['question','results'], true)) {
+        // Durante la pregunta o resultados, añadir datos de la canción actual
+        if (in_array($state['status'], ['question', 'results'], true)) {
             $song = $this->game->getCurrentSong($gameId);
             if ($song) {
                 $state['song']         = $song; // Admin ve el año siempre
@@ -73,47 +96,56 @@ class GameController {
         return $state;
     }
 
+    /**
+     * Devuelve el estado de la partida usando el PIN (para el join del jugador).
+     * Prueba primero como PIN individual y luego como PIN de sala.
+     */
     public function getGameStateByPin(): array {
         $pin = trim($_GET['pin'] ?? '');
         if (strlen($pin) !== 4 || !ctype_digit($pin)) return ['error' => 'PIN inválido'];
 
         $game = $this->game->getByPin($pin);
         if (!$game) {
-            // Intentar por PIN individual
             $game = $this->game->getByIndividualPin($pin);
             if (!$game) return ['error' => 'PIN no encontrado o partida finalizada'];
         }
+
         $gameId  = (int)$game['id'];
         $state   = $this->game->getState($gameId);
         $players = $this->player->getByGame($gameId);
+
         $state['id']           = $gameId;
         $state['players']      = $players;
         $state['player_count'] = count($players);
         return $state;
     }
 
+    /** Inicia la partida (solo el admin autorizado puede hacerlo) */
     public function startGame(): array {
-        $gameId = (int)($_POST['game_id']     ?? 0);
+        $gameId = (int)($_POST['game_id'] ?? 0);
         $token  = $_POST['admin_token'] ?? '';
         if (!$this->game->verifyAdmin($gameId, $token)) return ['error' => 'No autorizado'];
+
         $game = $this->game->getById($gameId);
-        if (!$game)                          return ['error' => 'Partida no encontrada'];
-        if ($game['status'] !== 'waiting')   return ['error' => 'La partida ya ha comenzado'];
+        if (!$game)                        return ['error' => 'Partida no encontrada'];
+        if ($game['status'] !== 'waiting') return ['error' => 'La partida ya ha comenzado'];
 
         $this->game->start($gameId);
         return ['success' => true];
     }
 
+    /** Pasa a modo resultados y muestra el año de la canción */
     public function showResults(): array {
-        $gameId = (int)($_POST['game_id']     ?? 0);
+        $gameId = (int)($_POST['game_id'] ?? 0);
         $token  = $_POST['admin_token'] ?? '';
         if (!$this->game->verifyAdmin($gameId, $token)) return ['error' => 'No autorizado'];
         $this->game->showResults($gameId);
         return ['success' => true];
     }
 
+    /** Avanza a la siguiente ronda o termina la partida */
     public function nextRound(): array {
-        $gameId = (int)($_POST['game_id']     ?? 0);
+        $gameId = (int)($_POST['game_id'] ?? 0);
         $token  = $_POST['admin_token'] ?? '';
         if (!$this->game->verifyAdmin($gameId, $token)) return ['error' => 'No autorizado'];
         $newStatus = $this->game->nextRound($gameId);
