@@ -19,6 +19,7 @@ let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0 }; // Opciones
 /* ── Arranque ── */
 (function init() {
   onAudioToggle(); // sincronizar estado inicial del toggle de autoplay
+  updatePlayerEmailFields(2); // pre-poblar los campos de email individual desde el inicio
   if (gameId && adminToken) {
     // Hay una partida guardada en localStorage — intentar recuperarla
     fetchState().then(state => {
@@ -355,7 +356,7 @@ function setPinMode(btn, mode) {
   document.getElementById('section-indiv-emails').classList.toggle('d-none', !isIndiv);
   document.getElementById('pin-mode-desc-shared').classList.toggle('d-none', isIndiv);
   document.getElementById('pin-mode-desc-individual').classList.toggle('d-none', !isIndiv);
-  if (isIndiv) updatePlayerEmailFields(parseInt(document.getElementById('indiv-count-input').value) || 2);
+  updatePlayerEmailFields(parseInt(document.getElementById('indiv-count-input').value) || 2);
 }
 
 /** Regenera dinámicamente los campos de email según el número de jugadores */
