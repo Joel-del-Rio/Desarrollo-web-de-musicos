@@ -112,6 +112,12 @@ require_once __DIR__ . '/../config.php'; ?>
     </div>
   </div>
 
+  <!-- Audio (YouTube embed y/o botones de streaming; visible solo si el admin lo activó) -->
+  <div id="audio-section" class="d-none" style="flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--bs-border-color);padding:.5rem 1rem .4rem">
+    <div id="audio-embed"></div>
+    <div id="audio-links" class="d-flex gap-2 mt-1 flex-wrap"></div>
+  </div>
+
   <!-- Timeline scrollable -->
   <div class="timeline-scroll" id="timeline-area">
     <!-- Generado por JS -->
@@ -192,6 +198,6 @@ require_once __DIR__ . '/../config.php'; ?>
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=15"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=16"></script>
 </body>
 </html>

@@ -74,7 +74,12 @@ function applyState(state) {
 
   // Si el jugador ya respondió, ir a pantalla de espera
   if (st === 'question' && state.has_answered) {
-    if (lastStatus !== 'answered') { showScreen('answered'); lastStatus = 'answered'; }
+    if (lastStatus !== 'answered') {
+      // Parar el audio quitando el iframe (evita que el vídeo siga sonando)
+      document.getElementById('audio-embed').innerHTML = '';
+      showScreen('answered');
+      lastStatus = 'answered';
+    }
     return;
   }
   // Transición local 'answered' → evitar que reaparezca el timeline antes de que el
@@ -161,9 +166,79 @@ function renderQuestion(state) {
 
   buildTimeline(state.timeline || []);
   updateStreakDisplay(state.player);
+  renderAudio(state);
 
   startTimerBar(state.time_left ?? questionTime, questionTime);
   startPolling(1000);
+}
+
+/* ── Audio del jugador ────────────────────────────────────────── */
+
+/** Extrae el ID de un vídeo de YouTube de cualquier formato de URL */
+function getYoutubeId(url) {
+  if (!url) return null;
+  const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+/**
+ * Rellena la sección de audio del jugador según la configuración de la partida.
+ * Si el admin activó embed_youtube: incrusta el iframe de YouTube.
+ * Si el admin activó show_links: muestra botones de Spotify y/o YouTube.
+ * Si no hay nada que mostrar, oculta la sección por completo.
+ */
+function renderAudio(state) {
+  const section    = document.getElementById('audio-section');
+  const embedEl    = document.getElementById('audio-embed');
+  const linksEl    = document.getElementById('audio-links');
+  const song       = state.song || {};
+  const embedYT    = state.embed_youtube;
+  const autoplay   = state.autoplay;
+  const showLinks  = state.show_links;
+
+  embedEl.innerHTML = '';
+  linksEl.innerHTML = '';
+  let hasContent = false;
+
+  // Iframe YouTube
+  if (embedYT && song.youtube_url) {
+    const ytId = getYoutubeId(song.youtube_url);
+    if (ytId) {
+      hasContent = true;
+      // muted=1 necesario para autoplay en móvil (política de navegadores)
+      const apParam = autoplay ? '&autoplay=1&muted=1' : '';
+      embedEl.innerHTML =
+        `<div style="position:relative;padding-bottom:52%;height:0;overflow:hidden;border-radius:8px;margin-bottom:.25rem">
+           <iframe style="position:absolute;top:0;left:0;width:100%;height:100%"
+             src="https://www.youtube.com/embed/${ytId}?rel=0${apParam}"
+             allow="autoplay; encrypted-media" allowfullscreen frameborder="0"></iframe>
+         </div>`;
+    }
+  }
+
+  // Botones de streaming
+  if (showLinks) {
+    if (song.spotify_url) {
+      hasContent = true;
+      linksEl.insertAdjacentHTML('beforeend',
+        `<a href="${song.spotify_url}" target="_blank" rel="noopener" class="btn btn-stream btn-spotify">
+           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+           Spotify
+         </a>`
+      );
+    }
+    if (song.youtube_url) {
+      hasContent = true;
+      linksEl.insertAdjacentHTML('beforeend',
+        `<a href="${song.youtube_url}" target="_blank" rel="noopener" class="btn btn-stream btn-youtube">
+           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
+           YouTube
+         </a>`
+      );
+    }
+  }
+
+  section.classList.toggle('d-none', !hasContent);
 }
 
 /**
@@ -270,10 +345,12 @@ async function confirmAnswer() {
       if (hint) hint.textContent = 'Error: ' + d.error;
       return;
     }
+    document.getElementById('audio-embed').innerHTML = '';
     showScreen('answered');
     lastStatus = 'answered';
   } catch {
     // Red inestable: ir a espera igualmente (el polling detectará el estado real)
+    document.getElementById('audio-embed').innerHTML = '';
     showScreen('answered');
     lastStatus = 'answered';
   }
