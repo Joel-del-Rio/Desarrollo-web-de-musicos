@@ -15,6 +15,7 @@ let lastStatus   = null;        // Último estado procesado (evita re-renders du
 let selectedPos  = null;        // Posición seleccionada en el timeline (índice)
 let currentSong  = null;        // Canción de la ronda actual
 let questionTime = 30;          // Duración de la pregunta en segundos
+let audioLoadGen = 0;           // Generación del fetch de audio; cancela fetches de rondas anteriores
 
 /* ── Arranque ── */
 (function init() {
@@ -145,7 +146,7 @@ function renderLobbyCount(state) {
 }
 
 /* ── Pantalla de pregunta (timeline interactivo) ──────────────── */
-async function renderQuestion(state) {
+function renderQuestion(state) {
   selectedPos  = null;
   currentSong  = state.song || {};
   lastStatus   = 'question'; // fijar aquí para que el dispatcher use la rama de tick
@@ -165,10 +166,10 @@ async function renderQuestion(state) {
 
   buildTimeline(state.timeline || []);
   updateStreakDisplay(state.player);
-  await renderAudio(state);
-
+  // Timer y polling arrancan inmediatamente; el audio carga en segundo plano
   startTimerBar(state.time_left ?? questionTime, questionTime);
   startPolling(1000);
+  renderAudio(state); // fire-and-forget: no bloquea el timer ni el polling
 }
 
 /* ── Reproductor de audio del jugador (iTunes Preview API) ───── */
@@ -238,8 +239,9 @@ async function fetchPlayerPreview(title, artist) {
   }
 }
 
-/** Detiene el audio del jugador y reinicia la UI del reproductor */
+/** Detiene el audio del jugador y cancela cualquier fetch de iTunes en curso */
 function stopPlayerAudio() {
+  audioLoadGen++; // invalida fetches pendientes
   const a = document.getElementById('p-audio');
   if (!a) return;
   a.pause();
@@ -272,25 +274,29 @@ async function renderAudio(state) {
   section.classList.toggle('d-none', !embedYT);
 
   if (embedYT && song.title) {
+    const gen = ++audioLoadGen; // identificador de esta carga concreta
     const playBtn = document.getElementById('p-play');
     if (playBtn) playBtn.innerHTML = P_SVG_PLAY;
     document.getElementById('p-afill').style.width = '0%';
     document.getElementById('p-atime').textContent = '…';
 
     const previewUrl = await fetchPlayerPreview(song.title, song.artist);
-    const a = document.getElementById('p-audio');
 
+    // Descartar si mientras esperaba llegó otra ronda o el fetch fue cancelado
+    if (gen !== audioLoadGen) return;
+
+    const a = document.getElementById('p-audio');
     if (previewUrl && a) {
       a.src = previewUrl;
       a.volume = playerAudioVolume;
       a.load();
-      a.onerror = () => { document.getElementById('p-atime').textContent = '0:00'; };
+      a.onerror = () => { document.getElementById('p-atime').textContent = '—'; };
       if (autoplay) {
         a.oncanplay = () => {
           a.oncanplay = null;
           a.play()
             .then(() => { document.getElementById('p-play').innerHTML = P_SVG_PAUSE; })
-            .catch(() => {});
+            .catch(() => {}); // autoplay bloqueado por el navegador — el jugador puede pulsar play
         };
       }
     } else if (a) {
