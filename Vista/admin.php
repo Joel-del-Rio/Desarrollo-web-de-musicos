@@ -140,8 +140,8 @@ require_once __DIR__ . '/../config.php'; ?>
 
       <!-- Email organizador (modo compartido) -->
       <div class="mb-4" id="section-shared-email">
-        <label class="form-label text-secondary small fw-semibold text-uppercase">Tu email <span style="font-weight:400;text-transform:none">(opcional)</span></label>
-        <input type="email" id="organizer-email" class="form-control" placeholder="tucorreo@ejemplo.com">
+        <label class="form-label text-secondary small fw-semibold text-uppercase">Tu email <span class="text-danger">*</span></label>
+        <input type="email" id="organizer-email" class="form-control" placeholder="tucorreo@ejemplo.com" required>
         <div class="form-text small" style="color:var(--muted)">Recibirás el PIN al crear la partida</div>
       </div>
 

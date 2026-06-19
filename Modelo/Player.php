@@ -42,7 +42,7 @@ class Player {
     /** Devuelve todos los jugadores de una partida, ordenados por puntuación */
     public function getByGame(int $gameId): array {
         $st = $this->db->prepare(
-            "SELECT id, name, score, avatar_color
+            "SELECT id, name, score, avatar_color, streak
              FROM players
              WHERE game_id=?
              ORDER BY score DESC, name ASC"
@@ -88,13 +88,16 @@ class Player {
     /**
      * Procesa la respuesta de posición del jugador:
      * 1. Evalúa si la posición elegida es cronológicamente correcta.
-     * 2. Calcula los puntos (base 500 + bonus por velocidad).
-     * 3. Guarda la respuesta en BD.
-     * 4. Si es correcta: añade la canción al timeline y suma puntos.
-     * 5. En partidas de PIN individual: acumula puntos en el ranking global.
+     * 2. Gestiona la racha: acierto → +1, fallo → reset a 0.
+     * 3. Calcula multiplicador de racha (×1.0 hasta racha<3; ×1.3 en racha=3, …, ×2.0 en racha≥10).
+     * 4. Calcula los puntos base (500 + bonus velocidad) y los multiplica por el multiplicador.
+     * 5. Guarda la respuesta en BD.
+     * 6. Si es correcta: añade la canción al timeline y suma puntos.
+     * 7. En partidas de PIN individual: acumula puntos en el ranking global.
      *
      * @param int $position  Índice en el timeline donde el jugador coloca la canción
      *                       (0 = antes de todo, N = después de todo)
+     * @return array  correct, points, streak, multiplier
      */
     public function submitPositionAnswer(
         int $playerId, int $gameId, int $songId,
@@ -105,10 +108,21 @@ class Player {
         $years     = array_column($timeline, 'year');
         $isCorrect = $this->isPositionCorrect($years, $position, $songYear);
 
-        // Puntos: 500 base + hasta 500 bonus según velocidad de respuesta
+        // Leer racha actual del jugador
+        $stStreak = $this->db->prepare("SELECT streak FROM players WHERE id=?");
+        $stStreak->execute([$playerId]);
+        $currentStreak = (int)($stStreak->fetchColumn() ?: 0);
+
+        // Actualizar racha: acierto incrementa, fallo la resetea a 0
+        $newStreak  = $isCorrect ? $currentStreak + 1 : 0;
+        // Multiplicador: ×1.0 si racha<3; ×(1.0 + racha×0.1) si racha≥3, máx ×2.0
+        $multiplier = $newStreak >= 3 ? min(2.0, 1.0 + $newStreak * 0.1) : 1.0;
+
+        // Puntos base: 500 + hasta 500 bonus por velocidad; aplicar multiplicador si acierto
         $points = 0;
         if ($isCorrect) {
-            $points = 500 + (int)round(500 * ($timeLeft / max(1, $questionTime)));
+            $base   = 500 + (int)round(500 * ($timeLeft / max(1, $questionTime)));
+            $points = (int)round($base * $multiplier);
         }
 
         // Guardar respuesta (INSERT IGNORE evita duplicados si el jugador reenvía)
@@ -119,34 +133,44 @@ class Player {
         );
         $st->execute([$gameId, $playerId, $songId, $position, $isCorrect ? 1 : 0, $points]);
 
-        if ($isCorrect && $this->db->lastInsertId() > 0) {
-            // Añadir la canción acertada a la línea del tiempo del jugador
-            $this->db->prepare(
-                "INSERT IGNORE INTO player_timeline (player_id, game_id, song_id) VALUES (?,?,?)"
-            )->execute([$playerId, $gameId, $songId]);
+        if ($this->db->lastInsertId() > 0) {
+            // Actualizar racha en BD siempre que la respuesta sea nueva (no duplicado)
+            $this->db->prepare("UPDATE players SET streak=? WHERE id=?")->execute([$newStreak, $playerId]);
 
-            // Sumar puntos a la puntuación de la partida
-            $this->db->prepare("UPDATE players SET score=score+? WHERE id=?")->execute([$points, $playerId]);
+            if ($isCorrect) {
+                // Añadir la canción acertada a la línea del tiempo del jugador
+                $this->db->prepare(
+                    "INSERT IGNORE INTO player_timeline (player_id, game_id, song_id) VALUES (?,?,?)"
+                )->execute([$playerId, $gameId, $songId]);
 
-            // Acumular en ranking global solo si la partida es de PIN individual
-            $gmSt = $this->db->prepare("SELECT pin_mode FROM games WHERE id=?");
-            $gmSt->execute([$gameId]);
-            $gameRow = $gmSt->fetch();
+                // Sumar puntos a la puntuación de la partida
+                $this->db->prepare("UPDATE players SET score=score+? WHERE id=?")->execute([$points, $playerId]);
 
-            if (($gameRow['pin_mode'] ?? '') === 'individual') {
-                $pl = $this->getById($playerId);
-                if (!empty($pl['email'])) {
-                    // UPSERT: si ya existe el email, suma los puntos; si no, lo crea
-                    $this->db->prepare(
-                        "INSERT INTO global_scores (email, name, total_points)
-                         VALUES (?, ?, ?)
-                         ON DUPLICATE KEY UPDATE total_points = total_points + ?, name = VALUES(name)"
-                    )->execute([$pl['email'], $pl['name'], $points, $points]);
+                // Acumular en ranking global solo si la partida es de PIN individual
+                $gmSt = $this->db->prepare("SELECT pin_mode FROM games WHERE id=?");
+                $gmSt->execute([$gameId]);
+                $gameRow = $gmSt->fetch();
+
+                if (($gameRow['pin_mode'] ?? '') === 'individual') {
+                    $pl = $this->getById($playerId);
+                    if (!empty($pl['email'])) {
+                        // UPSERT: si ya existe el email, suma los puntos; si no, lo crea
+                        $this->db->prepare(
+                            "INSERT INTO global_scores (email, name, total_points)
+                             VALUES (?, ?, ?)
+                             ON DUPLICATE KEY UPDATE total_points = total_points + ?, name = VALUES(name)"
+                        )->execute([$pl['email'], $pl['name'], $points, $points]);
+                    }
                 }
             }
         }
 
-        return ['correct' => $isCorrect, 'points' => $points];
+        return [
+            'correct'    => $isCorrect,
+            'points'     => $points,
+            'streak'     => $newStreak,
+            'multiplier' => $multiplier,
+        ];
     }
 
     /** Cuenta cuántos jugadores han respondido ya la canción actual */

@@ -245,11 +245,27 @@ class Game {
 
     /**
      * Avanza a la siguiente ronda o finaliza la partida si era la última.
+     * Resetea la racha a 0 para los jugadores que no respondieron en la ronda completada
+     * (no tienen entrada en answers para la canción de esa ronda).
      * @return string  Nuevo estado: 'question' o 'finished'
      */
     public function nextRound(int $gameId): string {
-        $game = $this->getById($gameId);
-        $next = (int)$game['current_round'] + 1;
+        $game        = $this->getById($gameId);
+        $currentRound = (int)$game['current_round'];
+        $next         = $currentRound + 1;
+
+        // Romper la racha de jugadores que no respondieron en la ronda completada
+        $this->db->prepare(
+            "UPDATE players SET streak = 0
+             WHERE game_id = ?
+               AND id NOT IN (
+                 SELECT player_id FROM answers
+                 WHERE game_id = ? AND song_id = (
+                   SELECT song_id FROM game_songs
+                   WHERE game_id = ? AND round_number = ?
+                 )
+               )"
+        )->execute([$gameId, $gameId, $gameId, $currentRound]);
 
         if ($next > (int)$game['total_rounds']) {
             $this->db->prepare("UPDATE games SET status='finished' WHERE id=?")->execute([$gameId]);

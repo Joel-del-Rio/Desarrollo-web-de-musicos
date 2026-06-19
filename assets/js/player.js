@@ -103,9 +103,23 @@ function applyState(state) {
 
 /** Actualización ligera cada poll durante la pregunta (no toca el DOM del timeline) */
 function updateQuestionTick(state) {
-  // El countdown local ya gestiona la barra visual; aquí no hay más widgets que actualizar
-  const pct = state.total_players > 0
-    ? Math.round(((state.answer_count || 0) / state.total_players) * 100) : 0;
+  // El countdown local ya gestiona la barra visual; actualizar racha si cambia
+  updateStreakDisplay(state.player);
+}
+
+/** Muestra u oculta el indicador de racha en la cabecera de la pregunta */
+function updateStreakDisplay(player) {
+  const box = document.getElementById('q-streak-box');
+  if (!box) return;
+  const streak = (player && player.streak) ? parseInt(player.streak) : 0;
+  if (streak >= 3) {
+    const mult = Math.min(2.0, 1.0 + streak * 0.1).toFixed(1);
+    document.getElementById('q-streak-count').textContent = streak;
+    document.getElementById('q-multiplier').textContent   = mult;
+    box.classList.remove('d-none');
+  } else {
+    box.classList.add('d-none');
+  }
 }
 
 /* ── Lobby ────────────────────────────────────────────────────── */
@@ -146,6 +160,7 @@ function renderQuestion(state) {
   hint.textContent = 'Toca una posición en tu línea del tiempo';
 
   buildTimeline(state.timeline || []);
+  updateStreakDisplay(state.player);
 
   startTimerBar(state.time_left ?? questionTime, questionTime);
   startPolling(1000);

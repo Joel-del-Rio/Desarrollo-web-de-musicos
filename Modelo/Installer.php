@@ -125,8 +125,15 @@ class Installer {
             $currentVersion = 11;
         }
 
+        // v12: columna de racha para el sistema de multiplicador de puntos por aciertos consecutivos
+        if ($currentVersion === 11) {
+            try { $pdo->exec("ALTER TABLE players ADD COLUMN streak INT DEFAULT 0"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=12");
+            $currentVersion = 12;
+        }
+
         // Esquema actualizado: verificar integridad y salir
-        if ($currentVersion >= 11) {
+        if ($currentVersion >= 12) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
@@ -200,6 +207,7 @@ class Installer {
                 score        INT DEFAULT 0,
                 avatar_color VARCHAR(7) DEFAULT '#FF6B6B',
                 email        VARCHAR(255) NULL,
+                streak       INT DEFAULT 0,
                 last_seen    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 joined_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
@@ -293,7 +301,7 @@ class Installer {
         ");
 
         $pdo->exec("CREATE TABLE schema_version (version INT DEFAULT 0)");
-        $pdo->exec("INSERT INTO schema_version (version) VALUES (11)");
+        $pdo->exec("INSERT INTO schema_version (version) VALUES (12)");
 
         // Insertar las canciones de muestra del catálogo inicial
         $ins = $pdo->prepare("INSERT INTO songs (title, artist, year, genre) VALUES (?,?,?,?)");

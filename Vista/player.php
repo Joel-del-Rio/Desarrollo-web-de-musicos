@@ -102,8 +102,13 @@ require_once __DIR__ . '/../config.php'; ?>
       </div>
     </div>
     <div class="timer-bar mt-2"><div class="timer-fill" id="timer-fill" style="width:100%"></div></div>
-    <div class="text-secondary mt-1" style="font-size:.75rem">
-      Ronda <span id="q-round">1</span> de <span id="q-total">10</span>
+    <div class="d-flex align-items-center justify-content-between mt-1">
+      <div class="text-secondary" style="font-size:.75rem">
+        Ronda <span id="q-round">1</span> de <span id="q-total">10</span>
+      </div>
+      <div id="q-streak-box" class="d-none" style="font-size:.75rem;font-weight:700;color:var(--accent)">
+        🔥 Racha <span id="q-streak-count">0</span> &nbsp;×<span id="q-multiplier">1.0</span>
+      </div>
     </div>
   </div>
 
@@ -187,6 +192,6 @@ require_once __DIR__ . '/../config.php'; ?>
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=14"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=15"></script>
 </body>
 </html>

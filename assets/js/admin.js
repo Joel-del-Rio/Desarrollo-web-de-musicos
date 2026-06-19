@@ -468,6 +468,14 @@ async function createGame() {
   const errEl = document.getElementById('setup-error');
   errEl.classList.add('d-none');
 
+  // En modo compartido, el email del organizador es obligatorio
+  if (pinMode === 'shared' && !organizerEmail) {
+    errEl.textContent = 'Introduce tu email para recibir el PIN de la partida.';
+    errEl.classList.remove('d-none');
+    document.getElementById('organizer-email').focus();
+    return;
+  }
+
   // En modo individual, validar que todos los emails estén rellenos
   if (pinMode === 'individual') {
     const inputs = [...document.querySelectorAll('#indiv-email-fields .player-email-input')];
