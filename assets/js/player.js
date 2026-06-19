@@ -208,7 +208,8 @@ function playerSetVolume(val) {
 
 function playerAudioToggle() {
   const a = document.getElementById('p-audio');
-  if (!a || !a.src) return;
+  // Usar getAttribute en vez de .src — .src resuelve '' a la URL de la página (siempre truthy)
+  if (!a || !a.getAttribute('src')) return;
   if (a.paused) {
     a.play().then(() => { document.getElementById('p-play').innerHTML = P_SVG_PAUSE; }).catch(() => {});
   } else {
@@ -242,7 +243,8 @@ function stopPlayerAudio() {
   const a = document.getElementById('p-audio');
   if (!a) return;
   a.pause();
-  a.src = '';
+  a.removeAttribute('src'); // removeAttribute evita que el navegador resuelva '' a la URL actual
+  a.load();
   const playBtn = document.getElementById('p-play');
   if (playBtn) playBtn.innerHTML = P_SVG_PLAY;
   const fill = document.getElementById('p-afill');
@@ -292,8 +294,8 @@ async function renderAudio(state) {
         };
       }
     } else if (a) {
-      a.src = '';
-      document.getElementById('p-atime').textContent = '0:00';
+      a.removeAttribute('src');
+      document.getElementById('p-atime').textContent = '—';
     }
   }
 
