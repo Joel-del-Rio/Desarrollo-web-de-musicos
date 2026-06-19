@@ -76,8 +76,6 @@ function applyState(state) {
   // Si el jugador ya respondió, ir a pantalla de espera
   if (st === 'question' && state.has_answered) {
     if (lastStatus !== 'answered') {
-      // Parar el audio quitando el iframe (evita que el vídeo siga sonando)
-      stopPlayerAudio();
       showScreen('answered');
       lastStatus = 'answered';
     }
@@ -424,12 +422,10 @@ async function confirmAnswer() {
       if (hint) hint.textContent = 'Error: ' + d.error;
       return;
     }
-    stopPlayerAudio();
     showScreen('answered');
     lastStatus = 'answered';
   } catch {
     // Red inestable: ir a espera igualmente (el polling detectará el estado real)
-    stopPlayerAudio();
     showScreen('answered');
     lastStatus = 'answered';
   }
