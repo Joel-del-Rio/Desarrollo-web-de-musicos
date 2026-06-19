@@ -353,9 +353,8 @@ function setPinMode(btn, mode) {
   const isIndiv = mode === 'individual';
   document.getElementById('section-shared-email').classList.toggle('d-none', isIndiv);
   document.getElementById('section-indiv-emails').classList.toggle('d-none', !isIndiv);
-  document.getElementById('pin-mode-desc').textContent = isIndiv
-    ? 'Cada jugador recibirá su propio PIN único por email'
-    : 'Un único PIN para toda la sala — todos lo comparten';
+  document.getElementById('pin-mode-desc-shared').classList.toggle('d-none', isIndiv);
+  document.getElementById('pin-mode-desc-individual').classList.toggle('d-none', !isIndiv);
   if (isIndiv) updatePlayerEmailFields(parseInt(document.getElementById('indiv-count-input').value) || 2);
 }
 

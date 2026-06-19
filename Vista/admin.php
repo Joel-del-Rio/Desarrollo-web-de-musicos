@@ -114,9 +114,27 @@ require_once __DIR__ . '/../config.php'; ?>
           <button type="button" class="btn btn-sm rounded-pill genre-btn"
                   onclick="setPinMode(this,'individual')" data-mode="individual">🎟️ PINs individuales</button>
         </div>
-        <div class="small mt-2" id="pin-mode-desc" style="color:var(--muted)">
-          Un único PIN para toda la sala — todos lo comparten
+
+        <!-- Descripción detallada del modo seleccionado -->
+        <div id="pin-mode-desc-shared" class="mt-3 p-3 rounded-3" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+          <div class="fw-semibold small mb-2">🔑 PIN compartido</div>
+          <ul class="small mb-0 ps-3" style="color:var(--muted);line-height:1.9">
+            <li>Se genera un único PIN de 4 dígitos para toda la sala.</li>
+            <li>Los jugadores lo introducen ellos mismos en su móvil para unirse.</li>
+            <li>Ideal para partidas en grupo presencial (proyectas el PIN en pantalla).</li>
+            <li>Los puntos <strong style="color:#fff">no</strong> se acumulan en el ranking global de premios.</li>
+          </ul>
         </div>
+        <div id="pin-mode-desc-individual" class="mt-3 p-3 rounded-3 d-none" style="background:rgba(233,69,96,.06);border:1px solid rgba(233,69,96,.2)">
+          <div class="fw-semibold small mb-2" style="color:var(--accent)">🎟️ PINs individuales</div>
+          <ul class="small mb-0 ps-3" style="color:var(--muted);line-height:1.9">
+            <li>Se genera un PIN único y personal para cada jugador.</li>
+            <li>Cada jugador recibe su PIN por email — no hace falta que estén presentes para apuntarse.</li>
+            <li>Los puntos <strong style="color:#fff">sí</strong> se acumulan en el ranking global y pueden canjearse por premios.</li>
+            <li>Requiere introducir el email de cada jugador antes de crear la partida.</li>
+          </ul>
+        </div>
+
         <input type="hidden" id="pin-mode" value="shared">
       </div>
 
