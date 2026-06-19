@@ -112,10 +112,24 @@ require_once __DIR__ . '/../config.php'; ?>
     </div>
   </div>
 
-  <!-- Audio (YouTube embed y/o botones de streaming; visible solo si el admin lo activó) -->
-  <div id="audio-section" class="d-none" style="flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--bs-border-color);padding:.5rem 1rem .4rem">
-    <div id="audio-embed"></div>
-    <div id="audio-links" class="d-flex gap-2 mt-1 flex-wrap"></div>
+  <!-- Reproductor de audio (iTunes preview; visible solo si el admin activó embed_youtube) -->
+  <div id="audio-section" class="d-none" style="flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--bs-border-color);padding:.6rem 1rem .5rem">
+    <audio id="p-audio"></audio>
+    <div class="audio-ctrl">
+      <button class="a-play" id="p-play" onclick="playerAudioToggle()" title="Play/Pausa">
+        <svg id="p-play-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <div class="a-bar" id="p-bar" onclick="playerAudioSeek(event,this)">
+        <div class="a-fill" id="p-afill"></div>
+      </div>
+      <span class="a-time" id="p-atime">0:00</span>
+    </div>
+    <div class="audio-vol mt-1">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="opacity:.5;flex-shrink:0"><path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
+      <input type="range" class="audio-vol-range" id="p-vol" min="0" max="100" value="80" oninput="playerSetVolume(this.value)">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="opacity:.5;flex-shrink:0"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+    </div>
+    <div id="audio-links" class="d-flex gap-2 mt-2 flex-wrap"></div>
   </div>
 
   <!-- Timeline scrollable -->
@@ -198,6 +212,6 @@ require_once __DIR__ . '/../config.php'; ?>
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=16"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=17"></script>
 </body>
 </html>

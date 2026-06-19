@@ -42,6 +42,7 @@ let questionTime = 30;          // Duración de la pregunta en segundos
   // Enviar con Enter en el formulario de join
   document.getElementById('pin-input')?.addEventListener('keydown',  e => { if(e.key==='Enter') joinGame(); });
   document.getElementById('name-input')?.addEventListener('keydown', e => { if(e.key==='Enter') joinGame(); });
+  initPlayerAudio();
 })();
 
 /* ── Llamada API ──────────────────────────────────────────────── */
@@ -76,7 +77,7 @@ function applyState(state) {
   if (st === 'question' && state.has_answered) {
     if (lastStatus !== 'answered') {
       // Parar el audio quitando el iframe (evita que el vídeo siga sonando)
-      document.getElementById('audio-embed').innerHTML = '';
+      stopPlayerAudio();
       showScreen('answered');
       lastStatus = 'answered';
     }
@@ -146,7 +147,7 @@ function renderLobbyCount(state) {
 }
 
 /* ── Pantalla de pregunta (timeline interactivo) ──────────────── */
-function renderQuestion(state) {
+async function renderQuestion(state) {
   selectedPos  = null;
   currentSong  = state.song || {};
   lastStatus   = 'question'; // fijar aquí para que el dispatcher use la rama de tick
@@ -166,60 +167,141 @@ function renderQuestion(state) {
 
   buildTimeline(state.timeline || []);
   updateStreakDisplay(state.player);
-  renderAudio(state);
+  await renderAudio(state);
 
   startTimerBar(state.time_left ?? questionTime, questionTime);
   startPolling(1000);
 }
 
-/* ── Audio del jugador ────────────────────────────────────────── */
+/* ── Reproductor de audio del jugador (iTunes Preview API) ───── */
 
-/** Extrae el ID de un vídeo de YouTube de cualquier formato de URL */
-function getYoutubeId(url) {
-  if (!url) return null;
-  const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
-  return m ? m[1] : null;
+const P_SVG_PLAY  = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+const P_SVG_PAUSE = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+const P_VOL_KEY   = 'hitstoric_p_vol';
+let playerAudioVolume = parseFloat(localStorage.getItem(P_VOL_KEY) ?? '0.8');
+
+/** Inicializa listeners del elemento <audio> del jugador (llamar una sola vez al cargar la página) */
+function initPlayerAudio() {
+  const a = document.getElementById('p-audio');
+  if (!a) return;
+  a.volume = playerAudioVolume;
+  const slider = document.getElementById('p-vol');
+  if (slider) slider.value = Math.round(playerAudioVolume * 100);
+  a.addEventListener('timeupdate', () => {
+    if (!a.duration) return;
+    document.getElementById('p-afill').style.width = (a.currentTime / a.duration * 100) + '%';
+    document.getElementById('p-atime').textContent = pFmtTime(a.currentTime) + ' / ' + pFmtTime(a.duration);
+  });
+  a.addEventListener('ended',           () => { document.getElementById('p-play').innerHTML = P_SVG_PLAY; });
+  a.addEventListener('loadedmetadata',  () => { document.getElementById('p-atime').textContent = '0:00 / ' + pFmtTime(a.duration); });
+}
+
+function pFmtTime(s) {
+  const m = Math.floor(s / 60);
+  return `${m}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+}
+
+function playerSetVolume(val) {
+  playerAudioVolume = val / 100;
+  localStorage.setItem(P_VOL_KEY, playerAudioVolume);
+  const a = document.getElementById('p-audio');
+  if (a) a.volume = playerAudioVolume;
+}
+
+function playerAudioToggle() {
+  const a = document.getElementById('p-audio');
+  if (!a || !a.src) return;
+  if (a.paused) {
+    a.play().then(() => { document.getElementById('p-play').innerHTML = P_SVG_PAUSE; }).catch(() => {});
+  } else {
+    a.pause();
+    document.getElementById('p-play').innerHTML = P_SVG_PLAY;
+  }
+}
+
+function playerAudioSeek(e, bar) {
+  const a = document.getElementById('p-audio');
+  if (!a || !a.duration) return;
+  const rect = bar.getBoundingClientRect();
+  a.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * a.duration;
+}
+
+/** Busca una preview de 30s en la API de iTunes por título y artista */
+async function fetchPlayerPreview(title, artist) {
+  try {
+    const q = encodeURIComponent((title || '') + ' ' + (artist || ''));
+    const r = await fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=5`);
+    const data = await r.json();
+    const hit = data.results?.find(t => t.previewUrl);
+    return hit?.previewUrl ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Detiene el audio del jugador y reinicia la UI del reproductor */
+function stopPlayerAudio() {
+  const a = document.getElementById('p-audio');
+  if (!a) return;
+  a.pause();
+  a.src = '';
+  const playBtn = document.getElementById('p-play');
+  if (playBtn) playBtn.innerHTML = P_SVG_PLAY;
+  const fill = document.getElementById('p-afill');
+  if (fill) fill.style.width = '0%';
+  const time = document.getElementById('p-atime');
+  if (time) time.textContent = '0:00';
 }
 
 /**
- * Rellena la sección de audio del jugador según la configuración de la partida.
- * Si el admin activó embed_youtube: incrusta el iframe de YouTube.
- * Si el admin activó show_links: muestra botones de Spotify y/o YouTube.
- * Si no hay nada que mostrar, oculta la sección por completo.
+ * Carga y muestra el reproductor de audio del jugador.
+ * Solo se activa si el admin habilitó embed_youtube al crear la partida.
+ * Busca la preview en iTunes por título+artista.
  */
-function renderAudio(state) {
-  const section    = document.getElementById('audio-section');
-  const embedEl    = document.getElementById('audio-embed');
-  const linksEl    = document.getElementById('audio-links');
-  const song       = state.song || {};
-  const embedYT    = state.embed_youtube;
-  const autoplay   = state.autoplay;
-  const showLinks  = state.show_links;
+async function renderAudio(state) {
+  const section   = document.getElementById('audio-section');
+  const linksEl   = document.getElementById('audio-links');
+  const song      = state.song || {};
+  const embedYT   = state.embed_youtube;
+  const autoplay  = state.autoplay;
+  const showLinks = state.show_links;
 
-  embedEl.innerHTML = '';
   linksEl.innerHTML = '';
-  let hasContent = false;
 
-  // Iframe YouTube
-  if (embedYT && song.youtube_url) {
-    const ytId = getYoutubeId(song.youtube_url);
-    if (ytId) {
-      hasContent = true;
-      // muted=1 necesario para autoplay en móvil (política de navegadores)
-      const apParam = autoplay ? '&autoplay=1&muted=1' : '';
-      embedEl.innerHTML =
-        `<div style="position:relative;padding-bottom:52%;height:0;overflow:hidden;border-radius:8px;margin-bottom:.25rem">
-           <iframe style="position:absolute;top:0;left:0;width:100%;height:100%"
-             src="https://www.youtube.com/embed/${ytId}?rel=0${apParam}"
-             allow="autoplay; encrypted-media" allowfullscreen frameborder="0"></iframe>
-         </div>`;
+  // Mostrar la sección solo si el admin activó el audio
+  section.classList.toggle('d-none', !embedYT);
+
+  if (embedYT && song.title) {
+    const playBtn = document.getElementById('p-play');
+    if (playBtn) playBtn.innerHTML = P_SVG_PLAY;
+    document.getElementById('p-afill').style.width = '0%';
+    document.getElementById('p-atime').textContent = '…';
+
+    const previewUrl = await fetchPlayerPreview(song.title, song.artist);
+    const a = document.getElementById('p-audio');
+
+    if (previewUrl && a) {
+      a.src = previewUrl;
+      a.volume = playerAudioVolume;
+      a.load();
+      a.onerror = () => { document.getElementById('p-atime').textContent = '0:00'; };
+      if (autoplay) {
+        a.oncanplay = () => {
+          a.oncanplay = null;
+          a.play()
+            .then(() => { document.getElementById('p-play').innerHTML = P_SVG_PAUSE; })
+            .catch(() => {});
+        };
+      }
+    } else if (a) {
+      a.src = '';
+      document.getElementById('p-atime').textContent = '0:00';
     }
   }
 
-  // Botones de streaming
+  // Botones de streaming (si el admin también activó show_links)
   if (showLinks) {
     if (song.spotify_url) {
-      hasContent = true;
       linksEl.insertAdjacentHTML('beforeend',
         `<a href="${song.spotify_url}" target="_blank" rel="noopener" class="btn btn-stream btn-spotify">
            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
@@ -228,7 +310,6 @@ function renderAudio(state) {
       );
     }
     if (song.youtube_url) {
-      hasContent = true;
       linksEl.insertAdjacentHTML('beforeend',
         `<a href="${song.youtube_url}" target="_blank" rel="noopener" class="btn btn-stream btn-youtube">
            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
@@ -237,8 +318,6 @@ function renderAudio(state) {
       );
     }
   }
-
-  section.classList.toggle('d-none', !hasContent);
 }
 
 /**
@@ -345,12 +424,12 @@ async function confirmAnswer() {
       if (hint) hint.textContent = 'Error: ' + d.error;
       return;
     }
-    document.getElementById('audio-embed').innerHTML = '';
+    stopPlayerAudio();
     showScreen('answered');
     lastStatus = 'answered';
   } catch {
     // Red inestable: ir a espera igualmente (el polling detectará el estado real)
-    document.getElementById('audio-embed').innerHTML = '';
+    stopPlayerAudio();
     showScreen('answered');
     lastStatus = 'answered';
   }
