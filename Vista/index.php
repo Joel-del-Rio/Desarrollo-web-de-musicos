@@ -95,13 +95,13 @@ require_once __DIR__ . '/../config.php'; ?>
   <!-- Botón oculto de acceso superadmin (aparece al hacer clic en el footer) -->
   <div class="text-center mt-3 pb-2" id="sa-btn-wrap">
     <button class="btn btn-link btn-sm text-secondary opacity-25" style="font-size:.7rem"
-            onclick="document.getElementById('saLoginModal').classList.remove('d-none')">
+            onclick="document.getElementById('saLoginModal').style.display='flex'">
       Admin
     </button>
   </div>
 
   <!-- Modal login superadmin -->
-  <div id="saLoginModal" class="d-none" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex!important;align-items:center;justify-content:center">
+  <div id="saLoginModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center">
     <div class="card p-4" style="width:100%;max-width:340px">
       <div class="fw-black mb-3">Acceso Superadmin</div>
       <div class="mb-3">
@@ -116,7 +116,7 @@ require_once __DIR__ . '/../config.php'; ?>
       <div id="idx-sa-err" class="alert alert-danger py-2 small d-none mb-3"></div>
       <div class="d-flex gap-2">
         <button class="btn btn-outline-secondary rounded-pill flex-fill"
-                onclick="document.getElementById('saLoginModal').classList.add('d-none')">Cancelar</button>
+                onclick="document.getElementById('saLoginModal').style.display='none'">Cancelar</button>
         <button class="btn btn-game rounded-pill flex-fill fw-bold" onclick="idxSaLogin()">Entrar</button>
       </div>
     </div>
@@ -144,7 +144,7 @@ require_once __DIR__ . '/../config.php'; ?>
 
       if (r.success) {
         sessionStorage.setItem('sa_auth', '1');
-        document.getElementById('saLoginModal').classList.add('d-none');
+        document.getElementById('saLoginModal').style.display = 'none';
         document.getElementById('superadmin-card').classList.remove('d-none');
         document.getElementById('sa-btn-wrap').classList.add('d-none');
       } else {
