@@ -25,7 +25,7 @@ require_once __DIR__ . '/../config.php'; ?>
       <img src="<?= BASE_URL ?>/assets/images/Logo.png" alt="Hitstoric" style="width:100%;max-width:100%;display:block">
     </div>
 
-    <div class="d-flex flex-column gap-3 mb-4">
+    <div class="d-flex flex-column gap-3 mb-3">
 
       <a href="<?= BASE_URL ?>/Vista/admin.php" class="card text-decoration-none p-3 d-flex flex-row align-items-center gap-3"
         style="border:2px solid transparent !important;transition:border-color .2s,transform .15s"
@@ -67,7 +67,7 @@ require_once __DIR__ . '/../config.php'; ?>
 
     <!-- Tarjeta superadmin: visible solo tras login -->
     <a href="<?= BASE_URL ?>/Vista/superadmin.php" id="superadmin-card"
-       class="card text-decoration-none p-3 d-flex flex-row align-items-center gap-3 d-none mt-3 mb-3"
+       class="card text-decoration-none p-3 d-flex flex-row align-items-center gap-3 d-none mt-0 mb-4"
        style="border:2px solid rgba(233,69,96,.4) !important;transition:border-color .2s,transform .15s"
        onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-2px)'"
        onmouseout="this.style.borderColor='rgba(233,69,96,.4)';this.style.transform=''">
