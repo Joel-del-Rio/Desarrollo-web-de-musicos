@@ -168,6 +168,7 @@ require_once __DIR__ . '/../config.php'; ?>
     <div style="font-size:4.5rem" id="res-icon">—</div>
     <div class="fw-black fs-3" id="res-msg">—</div>
     <div class="pts-badge" id="res-pts"></div>
+    <div id="res-streak" class="d-none fw-bold" style="font-size:.95rem;color:var(--accent)"></div>
 
     <!-- Reveal canción -->
     <div class="card w-100 p-3">
@@ -212,6 +213,6 @@ require_once __DIR__ . '/../config.php'; ?>
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=20"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=21"></script>
 </body>
 </html>

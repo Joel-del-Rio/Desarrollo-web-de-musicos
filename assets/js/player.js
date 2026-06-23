@@ -451,13 +451,32 @@ function renderResults(state) {
   document.getElementById('r-year').textContent   = song.year   || '—';
   document.getElementById('r-genre').textContent  = song.genre  || '';
 
-  // Mostrar si acertó o no, y los puntos ganados
+  // Mostrar si acertó o no, puntos y racha
+  const streak    = parseInt((state.player || {}).streak || 0);
+  const streakEl  = document.getElementById('res-streak');
+  streakEl.classList.add('d-none');
+  streakEl.innerHTML = '';
+
   if (myRes) {
     const ok = !!myRes.is_correct;
     document.getElementById('res-icon').textContent = ok ? '✅' : '❌';
     document.getElementById('res-msg').textContent  = ok ? '¡Colocación correcta!' : 'Posición incorrecta';
     document.getElementById('res-msg').style.color  = ok ? 'var(--success)' : 'var(--error)';
     document.getElementById('res-pts').textContent  = ok ? `+${myRes.points_earned} pts` : '0 pts';
+
+    if (ok && streak >= 3) {
+      // Desglosar: puntos base × multiplicador
+      const mult = Math.min(2.0, 1.0 + streak * 0.1);
+      const base = Math.round(myRes.points_earned / mult);
+      streakEl.innerHTML =
+        `${base} pts base &times; <span style="font-size:1.1em">${mult.toFixed(1)}</span>`
+        + ` &nbsp;·&nbsp; 🔥 Racha ${streak}`;
+      streakEl.classList.remove('d-none');
+    } else if (streak > 0) {
+      // Racha en curso pero sin multiplicador activo todavía
+      streakEl.innerHTML = `🔥 Racha ${streak}`;
+      streakEl.classList.remove('d-none');
+    }
   } else {
     // No respondió a tiempo
     document.getElementById('res-icon').textContent = '⏱️';
