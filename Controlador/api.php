@@ -114,6 +114,28 @@ try {
             echo json_encode((new PrizeController())->getMyScore());
             break;
 
+        // ── Superadmin ─────────────────────────────────
+
+        case 'superadmin_login':
+            require_once __DIR__ . '/SuperadminController.php';
+            echo json_encode((new SuperadminController())->login());
+            break;
+
+        case 'superadmin_stats':
+            require_once __DIR__ . '/SuperadminController.php';
+            echo json_encode((new SuperadminController())->getStats());
+            break;
+
+        case 'superadmin_games':
+            require_once __DIR__ . '/SuperadminController.php';
+            echo json_encode((new SuperadminController())->getGames());
+            break;
+
+        case 'superadmin_game_detail':
+            require_once __DIR__ . '/SuperadminController.php';
+            echo json_encode((new SuperadminController())->getGameDetail());
+            break;
+
         // ── Canciones ──────────────────────────────────
 
         case 'get_songs':

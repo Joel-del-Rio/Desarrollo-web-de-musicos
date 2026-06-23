@@ -65,6 +65,20 @@ require_once __DIR__ . '/../config.php'; ?>
 
     </div>
 
+    <!-- Tarjeta superadmin: visible solo tras login -->
+    <a href="<?= BASE_URL ?>/Vista/superadmin.php" id="superadmin-card"
+       class="card text-decoration-none p-3 d-flex flex-row align-items-center gap-3 d-none"
+       style="border:2px solid rgba(233,69,96,.4) !important;transition:border-color .2s,transform .15s"
+       onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-2px)'"
+       onmouseout="this.style.borderColor='rgba(233,69,96,.4)';this.style.transform=''">
+      <span style="font-size:2.5rem">🔐</span>
+      <div>
+        <div class="fw-bold fs-5 text-white mb-1">Superadmin</div>
+        <div class="small">Panel de supervisión global de partidas</div>
+      </div>
+      <span class="ms-auto text-secondary fs-4">›</span>
+    </a>
+
     <div class="card p-3">
       <div class="fw-semibold mb-2 small text-uppercase ">Cómo se juega</div>
       <ol class=" small mb-0 ps-3" style="line-height:2">
@@ -77,6 +91,70 @@ require_once __DIR__ . '/../config.php'; ?>
     </div>
 
   </div>
+
+  <!-- Botón oculto de acceso superadmin (aparece al hacer clic en el footer) -->
+  <div class="text-center mt-3 pb-2" id="sa-btn-wrap">
+    <button class="btn btn-link btn-sm text-secondary opacity-25" style="font-size:.7rem"
+            onclick="document.getElementById('saLoginModal').classList.remove('d-none')">
+      Admin
+    </button>
+  </div>
+
+  <!-- Modal login superadmin -->
+  <div id="saLoginModal" class="d-none" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex!important;align-items:center;justify-content:center">
+    <div class="card p-4" style="width:100%;max-width:340px">
+      <div class="fw-black mb-3">Acceso Superadmin</div>
+      <div class="mb-3">
+        <label class="form-label small text-secondary fw-semibold text-uppercase">Email</label>
+        <input type="email" id="idx-sa-email" class="form-control" autocomplete="email">
+      </div>
+      <div class="mb-3">
+        <label class="form-label small text-secondary fw-semibold text-uppercase">Contraseña</label>
+        <input type="password" id="idx-sa-pass" class="form-control" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter')idxSaLogin()">
+      </div>
+      <div id="idx-sa-err" class="alert alert-danger py-2 small d-none mb-3"></div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary rounded-pill flex-fill"
+                onclick="document.getElementById('saLoginModal').classList.add('d-none')">Cancelar</button>
+        <button class="btn btn-game rounded-pill flex-fill fw-bold" onclick="idxSaLogin()">Entrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const _API = '<?= BASE_URL ?>/Controlador/api.php';
+
+    // Mostrar tarjeta superadmin si ya autenticado en esta sesión
+    if (sessionStorage.getItem('sa_auth') === '1') {
+      document.getElementById('superadmin-card').classList.remove('d-none');
+      document.getElementById('sa-btn-wrap').classList.add('d-none');
+    }
+
+    async function idxSaLogin() {
+      const email = document.getElementById('idx-sa-email').value.trim();
+      const pass  = document.getElementById('idx-sa-pass').value;
+      const errEl = document.getElementById('idx-sa-err');
+      errEl.classList.add('d-none');
+
+      const r = await fetch(`${_API}?action=superadmin_login`, {
+        method: 'POST',
+        body: new URLSearchParams({ email, password: pass }),
+      }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
+
+      if (r.success) {
+        sessionStorage.setItem('sa_auth', '1');
+        document.getElementById('saLoginModal').classList.add('d-none');
+        document.getElementById('superadmin-card').classList.remove('d-none');
+        document.getElementById('sa-btn-wrap').classList.add('d-none');
+      } else {
+        errEl.textContent = r.error || 'Credenciales incorrectas';
+        errEl.classList.remove('d-none');
+        document.getElementById('idx-sa-pass').value = '';
+        document.getElementById('idx-sa-pass').focus();
+      }
+    }
+  </script>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

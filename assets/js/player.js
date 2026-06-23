@@ -472,9 +472,9 @@ function renderResults(state) {
         `${base} pts base &times; <span style="font-size:1.1em">${mult.toFixed(1)}</span>`
         + ` &nbsp;·&nbsp; 🔥 Racha ${streak}`;
       streakEl.classList.remove('d-none');
-    } else if (streak > 0) {
-      // Racha en curso pero sin multiplicador activo todavía
-      streakEl.innerHTML = `🔥 Racha ${streak}`;
+    } else if (ok && streak > 0) {
+      // Racha en curso pero sin multiplicador activo todavía — mostrar puntos + racha
+      streakEl.innerHTML = `+${myRes.points_earned} pts &nbsp;·&nbsp; 🔥 Racha ${streak}`;
       streakEl.classList.remove('d-none');
     }
   } else {
