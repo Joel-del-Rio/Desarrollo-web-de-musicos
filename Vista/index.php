@@ -90,10 +90,8 @@ require_once __DIR__ . '/../config.php'; ?>
       </ol>
     </div>
 
-  </div>
-
-  <!-- Botón oculto de acceso superadmin — debajo de la caja de normas -->
-  <div id="sa-btn-wrap" class="text-center mt-3 pb-4">
+    <!-- Botón oculto de acceso superadmin — debajo de la caja de normas -->
+    <div id="sa-btn-wrap" class="text-center mt-3 pb-4">
     <button onclick="document.getElementById('saLoginModal').style.display='flex'"
             style="background:none;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;
                    color:rgba(255,255,255,.25);font-size:.78rem;font-weight:600;padding:.3rem .6rem;
@@ -102,6 +100,8 @@ require_once __DIR__ . '/../config.php'; ?>
             onmouseout="this.style.color='rgba(255,255,255,.25)'">
       🔒 Admin
     </button>
+    </div>
+
   </div>
 
   <!-- Modal login superadmin -->
