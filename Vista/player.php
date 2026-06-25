@@ -208,6 +208,7 @@ require_once __DIR__ . '/../config.php'; ?>
   </div>
 </div>
 
+<!-- DBG:v25 -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   const API = '<?= BASE_URL ?>/Controlador/api.php';
