@@ -15,7 +15,7 @@ let lastStatus   = null;        // Último estado procesado (evita re-renders du
 let selectedPos  = null;        // Posición seleccionada en el timeline (índice)
 let currentSong  = null;        // Canción de la ronda actual
 let questionTime = 30;          // Duración de la pregunta en segundos
-let audioLoadGen = 0;           // Generación del fetch de audio; cancela fetches de rondas anteriores
+// (audioLoadGen eliminado — reemplazado por pCurrentSongKey en renderAudio)
 
 /* ── Arranque ── */
 (function init() {
@@ -172,14 +172,16 @@ function renderQuestion(state) {
   renderAudio(state); // fire-and-forget: no bloquea el timer ni el polling
 }
 
-/* ── Reproductor de audio del jugador (iTunes Preview API) ───── */
+/* ── Reproductor de audio del jugador (iTunes Preview via proxy PHP) ── */
 
 const P_SVG_PLAY  = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
 const P_SVG_PAUSE = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
 const P_VOL_KEY   = 'hitstoric_p_vol';
 let playerAudioVolume = parseFloat(localStorage.getItem(P_VOL_KEY) ?? '0.8');
+let pCurrentSongKey   = '';   // "title|artist" de la canción actual
+let pPreviewUrl       = null; // URL cargada para la canción actual
+let pPreviewLoading   = false;
 
-/** Inicializa listeners del elemento <audio> del jugador (llamar una sola vez al cargar la página) */
 function initPlayerAudio() {
   const a = document.getElementById('p-audio');
   if (!a) return;
@@ -191,8 +193,8 @@ function initPlayerAudio() {
     document.getElementById('p-afill').style.width = (a.currentTime / a.duration * 100) + '%';
     document.getElementById('p-atime').textContent = pFmtTime(a.currentTime) + ' / ' + pFmtTime(a.duration);
   });
-  a.addEventListener('ended',           () => { document.getElementById('p-play').innerHTML = P_SVG_PLAY; });
-  a.addEventListener('loadedmetadata',  () => { document.getElementById('p-atime').textContent = '0:00 / ' + pFmtTime(a.duration); });
+  a.addEventListener('ended',          () => { document.getElementById('p-play').innerHTML = P_SVG_PLAY; });
+  a.addEventListener('loadedmetadata', () => { document.getElementById('p-atime').textContent = '0:00 / ' + pFmtTime(a.duration); });
 }
 
 function pFmtTime(s) {
@@ -207,23 +209,47 @@ function playerSetVolume(val) {
   if (a) a.volume = playerAudioVolume;
 }
 
-function playerAudioToggle() {
-  const a = document.getElementById('p-audio');
-  if (!a || !a.getAttribute('src')) return;
+/** Llamado cuando el usuario pulsa el botón Play/Pausa */
+async function playerAudioToggle() {
+  const a       = document.getElementById('p-audio');
   const playBtn = document.getElementById('p-play');
-  if (a.paused) {
-    a.play()
-      .then(() => { if (playBtn) playBtn.innerHTML = P_SVG_PAUSE; })
-      .catch(err => {
-        // En iOS el primer play() desde gesto del usuario desbloquea el audio
-        // Si sigue fallando, forzar load + play
-        a.load();
-        a.play().then(() => { if (playBtn) playBtn.innerHTML = P_SVG_PAUSE; }).catch(() => {});
-      });
-  } else {
-    a.pause();
-    if (playBtn) playBtn.innerHTML = P_SVG_PLAY;
+  const timeEl  = document.getElementById('p-atime');
+  if (!a) return;
+
+  // Si ya tiene src y está cargado → toggle normal
+  if (a.getAttribute('src') && a.readyState >= 1) {
+    if (a.paused) {
+      a.play()
+        .then(() => { if (playBtn) playBtn.innerHTML = P_SVG_PAUSE; })
+        .catch(() => {});
+    } else {
+      a.pause();
+      if (playBtn) playBtn.innerHTML = P_SVG_PLAY;
+    }
+    return;
   }
+
+  // Si tenemos la URL pre-cargada → asignar y reproducir
+  if (pPreviewUrl) {
+    if (timeEl) timeEl.textContent = '…';
+    a.src    = pPreviewUrl;
+    a.volume = playerAudioVolume;
+    a.load();
+    a.oncanplay = () => {
+      a.oncanplay = null;
+      a.play().then(() => { if (playBtn) playBtn.innerHTML = P_SVG_PAUSE; }).catch(() => {});
+    };
+    return;
+  }
+
+  // Si todavía está cargando → esperar
+  if (pPreviewLoading) {
+    if (timeEl) timeEl.textContent = '…';
+    return;
+  }
+
+  // Sin URL disponible → mostrar indicador
+  if (timeEl) timeEl.textContent = '—';
 }
 
 function playerAudioSeek(e, bar) {
@@ -233,97 +259,68 @@ function playerAudioSeek(e, bar) {
   a.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * a.duration;
 }
 
-/** Busca una preview de 30s a través del proxy PHP (evita CORS en móviles) */
-async function fetchPlayerPreview(title, artist) {
-  try {
-    const q = encodeURIComponent((title || '') + ' ' + (artist || ''));
-    const r = await fetch(`${API}?action=itunes_preview&term=${q}`, { cache: 'no-store' });
-    const data = await r.json();
-    return data.previewUrl ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/** Detiene el audio del jugador y cancela cualquier fetch de iTunes en curso */
-function stopPlayerAudio() {
-  audioLoadGen++; // invalida fetches pendientes
-  const a = document.getElementById('p-audio');
-  if (!a) return;
-  a.pause();
-  a.removeAttribute('src'); // removeAttribute evita que el navegador resuelva '' a la URL actual
-  a.load();
-  const playBtn = document.getElementById('p-play');
-  if (playBtn) playBtn.innerHTML = P_SVG_PLAY;
-  const fill = document.getElementById('p-afill');
-  if (fill) fill.style.width = '0%';
-  const time = document.getElementById('p-atime');
-  if (time) time.textContent = '0:00';
-}
-
 /**
- * Carga y muestra el reproductor de audio del jugador.
- * Solo se activa si el admin habilitó embed_youtube al crear la partida.
- * Busca la preview en iTunes por título+artista.
+ * Prepara el reproductor para una nueva canción.
+ * Busca la URL de preview vía proxy PHP y, si autoplay está activo, reproduce automáticamente.
+ * Se llama fire-and-forget desde renderQuestion.
  */
 async function renderAudio(state) {
   const section   = document.getElementById('audio-section');
   const linksEl   = document.getElementById('audio-links');
   const song      = state.song || {};
-  const embedYT   = state.embed_youtube;
-  const autoplay  = state.autoplay;
-  const showLinks = state.show_links;
+  const embedYT   = !!state.embed_youtube;
+  const autoplay  = !!state.autoplay;
+  const showLinks = !!state.show_links;
 
   linksEl.innerHTML = '';
-
-  // Mostrar la sección solo si el admin activó el audio
   section.classList.toggle('d-none', !embedYT);
 
   if (embedYT && song.title) {
-    const gen     = ++audioLoadGen;
+    const songKey = `${song.title}|${song.artist}`;
+    const a       = document.getElementById('p-audio');
     const playBtn = document.getElementById('p-play');
     const fillEl  = document.getElementById('p-afill');
     const timeEl  = document.getElementById('p-atime');
 
-    // Estado de carga: botón play deshabilitado hasta que llegue la URL
-    if (playBtn) { playBtn.innerHTML = P_SVG_PLAY; playBtn.disabled = true; }
-    if (fillEl)  fillEl.style.width = '0%';
-    if (timeEl)  timeEl.textContent = '…';
+    // Resetear estado si es una canción distinta
+    if (songKey !== pCurrentSongKey) {
+      pCurrentSongKey = songKey;
+      pPreviewUrl     = null;
+      pPreviewLoading = true;
+      if (a) { a.pause(); a.removeAttribute('src'); a.load(); }
+      if (playBtn) playBtn.innerHTML = P_SVG_PLAY;
+      if (fillEl)  fillEl.style.width = '0%';
+      if (timeEl)  timeEl.textContent = '…';
 
-    const previewUrl = await fetchPlayerPreview(song.title, song.artist);
+      // Buscar preview vía proxy PHP
+      try {
+        const q = encodeURIComponent(song.title + ' ' + (song.artist || ''));
+        const r = await fetch(`${API}?action=itunes_preview&term=${q}`, { cache: 'no-store' });
+        const d = await r.json();
+        pPreviewUrl = d.previewUrl ?? null;
+      } catch { pPreviewUrl = null; }
+      pPreviewLoading = false;
 
-    // Descartar si llegó otra ronda mientras esperábamos
-    if (gen !== audioLoadGen) return;
+      if (!pPreviewUrl) {
+        if (timeEl) timeEl.textContent = '—';
+      } else if (a) {
+        // Preview encontrada: cargar en el elemento audio
+        a.src    = pPreviewUrl;
+        a.volume = playerAudioVolume;
+        a.onerror = () => { if (timeEl) timeEl.textContent = '—'; };
+        a.load();
 
-    // Habilitar siempre el botón de play una vez terminada la búsqueda
-    if (playBtn) playBtn.disabled = false;
-
-    const a = document.getElementById('p-audio');
-    if (!a) return;
-
-    if (previewUrl) {
-      a.src     = previewUrl;
-      a.volume  = playerAudioVolume;
-      a.onerror = () => { if (timeEl) timeEl.textContent = '—'; };
-      a.oncanplaythrough = null;
-      a.load();
-
-      if (autoplay) {
-        // oncanplaythrough es más fiable que oncanplay en iOS Safari
-        a.oncanplaythrough = () => {
-          a.oncanplaythrough = null;
-          a.play()
-            .then(() => { if (playBtn) playBtn.innerHTML = P_SVG_PAUSE; })
-            .catch(() => {
-              // Autoplay bloqueado por el navegador (normal en iOS sin gesto previo)
-              // El jugador puede pulsar el botón Play manualmente
-            });
-        };
+        if (autoplay) {
+          a.oncanplay = () => {
+            a.oncanplay = null;
+            a.play()
+              .then(() => { if (playBtn) playBtn.innerHTML = P_SVG_PAUSE; })
+              .catch(() => {
+                // iOS bloquea autoplay sin gesto — el jugador puede pulsar Play
+              });
+          };
+        }
       }
-      if (timeEl) timeEl.textContent = '0:30';
-    } else {
-      a.removeAttribute('src');
-      if (timeEl) timeEl.textContent = '—';
     }
   }
 
