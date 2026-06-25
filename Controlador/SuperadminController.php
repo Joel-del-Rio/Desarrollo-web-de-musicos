@@ -58,6 +58,13 @@ class SuperadminController {
               AND question_started_at IS NOT NULL
               AND TIMESTAMPDIFF(SECOND, question_started_at, UTC_TIMESTAMP()) > 3600
         ");
+
+        // Partidas esperando jugadores desde hace más de 1 hora → finalizadas
+        $this->db->exec("
+            UPDATE games SET status='finished'
+            WHERE status='waiting'
+              AND TIMESTAMPDIFF(SECOND, created_at, UTC_TIMESTAMP()) > 3600
+        ");
     }
 
     /** Lista todas las partidas con datos agregados */
