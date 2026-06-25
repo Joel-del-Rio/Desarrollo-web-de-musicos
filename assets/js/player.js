@@ -275,15 +275,17 @@ async function renderAudio(state) {
   linksEl.innerHTML = '';
   section.classList.toggle('d-none', !embedYT);
 
+  // Debug siempre visible al entrar en renderAudio
+  const dbg = document.getElementById('audio-debug');
+  const log = msg => { if (dbg) dbg.textContent = msg; };
+  log(`embedYT=${embedYT} title="${song.title}" artist="${song.artist}"`);
+
   if (embedYT && song.title) {
     const songKey = `${song.title}|${song.artist}`;
     const a       = document.getElementById('p-audio');
     const playBtn = document.getElementById('p-play');
     const fillEl  = document.getElementById('p-afill');
     const timeEl  = document.getElementById('p-atime');
-
-    const dbg = document.getElementById('audio-debug');
-    const log = msg => { if (dbg) dbg.textContent = msg; };
 
     // Resetear estado si es una canción distinta
     if (songKey !== pCurrentSongKey) {
