@@ -15,7 +15,15 @@ let lastStatus   = null;        // Último estado procesado (evita re-renders du
 let selectedPos  = null;        // Posición seleccionada en el timeline (índice)
 let currentSong  = null;        // Canción de la ronda actual
 let questionTime = 30;          // Duración de la pregunta en segundos
-// (audioLoadGen eliminado — reemplazado por pCurrentSongKey en renderAudio)
+
+/* ── Estado del reproductor de audio ─────────────────────────── */
+const P_SVG_PLAY  = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+const P_SVG_PAUSE = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+const P_VOL_KEY   = 'hitstoric_p_vol';
+let playerAudioVolume = parseFloat(localStorage.getItem(P_VOL_KEY) ?? '0.8');
+let pCurrentSongKey   = '';   // "title|artist" de la canción actual
+let pPreviewUrl       = null; // URL cargada para la canción actual
+let pPreviewLoading   = false;
 
 /* ── Arranque ── */
 (function init() {
@@ -173,14 +181,6 @@ function renderQuestion(state) {
 }
 
 /* ── Reproductor de audio del jugador (iTunes Preview via proxy PHP) ── */
-
-const P_SVG_PLAY  = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
-const P_SVG_PAUSE = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
-const P_VOL_KEY   = 'hitstoric_p_vol';
-let playerAudioVolume = parseFloat(localStorage.getItem(P_VOL_KEY) ?? '0.8');
-let pCurrentSongKey   = '';   // "title|artist" de la canción actual
-let pPreviewUrl       = null; // URL cargada para la canción actual
-let pPreviewLoading   = false;
 
 function initPlayerAudio() {
   const a = document.getElementById('p-audio');
