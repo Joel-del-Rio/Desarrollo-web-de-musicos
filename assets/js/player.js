@@ -169,7 +169,7 @@ function renderQuestion(state) {
   // Timer y polling arrancan inmediatamente; el audio carga en segundo plano
   startTimerBar(state.time_left ?? questionTime, questionTime);
   startPolling(1000);
-  renderAudio(state); // fire-and-forget: no bloquea el timer ni el polling
+  renderAudio(state).catch(e => console.error('[renderAudio EXCEPCION]', e)); // fire-and-forget: no bloquea el timer ni el polling
 }
 
 /* ── Reproductor de audio del jugador (iTunes Preview via proxy PHP) ── */
@@ -277,7 +277,10 @@ async function renderAudio(state) {
 
   // Debug acumulativo — muestra TODOS los pasos de TODAS las llamadas
   const dbg = document.getElementById('audio-debug');
-  const log = msg => { if (dbg) dbg.textContent += '[' + msg + '] '; };
+  const log = msg => {
+    console.log('[audio]', msg);
+    if (dbg) dbg.textContent += '[' + msg + '] ';
+  };
   log(`1 embedYT=${embedYT} title="${song.title}"`);
 
   if (embedYT && song.title) {
