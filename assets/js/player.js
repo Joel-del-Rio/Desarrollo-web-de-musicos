@@ -278,17 +278,20 @@ async function renderAudio(state) {
   // Debug siempre visible al entrar en renderAudio
   const dbg = document.getElementById('audio-debug');
   const log = msg => { if (dbg) dbg.textContent = msg; };
-  log(`embedYT=${embedYT} title="${song.title}" artist="${song.artist}"`);
+  log(`1 embedYT=${embedYT} title="${song.title}"`);
 
   if (embedYT && song.title) {
     const songKey = `${song.title}|${song.artist}`;
+    log(`2 key=${songKey} prev=${pCurrentSongKey}`);
     const a       = document.getElementById('p-audio');
     const playBtn = document.getElementById('p-play');
     const fillEl  = document.getElementById('p-afill');
     const timeEl  = document.getElementById('p-atime');
+    log(`3 a=${!!a} timeEl=${!!timeEl}`);
 
     // Resetear estado si es una canción distinta
     if (songKey !== pCurrentSongKey) {
+      log('4 nueva cancion');
       pCurrentSongKey = songKey;
       pPreviewUrl     = null;
       pPreviewLoading = true;
