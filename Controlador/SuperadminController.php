@@ -46,8 +46,24 @@ class SuperadminController {
         return ['success' => true, 'stats' => $stats];
     }
 
+    /** Finaliza automáticamente partidas caducadas */
+    private function finishStale(): void {
+        // Partidas atascadas en resultados → finalizadas
+        $this->db->exec("UPDATE games SET status='finished' WHERE status='results'");
+
+        // Partidas en pregunta desde hace más de 1 hora → finalizadas
+        $this->db->exec("
+            UPDATE games SET status='finished'
+            WHERE status='question'
+              AND question_started_at IS NOT NULL
+              AND TIMESTAMPDIFF(SECOND, question_started_at, UTC_TIMESTAMP()) > 3600
+        ");
+    }
+
     /** Lista todas las partidas con datos agregados */
     public function getGames(): array {
+        $this->finishStale();
+
         $rows = $this->db->query("
             SELECT g.id, g.pin, g.status, g.selected_genre, g.current_round, g.total_rounds,
                    g.pin_mode, g.organizer_email, g.created_at,
