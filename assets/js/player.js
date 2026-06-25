@@ -282,6 +282,9 @@ async function renderAudio(state) {
     const fillEl  = document.getElementById('p-afill');
     const timeEl  = document.getElementById('p-atime');
 
+    const dbg = document.getElementById('audio-debug');
+    const log = msg => { if (dbg) dbg.textContent = msg; };
+
     // Resetear estado si es una canción distinta
     if (songKey !== pCurrentSongKey) {
       pCurrentSongKey = songKey;
@@ -291,36 +294,47 @@ async function renderAudio(state) {
       if (playBtn) playBtn.innerHTML = P_SVG_PLAY;
       if (fillEl)  fillEl.style.width = '0%';
       if (timeEl)  timeEl.textContent = '…';
+      log('Buscando preview…');
 
       // Buscar preview vía proxy PHP
       try {
         const q = encodeURIComponent(song.title + ' ' + (song.artist || ''));
-        const r = await fetch(`${API}?action=itunes_preview&term=${q}`, { cache: 'no-store' });
+        const url = `${API}?action=itunes_preview&term=${q}`;
+        log('Fetch: ' + url);
+        const r = await fetch(url, { cache: 'no-store' });
         const d = await r.json();
         pPreviewUrl = d.previewUrl ?? null;
-      } catch { pPreviewUrl = null; }
+        log(pPreviewUrl ? 'URL: ' + pPreviewUrl.slice(0, 60) + '…' : 'Sin preview');
+      } catch(e) {
+        pPreviewUrl = null;
+        log('Error fetch: ' + e.message);
+      }
       pPreviewLoading = false;
 
       if (!pPreviewUrl) {
         if (timeEl) timeEl.textContent = '—';
       } else if (a) {
-        // Preview encontrada: cargar en el elemento audio
         a.src    = pPreviewUrl;
         a.volume = playerAudioVolume;
-        a.onerror = () => { if (timeEl) timeEl.textContent = '—'; };
+        a.onerror = (e) => {
+          log('Error audio: ' + (a.error?.message || 'desconocido'));
+          if (timeEl) timeEl.textContent = '—';
+        };
         a.load();
+        log('Audio cargando…');
 
         if (autoplay) {
           a.oncanplay = () => {
             a.oncanplay = null;
+            log('Reproduciendo…');
             a.play()
               .then(() => { if (playBtn) playBtn.innerHTML = P_SVG_PAUSE; })
-              .catch(() => {
-                // iOS bloquea autoplay sin gesto — el jugador puede pulsar Play
-              });
+              .catch(err => { log('Autoplay bloqueado: ' + err.message); });
           };
         }
       }
+    } else {
+      log(pPreviewUrl ? 'Misma canción, URL lista' : 'Misma canción, sin preview');
     }
   }
 
