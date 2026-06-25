@@ -331,15 +331,14 @@ async function renderAudio(state) {
         a.load();
         log('Audio cargando…');
 
-        if (autoplay) {
-          a.oncanplay = () => {
-            a.oncanplay = null;
-            log('Reproduciendo…');
-            a.play()
-              .then(() => { if (playBtn) playBtn.innerHTML = P_SVG_PAUSE; })
-              .catch(err => { log('Autoplay bloqueado: ' + err.message); });
-          };
-        }
+        // Siempre autoplay al detectar canción nueva (igual que el dinamizador)
+        a.oncanplay = () => {
+          a.oncanplay = null;
+          log('Reproduciendo…');
+          a.play()
+            .then(() => { if (playBtn) playBtn.innerHTML = P_SVG_PAUSE; })
+            .catch(err => { log('Autoplay bloqueado: ' + err.message); });
+        };
       }
     } else {
       log(pPreviewUrl ? 'Misma canción, URL lista' : 'Misma canción, sin preview');
