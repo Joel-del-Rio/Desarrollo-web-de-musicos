@@ -389,6 +389,6 @@ require_once __DIR__ . '/../config.php'; ?>
   const GK  = 'hitstoric_gid';
   const TK  = 'hitstoric_tok';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=19"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=20"></script>
 </body>
 </html>

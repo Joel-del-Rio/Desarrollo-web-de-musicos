@@ -615,14 +615,13 @@ function setVolume(val) {
   });
 }
 
-/** Busca una preview de 30s en la API de iTunes por título y artista */
+/** Busca una preview de 30s a través del proxy PHP (evita CORS en móviles) */
 async function fetchItunesPreview(title, artist) {
   try {
     const q = encodeURIComponent((title || '') + ' ' + (artist || ''));
-    const r = await fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=5`);
+    const r = await fetch(`${API}?action=itunes_preview&term=${q}`, { cache: 'no-store' });
     const data = await r.json();
-    const hit = data.results?.find(t => t.previewUrl);
-    return hit?.previewUrl ?? null;
+    return data.previewUrl ?? null;
   } catch {
     return null;
   }

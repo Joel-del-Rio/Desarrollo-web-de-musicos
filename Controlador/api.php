@@ -136,6 +136,24 @@ try {
             echo json_encode((new SuperadminController())->getGameDetail());
             break;
 
+        // ── Proxy iTunes (evita CORS en móviles) ──────
+
+        case 'itunes_preview':
+            $term = trim($_GET['term'] ?? '');
+            if (!$term) { echo json_encode(['previewUrl' => null]); break; }
+            $url  = 'https://itunes.apple.com/search?media=music&entity=song&limit=5&term=' . urlencode($term);
+            $ctx  = stream_context_create(['http' => ['timeout' => 6, 'ignore_errors' => true,
+                        'header' => 'User-Agent: Hitstoric/1.0']]);
+            $raw  = @file_get_contents($url, false, $ctx);
+            if ($raw === false) { echo json_encode(['previewUrl' => null]); break; }
+            $data = json_decode($raw, true);
+            $hit  = null;
+            foreach (($data['results'] ?? []) as $t) {
+                if (!empty($t['previewUrl'])) { $hit = $t['previewUrl']; break; }
+            }
+            echo json_encode(['previewUrl' => $hit]);
+            break;
+
         // ── Canciones ──────────────────────────────────
 
         case 'get_songs':

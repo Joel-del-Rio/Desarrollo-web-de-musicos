@@ -209,13 +209,20 @@ function playerSetVolume(val) {
 
 function playerAudioToggle() {
   const a = document.getElementById('p-audio');
-  // Usar getAttribute en vez de .src — .src resuelve '' a la URL de la página (siempre truthy)
   if (!a || !a.getAttribute('src')) return;
+  const playBtn = document.getElementById('p-play');
   if (a.paused) {
-    a.play().then(() => { document.getElementById('p-play').innerHTML = P_SVG_PAUSE; }).catch(() => {});
+    a.play()
+      .then(() => { if (playBtn) playBtn.innerHTML = P_SVG_PAUSE; })
+      .catch(err => {
+        // En iOS el primer play() desde gesto del usuario desbloquea el audio
+        // Si sigue fallando, forzar load + play
+        a.load();
+        a.play().then(() => { if (playBtn) playBtn.innerHTML = P_SVG_PAUSE; }).catch(() => {});
+      });
   } else {
     a.pause();
-    document.getElementById('p-play').innerHTML = P_SVG_PLAY;
+    if (playBtn) playBtn.innerHTML = P_SVG_PLAY;
   }
 }
 
@@ -226,14 +233,13 @@ function playerAudioSeek(e, bar) {
   a.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * a.duration;
 }
 
-/** Busca una preview de 30s en la API de iTunes por título y artista */
+/** Busca una preview de 30s a través del proxy PHP (evita CORS en móviles) */
 async function fetchPlayerPreview(title, artist) {
   try {
     const q = encodeURIComponent((title || '') + ' ' + (artist || ''));
-    const r = await fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=5`);
+    const r = await fetch(`${API}?action=itunes_preview&term=${q}`, { cache: 'no-store' });
     const data = await r.json();
-    const hit = data.results?.find(t => t.previewUrl);
-    return hit?.previewUrl ?? null;
+    return data.previewUrl ?? null;
   } catch {
     return null;
   }
@@ -274,34 +280,50 @@ async function renderAudio(state) {
   section.classList.toggle('d-none', !embedYT);
 
   if (embedYT && song.title) {
-    const gen = ++audioLoadGen; // identificador de esta carga concreta
+    const gen     = ++audioLoadGen;
     const playBtn = document.getElementById('p-play');
-    if (playBtn) playBtn.innerHTML = P_SVG_PLAY;
-    document.getElementById('p-afill').style.width = '0%';
-    document.getElementById('p-atime').textContent = '…';
+    const fillEl  = document.getElementById('p-afill');
+    const timeEl  = document.getElementById('p-atime');
+
+    // Estado de carga: botón play deshabilitado hasta que llegue la URL
+    if (playBtn) { playBtn.innerHTML = P_SVG_PLAY; playBtn.disabled = true; }
+    if (fillEl)  fillEl.style.width = '0%';
+    if (timeEl)  timeEl.textContent = '…';
 
     const previewUrl = await fetchPlayerPreview(song.title, song.artist);
 
-    // Descartar si mientras esperaba llegó otra ronda o el fetch fue cancelado
+    // Descartar si llegó otra ronda mientras esperábamos
     if (gen !== audioLoadGen) return;
 
+    // Habilitar siempre el botón de play una vez terminada la búsqueda
+    if (playBtn) playBtn.disabled = false;
+
     const a = document.getElementById('p-audio');
-    if (previewUrl && a) {
-      a.src = previewUrl;
-      a.volume = playerAudioVolume;
+    if (!a) return;
+
+    if (previewUrl) {
+      a.src     = previewUrl;
+      a.volume  = playerAudioVolume;
+      a.onerror = () => { if (timeEl) timeEl.textContent = '—'; };
+      a.oncanplaythrough = null;
       a.load();
-      a.onerror = () => { document.getElementById('p-atime').textContent = '—'; };
+
       if (autoplay) {
-        a.oncanplay = () => {
-          a.oncanplay = null;
+        // oncanplaythrough es más fiable que oncanplay en iOS Safari
+        a.oncanplaythrough = () => {
+          a.oncanplaythrough = null;
           a.play()
-            .then(() => { document.getElementById('p-play').innerHTML = P_SVG_PAUSE; })
-            .catch(() => {}); // autoplay bloqueado por el navegador — el jugador puede pulsar play
+            .then(() => { if (playBtn) playBtn.innerHTML = P_SVG_PAUSE; })
+            .catch(() => {
+              // Autoplay bloqueado por el navegador (normal en iOS sin gesto previo)
+              // El jugador puede pulsar el botón Play manualmente
+            });
         };
       }
-    } else if (a) {
+      if (timeEl) timeEl.textContent = '0:30';
+    } else {
       a.removeAttribute('src');
-      document.getElementById('p-atime').textContent = '—';
+      if (timeEl) timeEl.textContent = '—';
     }
   }
 
