@@ -142,9 +142,7 @@ function renderWaiting(state) {
 /** Copia el PIN compartido y la URL de jugador al portapapeles */
 function copySharedPin() {
   const pin = localStorage.getItem(GK + '_pin') || '';
-  const url = document.getElementById('w-player-url')?.textContent || '';
-  const text = `PIN: ${pin}\n${url}`;
-  navigator.clipboard?.writeText(text).then(() => {
+  navigator.clipboard?.writeText(pin).then(() => {
     const btn = document.getElementById('btn-copy-pin');
     if (!btn) return;
     const orig = btn.textContent;
