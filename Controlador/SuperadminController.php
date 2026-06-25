@@ -86,6 +86,13 @@ class SuperadminController {
         return ['success' => true, 'games' => $rows];
     }
 
+    /** Reinicia puntos de todos los jugadores (partidas y ranking global) */
+    public function resetPoints(): array {
+        $this->db->exec("UPDATE players SET score=0, streak=0");
+        $this->db->exec("UPDATE global_players SET total_points=0");
+        return ['success' => true];
+    }
+
     /** Detalle de una partida: jugadores + canciones jugadas */
     public function getGameDetail(): array {
         $gameId = (int)($_GET['game_id'] ?? 0);

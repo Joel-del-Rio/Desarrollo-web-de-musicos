@@ -116,7 +116,12 @@ require_once __DIR__ . '/../config.php'; ?>
     <!-- Historial de partidas -->
     <div class="d-flex align-items-center justify-content-between mb-3 gap-2 flex-wrap">
       <h6 class="text-secondary text-uppercase fw-semibold mb-0" style="letter-spacing:.08em">Historial de partidas</h6>
-      <input type="search" id="game-search" class="search-bar" style="max-width:240px" placeholder="Buscar PIN, género, email…" oninput="filterGames()">
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <input type="search" id="game-search" class="search-bar" style="max-width:240px" placeholder="Buscar PIN, género, email…" oninput="filterGames()">
+        <button class="btn btn-sm btn-outline-danger rounded-pill" onclick="saResetPoints()" style="font-size:.78rem">
+          🗑️ Reiniciar puntos
+        </button>
+      </div>
     </div>
 
     <div class="card p-0" style="overflow:hidden">
@@ -342,6 +347,17 @@ async function openDetail(gameId) {
     <h6 class="fw-bold mb-2">Canciones jugadas</h6>
     <div class="card p-0" style="overflow:hidden">${songsHtml}</div>
   `;
+}
+
+async function saResetPoints() {
+  if (!confirm('¿Seguro? Esto pondrá a 0 los puntos de TODOS los jugadores en el ranking global.')) return;
+  const r = await fetch(`${API}?action=superadmin_reset_points`, { method: 'POST' }).then(r => r.json()).catch(() => ({}));
+  if (r.success) {
+    alert('Puntos reiniciados correctamente.');
+    loadStats();
+  } else {
+    alert('Error: ' + (r.error || 'desconocido'));
+  }
 }
 </script>
 </body>
