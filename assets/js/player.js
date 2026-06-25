@@ -275,9 +275,9 @@ async function renderAudio(state) {
   linksEl.innerHTML = '';
   section.classList.toggle('d-none', !embedYT);
 
-  // Debug siempre visible al entrar en renderAudio
+  // Debug acumulativo — muestra TODOS los pasos de TODAS las llamadas
   const dbg = document.getElementById('audio-debug');
-  const log = msg => { if (dbg) dbg.textContent = msg; };
+  const log = msg => { if (dbg) dbg.textContent += '[' + msg + '] '; };
   log(`1 embedYT=${embedYT} title="${song.title}"`);
 
   if (embedYT && song.title) {
