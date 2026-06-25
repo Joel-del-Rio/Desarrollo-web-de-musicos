@@ -180,8 +180,15 @@ require_once __DIR__ . '/../config.php'; ?>
     <div class="card w-100 p-4 text-center" id="w-pin-card">
       <div class="text-secondary small text-uppercase fw-semibold mb-1">PIN de la partida</div>
       <div class="pin-box" id="w-pin">----</div>
-      <div class="text-secondary small mt-2">
-        Jugadores: <strong id="w-player-url"><?= BASE_URL ?>/player</strong>
+      <div class="d-flex align-items-center justify-content-center gap-2 mt-2 flex-wrap">
+        <div class="text-secondary small">
+          Jugadores: <strong id="w-player-url"><?= BASE_URL ?>/player</strong>
+        </div>
+        <button id="btn-copy-pin" onclick="copySharedPin()"
+                class="btn btn-sm btn-outline-secondary rounded-pill"
+                style="font-size:.75rem;padding:.2rem .65rem">
+          📋 Copiar
+        </button>
       </div>
     </div>
 

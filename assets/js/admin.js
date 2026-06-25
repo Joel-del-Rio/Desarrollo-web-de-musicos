@@ -139,6 +139,26 @@ function renderWaiting(state) {
   startPolling(1500);
 }
 
+/** Copia el PIN compartido y la URL de jugador al portapapeles */
+function copySharedPin() {
+  const pin = localStorage.getItem(GK + '_pin') || '';
+  const url = document.getElementById('w-player-url')?.textContent || '';
+  const text = `PIN: ${pin}\n${url}`;
+  navigator.clipboard?.writeText(text).then(() => {
+    const btn = document.getElementById('btn-copy-pin');
+    if (!btn) return;
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copiado';
+    btn.classList.add('btn-success');
+    btn.classList.remove('btn-outline-secondary');
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.classList.remove('btn-success');
+      btn.classList.add('btn-outline-secondary');
+    }, 1500);
+  });
+}
+
 /** Copia el PIN individual al portapapeles y muestra feedback visual */
 function copyPin(el, pin) {
   navigator.clipboard?.writeText(pin).then(() => {
