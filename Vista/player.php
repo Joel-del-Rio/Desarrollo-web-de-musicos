@@ -130,7 +130,6 @@ require_once __DIR__ . '/../config.php'; ?>
       <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="opacity:.5;flex-shrink:0"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
     </div>
     <div id="audio-links" class="d-flex gap-2 mt-2 flex-wrap"></div>
-    <div id="audio-debug" style="font-size:.65rem;color:var(--muted);margin-top:.3rem;word-break:break-all"></div>
   </div>
 
   <!-- Timeline scrollable -->
@@ -215,6 +214,6 @@ require_once __DIR__ . '/../config.php'; ?>
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=31"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=32"></script>
 </body>
 </html>
