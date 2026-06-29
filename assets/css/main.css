@@ -207,8 +207,7 @@ body { background: var(--bg) !important; color: var(--text); }
 /* Sin columna media (audio y links desactivados) */
 .admin-grid.no-media { grid-template-columns: 1fr 260px; }
 .admin-grid.no-media .col-media { display: none; }
-@media (max-width: 1024px) { .admin-grid { grid-template-columns: 1fr 220px; height: auto; overflow: auto; } .admin-grid:not(.no-media) .col-media { display: none; } }
-@media (max-width: 540px)  { .admin-grid { grid-template-columns: 1fr 180px; gap: .75rem; padding: .75rem; } }
+@media (max-width: 1024px) { .admin-grid { height: auto; overflow: auto; } }
 
 /* ── Canción del turno (admin) ── */
 .round-song-card { background: var(--bg2); border-radius: var(--radius); padding: 1rem; text-align: center; border: 2px solid var(--accent); }
@@ -305,9 +304,9 @@ body { background: var(--bg) !important; color: var(--text); }
    RESPONSIVE — TABLET  (576px – 991px)
 ════════════════════════════════════════════ */
 @media (min-width: 576px) and (max-width: 991px) {
-  /* Admin: dos columnas, ocultar media */
-  .admin-grid { grid-template-columns: 1fr 240px; gap: 1rem; padding: 1rem; height: auto; overflow: auto; }
-  .admin-grid .col-media { display: none !important; }
+  /* Admin: col-main + col-side arriba, col-media abajo a ancho completo */
+  .admin-grid { grid-template-columns: 1fr 240px; grid-template-rows: auto auto; gap: 1rem; padding: 1rem; height: auto; overflow: auto; }
+  .admin-grid .col-media { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; gap: .75rem; display: flex !important; }
 
   /* Player: ligero padding lateral */
   #screen-question .new-song-card { padding: .85rem 1.5rem; }
@@ -330,11 +329,11 @@ body { background: var(--bg) !important; color: var(--text); }
    RESPONSIVE — MÓVIL  (≤ 575px)
 ════════════════════════════════════════════ */
 @media (max-width: 575px) {
-  /* Admin: apilar en una columna */
+  /* Admin: apilar en una columna, mostrar todo */
   .admin-grid,
   .admin-grid.no-media { grid-template-columns: 1fr; height: auto; overflow: auto; padding: .6rem; gap: .75rem; }
-  .admin-grid .col-media,
-  .admin-grid .col-side { display: flex; }
+  .admin-grid .col-media { display: flex !important; }
+  .admin-grid .col-side  { display: flex; }
 
   /* Player: padding mínimo */
   #screen-question .new-song-card { padding: .6rem .75rem; }
