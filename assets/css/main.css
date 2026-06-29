@@ -304,9 +304,10 @@ body { background: var(--bg) !important; color: var(--text); }
    RESPONSIVE — TABLET  (576px – 991px)
 ════════════════════════════════════════════ */
 @media (min-width: 576px) and (max-width: 991px) {
-  /* Admin: col-main + col-side arriba, col-media abajo a ancho completo */
-  .admin-grid { grid-template-columns: 1fr 240px; grid-template-rows: auto auto; gap: 1rem; padding: 1rem; height: auto; overflow: auto; }
-  .admin-grid .col-media { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; gap: .75rem; display: flex !important; }
+  /* Admin: columna única, todo apilado */
+  .admin-grid,
+  .admin-grid.no-media { grid-template-columns: 1fr; height: auto; overflow: auto; gap: 1rem; padding: 1rem; }
+  .admin-grid .col-media { display: flex !important; }
 
   /* Player: ligero padding lateral */
   #screen-question .new-song-card { padding: .85rem 1.5rem; }
