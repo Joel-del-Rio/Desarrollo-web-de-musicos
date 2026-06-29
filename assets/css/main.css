@@ -278,3 +278,95 @@ body { background: var(--bg) !important; color: var(--text); }
 .btn-stream:hover { opacity: .85; transform: translateY(-1px); }
 .btn-spotify { background: #1DB954; color: #fff; }
 .btn-youtube { background: #FF0000; color: #fff; }
+
+/* ════════════════════════════════════════════
+   RESPONSIVE — PORTÁTIL  (≥ 992px)
+════════════════════════════════════════════ */
+@media (min-width: 992px) {
+  /* Admin: tres columnas completas */
+  .admin-grid { grid-template-columns: 1fr 280px 260px; gap: 1.5rem; padding: 1.5rem; }
+  .admin-grid.no-media { grid-template-columns: 1fr 280px; }
+
+  /* Player: centrado con ancho máximo cómodo */
+  #screen-question .new-song-card { padding: 1rem 2rem; }
+  #screen-question .confirm-bar   { padding: .75rem 2rem; }
+  .new-song-card .ns-title  { font-size: 1.6rem; }
+  .timeline-song { margin: 0 2rem; padding: .85rem 1.25rem; }
+  .pos-btn       { margin: .3rem 2rem; width: calc(100% - 4rem); }
+
+  /* PIN enorme en lobby */
+  .pin-box { font-size: 6.5rem; }
+
+  /* Index: logo con más aire */
+  .screen-index-logo { max-width: 320px; margin: 0 auto 2rem; }
+}
+
+/* ════════════════════════════════════════════
+   RESPONSIVE — TABLET  (576px – 991px)
+════════════════════════════════════════════ */
+@media (min-width: 576px) and (max-width: 991px) {
+  /* Admin: dos columnas, ocultar media */
+  .admin-grid { grid-template-columns: 1fr 240px; gap: 1rem; padding: 1rem; height: auto; overflow: auto; }
+  .admin-grid .col-media { display: none !important; }
+
+  /* Player: ligero padding lateral */
+  #screen-question .new-song-card { padding: .85rem 1.5rem; }
+  #screen-question .confirm-bar   { padding: .65rem 1.5rem; }
+  .timeline-song { margin: 0 1.25rem; }
+  .pos-btn       { margin: .25rem 1.25rem; width: calc(100% - 2.5rem); }
+
+  /* PIN */
+  .pin-box { font-size: 5.5rem; }
+
+  /* Results / Finished: más ancho */
+  #screen-results .container,
+  #screen-finished .container { max-width: 540px; }
+
+  /* Leaderboard más espacioso */
+  .lb-row { padding: .6rem 1.25rem; }
+}
+
+/* ════════════════════════════════════════════
+   RESPONSIVE — MÓVIL  (≤ 575px)
+════════════════════════════════════════════ */
+@media (max-width: 575px) {
+  /* Admin: apilar en una columna */
+  .admin-grid,
+  .admin-grid.no-media { grid-template-columns: 1fr; height: auto; overflow: auto; padding: .6rem; gap: .75rem; }
+  .admin-grid .col-media,
+  .admin-grid .col-side { display: flex; }
+
+  /* Player: padding mínimo */
+  #screen-question .new-song-card { padding: .6rem .75rem; }
+  #screen-question .confirm-bar   { padding: .6rem .75rem; }
+  .new-song-card .ns-title  { font-size: 1.1rem; }
+  .new-song-card .ns-artist { font-size: .8rem; }
+  .timeline-song { margin: 0 .5rem; padding: .6rem .75rem; gap: .5rem; }
+  .timeline-song .ts-year { font-size: 1.1rem; min-width: 42px; }
+  .pos-btn { margin: .2rem .5rem; width: calc(100% - 1rem); font-size: .8rem; padding: .45rem .75rem; }
+
+  /* PIN más pequeño */
+  .pin-box { font-size: 3.8rem; letter-spacing: .2em; }
+
+  /* Puntos resultados */
+  .pts-badge { font-size: 2rem; }
+
+  /* Podio compacto */
+  .podium { gap: .75rem; }
+  .podium-avatar-big { width: 44px; height: 44px; font-size: 1.1rem; }
+  .podium-bar { width: 52px; }
+  .podium-1st .podium-bar { height: 76px; }
+  .podium-2nd .podium-bar { height: 54px; }
+  .podium-3rd .podium-bar { height: 38px; }
+
+  /* Timer ring más pequeño */
+  .timer-ring { width: 60px; height: 60px; }
+  .timer-number { font-size: 1.3rem; }
+
+  /* Cards de navegación en index */
+  .card.p-3 { padding: .75rem !important; }
+
+  /* Leaderboard */
+  .lb-row { padding: .45rem .75rem; gap: .5rem; }
+  .lb-rank { min-width: 22px; font-size: .9rem; }
+}
