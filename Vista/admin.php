@@ -68,8 +68,24 @@ require_once __DIR__ . '/../config.php'; ?>
         </div>
       </div>
 
-      <!-- Opciones de streaming -->
+      <!-- Modo difícil -->
       <div class="mb-4">
+        <label class="form-label text-secondary small fw-semibold text-uppercase">Dificultad</label>
+        <div class="d-flex align-items-center justify-content-between py-2 rounded-3 px-3"
+             style="background:rgba(233,69,96,.08);border:1px solid rgba(233,69,96,.25)">
+          <div>
+            <div class="fw-semibold small">🔥 Modo difícil</div>
+            <div class="small" style="color:var(--muted);opacity:.75">Oculta el artista y el año · desactiva streaming</div>
+          </div>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="toggle-hard-mode" role="switch"
+                   onchange="onHardModeToggle()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Opciones de streaming -->
+      <div class="mb-4" id="section-streaming">
         <label class="form-label text-secondary small fw-semibold text-uppercase">Streaming</label>
 
         <div class="d-flex align-items-center justify-content-between py-2 border-bottom border-secondary border-opacity-25">
@@ -101,21 +117,6 @@ require_once __DIR__ . '/../config.php'; ?>
           </div>
           <div class="form-check form-switch mb-0">
             <input class="form-check-input" type="checkbox" id="toggle-autoplay" role="switch">
-          </div>
-        </div>
-      </div>
-
-      <!-- Modo difícil -->
-      <div class="mb-4">
-        <label class="form-label text-secondary small fw-semibold text-uppercase">Dificultad</label>
-        <div class="d-flex align-items-center justify-content-between py-2 rounded-3 px-3"
-             style="background:rgba(233,69,96,.08);border:1px solid rgba(233,69,96,.25)">
-          <div>
-            <div class="fw-semibold small">🔥 Modo difícil</div>
-            <div class="small" style="color:var(--muted);opacity:.75">Oculta el artista y el año de la canción al jugador</div>
-          </div>
-          <div class="form-check form-switch mb-0">
-            <input class="form-check-input" type="checkbox" id="toggle-hard-mode" role="switch">
           </div>
         </div>
       </div>
