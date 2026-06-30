@@ -198,9 +198,14 @@ function renderQuestion(state) {
   document.getElementById('q-round').textContent  = state.current_round;
   document.getElementById('q-total').textContent  = state.total_rounds;
   document.getElementById('q-title').textContent  = song.title  || '—';
-  document.getElementById('q-artist').textContent = song.artist || '—';
+  const hard = !!gameSettings.hard_mode;
+  const qArtistEl = document.getElementById('q-artist');
+  const qGenreEl  = document.getElementById('q-genre');
+  qArtistEl.textContent = song.artist || '—';
+  qGenreEl.textContent  = song.genre  || '';
+  qArtistEl.style.filter = hard ? 'blur(6px)' : '';
+  qGenreEl.style.filter  = hard ? 'blur(6px)' : '';
   document.getElementById('q-year').textContent   = song.year   || '—';
-  document.getElementById('q-genre').textContent  = song.genre  || '';
   document.getElementById('q-players').textContent  = players.length;
   document.getElementById('q-answered').textContent = state.answer_count || 0;
 
