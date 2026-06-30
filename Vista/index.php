@@ -80,14 +80,43 @@ require_once __DIR__ . '/../config.php'; ?>
     </a>
 
     <div class="card p-3">
-      <div class="fw-semibold mb-2 small text-uppercase ">Cómo se juega</div>
-      <ol class=" small mb-0 ps-3" style="line-height:2">
-        <li>Al empezar recibes una carta inicial aleatoria del género de la partida — se muestra con título, artista y año, y es el punto de partida de tu línea del tiempo personal.</li>
-        <li>El dinamizador pone una canción. Tienes <strong>tiempo limitado</strong> para decidir dónde encaja en tu línea del tiempo.</li>
-        <li>En tu móvil indica si la canción va <strong>antes o después</strong> de las que ya tienes y pulsa <em>Confirmar selección</em>.</li>
-        <li>Si aciertas, la canción se añade a tu línea del tiempo y sumas puntos — cuanto más rápido respondas, más puntos de bonus.</li>
-        <li>Si fallas, no sumas puntos y la canción no se añade a tu línea del tiempo.</li>
-      </ol>
+      <div class="fw-semibold mb-3 small text-uppercase">¿Cómo se juega?</div>
+
+      <div class="d-flex flex-column gap-3 small">
+
+        <div class="d-flex gap-3 align-items-start">
+          <span style="font-size:1.6rem;flex-shrink:0">🎟️</span>
+          <div>
+            <div class="fw-bold text-white mb-1">Únete con el PIN</div>
+            <div style="color:var(--muted)">El dinamizador te da un código de 4 dígitos. Introdúcelo en la pantalla de jugador para entrar a la partida.</div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-3 align-items-start">
+          <span style="font-size:1.6rem;flex-shrink:0">📅</span>
+          <div>
+            <div class="fw-bold text-white mb-1">Ordena canciones por año</div>
+            <div style="color:var(--muted)">Cada ronda suena una canción nueva. Debes colocarla en tu línea del tiempo <strong style="color:#fff">antes o después</strong> de las que ya tienes, según su año de lanzamiento.</div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-3 align-items-start">
+          <span style="font-size:1.6rem;flex-shrink:0">⚡</span>
+          <div>
+            <div class="fw-bold text-white mb-1">¡Cuanto más rápido, más puntos!</div>
+            <div style="color:var(--muted)">Si aciertas, la canción se queda en tu línea del tiempo y ganas puntos extra por velocidad. Encadenar aciertos activa un <strong style="color:#fff">multiplicador de racha 🔥</strong>.</div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-3 align-items-start">
+          <span style="font-size:1.6rem;flex-shrink:0">❌</span>
+          <div>
+            <div class="fw-bold text-white mb-1">Si fallas, no se añade</div>
+            <div style="color:var(--muted)">La canción no pasa a tu línea del tiempo y pierdes la racha, pero puedes seguir jugando el resto de rondas.</div>
+          </div>
+        </div>
+
+      </div>
     </div>
 
     <!-- Botón oculto de acceso superadmin — debajo de la caja de normas -->

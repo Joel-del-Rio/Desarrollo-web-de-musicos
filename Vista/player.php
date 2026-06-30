@@ -42,6 +42,11 @@ require_once __DIR__ . '/../config.php'; ?>
       <img src="<?= BASE_URL ?>/assets/images/Logo.png" alt="Hitstoric" style="width:100%;max-width:100%;display:block">
     </div>
 
+    <div class="text-center mb-3" style="color:var(--muted);font-size:.88rem;line-height:1.6">
+      Ordena canciones por año antes que los demás.<br>
+      <span style="color:rgba(255,255,255,.5);font-size:.78rem">Pide el PIN de 4 dígitos al dinamizador.</span>
+    </div>
+
     <div class="card p-4">
       <div class="mb-3">
         <label class="form-label text-secondary small fw-semibold text-uppercase">PIN de la partida</label>
@@ -82,6 +87,13 @@ require_once __DIR__ . '/../config.php'; ?>
     <div class="text-secondary small mb-1">Jugadores en la sala</div>
     <div class="fw-black" style="font-size:2.5rem;color:var(--accent)" id="lobby-count">0</div>
   </div>
+  <div class="card px-4 py-3 text-center" style="max-width:300px;background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08) !important">
+    <div class="small" style="color:var(--muted);line-height:1.7">
+      🎵 Sonarán canciones una a una.<br>
+      📅 Colócalas en orden cronológico.<br>
+      ⚡ Acierta rápido para ganar más puntos.
+    </div>
+  </div>
   <button class="btn btn-outline-secondary btn-sm rounded-pill px-4" onclick="goToJoin()">‹ Salir</button>
 </div>
 
@@ -92,7 +104,7 @@ require_once __DIR__ . '/../config.php'; ?>
   <div class="new-song-card">
     <div class="d-flex align-items-start justify-content-between gap-2">
       <div style="flex:1;min-width:0">
-        <div class="ns-label">🎵 ¿Dónde encaja esta canción?</div>
+        <div class="ns-label">🎵 ¿En qué año salió? Colócala en tu línea del tiempo</div>
         <div class="ns-title"  id="q-title">—</div>
         <div class="ns-artist" id="q-artist">—</div>
       </div>
@@ -144,7 +156,7 @@ require_once __DIR__ . '/../config.php'; ?>
     </button>
     <div class="d-flex align-items-center justify-content-between mt-2">
       <div class="text-secondary" style="font-size:.75rem" id="confirm-hint">
-        Toca una posición en tu línea del tiempo
+        👆 Toca «Antes» o «Después» para colocarla
       </div>
       <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" style="font-size:.72rem"
               onclick="leaveGame()">Salir</button>
