@@ -251,6 +251,10 @@ require_once __DIR__ . '/../config.php'; ?>
         <div>
           <div class="text-secondary small text-uppercase">Ronda</div>
           <div class="fw-black fs-3"><span id="q-round">1</span>/<span id="q-total">10</span></div>
+          <span id="hard-mode-badge" class="d-none mt-1"
+                style="display:inline-block;font-size:.7rem;font-weight:700;color:#fff;
+                       background:rgba(233,69,96,.85);padding:.15rem .5rem;border-radius:20px;
+                       letter-spacing:.03em">🔥 MODO DIFÍCIL</span>
         </div>
         <div class="flex-grow-1">
           <div class="d-flex justify-content-between small text-secondary mb-1">
@@ -412,6 +416,6 @@ require_once __DIR__ . '/../config.php'; ?>
   const GK  = 'hitstoric_gid';
   const TK  = 'hitstoric_tok';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=22"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=23"></script>
 </body>
 </html>

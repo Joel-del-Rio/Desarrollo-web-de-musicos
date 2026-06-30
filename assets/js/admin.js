@@ -197,6 +197,7 @@ function renderQuestion(state) {
 
   document.getElementById('q-round').textContent  = state.current_round;
   document.getElementById('q-total').textContent  = state.total_rounds;
+  document.getElementById('hard-mode-badge')?.classList.toggle('d-none', !gameSettings.hard_mode);
   document.getElementById('q-title').textContent  = song.title  || '—';
   const hard = !!gameSettings.hard_mode;
   const qArtistEl = document.getElementById('q-artist');

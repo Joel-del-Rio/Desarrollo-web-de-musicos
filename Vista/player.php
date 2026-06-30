@@ -118,8 +118,13 @@ require_once __DIR__ . '/../config.php'; ?>
       <div class="text-secondary" style="font-size:.75rem">
         Ronda <span id="q-round">1</span> de <span id="q-total">10</span>
       </div>
-      <div id="q-streak-box" class="d-none" style="font-size:.75rem;font-weight:700;color:var(--accent)">
-        🔥 Racha <span id="q-streak-count">0</span> &nbsp;×<span id="q-multiplier">1.0</span>
+      <div class="d-flex align-items-center gap-2">
+        <span id="hard-mode-badge" class="d-none"
+              style="font-size:.7rem;font-weight:700;color:#fff;background:rgba(233,69,96,.85);
+                     padding:.15rem .5rem;border-radius:20px;letter-spacing:.03em">🔥 MODO DIFÍCIL</span>
+        <div id="q-streak-box" class="d-none" style="font-size:.75rem;font-weight:700;color:var(--accent)">
+          🔥 Racha <span id="q-streak-count">0</span> &nbsp;×<span id="q-multiplier">1.0</span>
+        </div>
       </div>
     </div>
   </div>
@@ -226,6 +231,6 @@ require_once __DIR__ . '/../config.php'; ?>
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=34"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=35"></script>
 </body>
 </html>

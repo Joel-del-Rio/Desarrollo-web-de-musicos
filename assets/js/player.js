@@ -172,6 +172,7 @@ function renderQuestion(state) {
   }
   document.getElementById('q-round').textContent  = state.current_round;
   document.getElementById('q-total').textContent  = state.total_rounds;
+  document.getElementById('hard-mode-badge')?.classList.toggle('d-none', !state.hard_mode);
 
   // Reset del botón de confirmación
   const btn  = document.getElementById('confirm-btn');
