@@ -18,7 +18,8 @@ let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0, hard_mode: 0 
 
 /* ── Arranque ── */
 (function init() {
-  onAudioToggle(); // sincronizar estado inicial del toggle de autoplay
+  onAudioToggle();     // sincronizar estado inicial del toggle de autoplay
+  onHardModeToggle();  // sincronizar estado inicial del modo difícil
   updatePlayerEmailFields(2); // pre-poblar los campos de email individual desde el inicio
   if (gameId && adminToken) {
     // Hay una partida guardada en localStorage — intentar recuperarla
