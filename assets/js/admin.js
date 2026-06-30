@@ -395,16 +395,13 @@ function onHardModeToggle() {
   const hard    = document.getElementById('toggle-hard-mode').checked;
   const section = document.getElementById('section-streaming');
   if (hard) {
-    // Desactivar y ocultar streaming
-    document.getElementById('toggle-links').checked  = false;
-    document.getElementById('toggle-audio').checked  = false;
+    document.getElementById('toggle-links').checked    = false;
+    document.getElementById('toggle-audio').checked    = false;
     document.getElementById('toggle-autoplay').checked = false;
     onAudioToggle();
-    section.style.opacity       = '0.3';
-    section.style.pointerEvents = 'none';
+    section.style.display = 'none';
   } else {
-    section.style.opacity       = '';
-    section.style.pointerEvents = '';
+    section.style.display = '';
   }
 }
 function onLinksToggle() {
