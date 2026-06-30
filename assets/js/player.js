@@ -170,6 +170,7 @@ function renderQuestion(state) {
   const btn  = document.getElementById('confirm-btn');
   const hint = document.getElementById('confirm-hint');
   btn.disabled  = true;
+  btn.classList.remove('btn-pulse');
   hint.textContent = 'Toca una posición en tu línea del tiempo';
 
   buildTimeline(state.timeline || []);
@@ -429,6 +430,7 @@ function selectPosition(pos) {
   const btn  = document.getElementById('confirm-btn');
   const hint = document.getElementById('confirm-hint');
   btn.disabled = false;
+  btn.classList.add('btn-pulse');
   hint.textContent = `Posición ${pos + 1} seleccionada — pulsa para confirmar`;
 
   document.querySelector(`.pos-btn[data-pos="${pos}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -444,7 +446,9 @@ async function confirmAnswer() {
   if (selectedPos === null) return;
   const pos = selectedPos;
 
-  document.getElementById('confirm-btn').disabled = true;
+  const confirmBtn = document.getElementById('confirm-btn');
+  confirmBtn.disabled = true;
+  confirmBtn.classList.remove('btn-pulse');
   document.querySelectorAll('.pos-btn').forEach(b => b.disabled = true);
   stopCountdown();
 
