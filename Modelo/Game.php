@@ -29,7 +29,8 @@ class Game {
         string $pinMode = 'shared', string $organizerEmail = '',
         int $individualCount = 0,
         string $prize1 = '', string $prize2 = '', string $prize3 = '',
-        array $playerEmails = []
+        array $playerEmails = [],
+        int $hardMode = 0
     ): array {
         // Generar PIN único de 4 dígitos (no repetir PINs de partidas activas)
         do {
@@ -45,12 +46,13 @@ class Game {
             "INSERT INTO games
              (pin, admin_token, total_rounds, question_time, selected_genre,
               show_links, embed_youtube, autoplay, pin_mode, organizer_email,
-              prize_1, prize_2, prize_3)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
+              prize_1, prize_2, prize_3, hard_mode)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         )->execute([
             $pin, $token, $totalRounds, $questionTime, $genre,
             $showLinks, $embedYoutube, $autoplay, $pinMode,
             $organizerEmail ?: null, $prize1 ?: null, $prize2 ?: null, $prize3 ?: null,
+            $hardMode,
         ]);
         $gameId = (int)$this->db->lastInsertId();
 
@@ -329,6 +331,7 @@ class Game {
             'show_links'    => (int)($game['show_links']    ?? 0),
             'embed_youtube' => (int)($game['embed_youtube'] ?? 0),
             'autoplay'      => (int)($game['autoplay']      ?? 0),
+            'hard_mode'     => (int)($game['hard_mode']     ?? 0),
             'pin_mode'      => $game['pin_mode'] ?? 'shared',
             'prize_1'       => $game['prize_1'] ?? null,
             'prize_2'       => $game['prize_2'] ?? null,

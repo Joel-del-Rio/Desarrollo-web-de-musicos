@@ -30,6 +30,7 @@ class GameController {
         $showLinks    = ($_POST['show_links']    ?? '0') === '1' ? 1 : 0;
         $embedYoutube = ($_POST['embed_youtube'] ?? '0') === '1' ? 1 : 0;
         $autoplay     = ($_POST['autoplay']      ?? '0') === '1' ? 1 : 0;
+        $hardMode     = ($_POST['hard_mode']     ?? '0') === '1' ? 1 : 0;
         $pinMode      = ($_POST['pin_mode'] ?? 'shared') === 'individual' ? 'individual' : 'shared';
         $email        = filter_var(trim($_POST['organizer_email'] ?? ''), FILTER_VALIDATE_EMAIL) ?: '';
         $indivCount   = max(2, min(30, (int)($_POST['individual_count'] ?? 2)));
@@ -44,7 +45,8 @@ class GameController {
             $rounds, $questionTime, $genre, $showLinks, $embedYoutube, $autoplay,
             $pinMode, $email, $pinMode === 'individual' ? $indivCount : 0,
             '', '', '',
-            $playerEmails
+            $playerEmails,
+            $hardMode
         );
 
         // Enviar emails de confirmación si la partida se creó correctamente

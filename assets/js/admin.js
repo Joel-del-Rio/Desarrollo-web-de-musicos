@@ -14,7 +14,7 @@ let timerInterval = null;                     // Cuenta atrás del anillo SVG
 let lastStatus = null;                        // Último estado procesado (evita re-renders)
 let lastQuestionRound = -1;                   // Última ronda renderizada
 let questionTime = 30;                        // Duración de la pregunta en segundos
-let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0 }; // Opciones de la partida
+let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0, hard_mode: 0 }; // Opciones de la partida
 
 /* ── Arranque ── */
 (function init() {
@@ -183,7 +183,7 @@ function renderQuestion(state) {
   questionTime  = state.question_time || 30;
 
   // Guardar opciones de la partida para saber si mostrar audio/links
-  if (state.show_links !== undefined) gameSettings = { show_links: state.show_links, embed_youtube: state.embed_youtube, autoplay: state.autoplay };
+  if (state.show_links !== undefined) gameSettings = { show_links: state.show_links, embed_youtube: state.embed_youtube, autoplay: state.autoplay, hard_mode: state.hard_mode ?? 0 };
   updateGridLayout();
 
   const qAudioCard = document.getElementById('q-audio-card');
@@ -478,9 +478,10 @@ async function createGame() {
   const time   = parseInt(document.getElementById('time-input').value,   10);
   const activeGenreBtn = document.querySelector('#genre-selector .genre-btn.active');
   const genre           = activeGenreBtn ? activeGenreBtn.dataset.genre : 'Todos';
-  const showLinks       = document.getElementById('toggle-links').checked    ? '1' : '0';
-  const embedYoutube    = document.getElementById('toggle-audio').checked    ? '1' : '0';
-  const autoplay        = document.getElementById('toggle-autoplay').checked ? '1' : '0';
+  const showLinks       = document.getElementById('toggle-links').checked     ? '1' : '0';
+  const embedYoutube    = document.getElementById('toggle-audio').checked     ? '1' : '0';
+  const autoplay        = document.getElementById('toggle-autoplay').checked  ? '1' : '0';
+  const hardMode        = document.getElementById('toggle-hard-mode').checked ? '1' : '0';
   const pinMode         = document.getElementById('pin-mode').value;
   const organizerEmail  = pinMode === 'shared' ? document.getElementById('organizer-email').value.trim() : '';
   const individualCount = Math.max(2, Math.min(30, parseInt(document.getElementById('indiv-count-input').value, 10) || 2));
@@ -512,7 +513,7 @@ async function createGame() {
   try {
     const body = new URLSearchParams({
       total_rounds: rounds, question_time: time, genre,
-      show_links: showLinks, embed_youtube: embedYoutube, autoplay,
+      show_links: showLinks, embed_youtube: embedYoutube, autoplay, hard_mode: hardMode,
       pin_mode: pinMode, organizer_email: organizerEmail, individual_count: individualCount,
     });
     if (pinMode === 'individual') {

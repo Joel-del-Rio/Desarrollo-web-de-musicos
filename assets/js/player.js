@@ -162,7 +162,14 @@ function renderQuestion(state) {
 
   showScreen('question');
   document.getElementById('q-title').textContent  = currentSong.title  || '—';
-  document.getElementById('q-artist').textContent = currentSong.artist || '—';
+  const artistEl = document.getElementById('q-artist');
+  if (state.hard_mode) {
+    artistEl.textContent = '???';
+    artistEl.style.opacity = '.35';
+  } else {
+    artistEl.textContent = currentSong.artist || '—';
+    artistEl.style.opacity = '';
+  }
   document.getElementById('q-round').textContent  = state.current_round;
   document.getElementById('q-total').textContent  = state.total_rounds;
 

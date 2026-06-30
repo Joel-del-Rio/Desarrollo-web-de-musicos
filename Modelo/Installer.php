@@ -132,8 +132,15 @@ class Installer {
             $currentVersion = 12;
         }
 
+        // v13: modo difícil (oculta artista y año al jugador durante la pregunta)
+        if ($currentVersion === 12) {
+            try { $pdo->exec("ALTER TABLE games ADD COLUMN hard_mode TINYINT(1) DEFAULT 0"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=13");
+            $currentVersion = 13;
+        }
+
         // Esquema actualizado: verificar integridad y salir
-        if ($currentVersion >= 12) {
+        if ($currentVersion >= 13) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
