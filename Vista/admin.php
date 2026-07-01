@@ -75,7 +75,7 @@ require_once __DIR__ . '/../config.php'; ?>
              style="background:rgba(233,69,96,.08);border:1px solid rgba(233,69,96,.25)">
           <div>
             <div class="fw-semibold small">🔥 Modo difícil</div>
-            <div class="small" style="color:var(--muted);opacity:.75">Oculta el artista y el año · desactiva streaming</div>
+            <div class="small" style="color:var(--muted);opacity:.75">Oculta el artista y el año · desactiva opciones de streaming</div>
           </div>
           <div class="form-check form-switch mb-0">
             <input class="form-check-input" type="checkbox" id="toggle-hard-mode" role="switch"
