@@ -231,6 +231,6 @@ require_once __DIR__ . '/../config.php'; ?>
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=35"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=36"></script>
 </body>
 </html>

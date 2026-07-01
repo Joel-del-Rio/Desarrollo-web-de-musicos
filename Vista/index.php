@@ -311,7 +311,8 @@ require_once __DIR__ . '/../config.php'; ?>
         const posBtn = document.createElement('button');
         posBtn.className = 'pos-btn';
         posBtn.dataset.pos = i;
-        const arrow = i === 0 ? '⬆ Antes de todo' : i === n ? '⬇ Después de todo' : '↕ Aquí';
+        const arrow = n === 0 ? '👉 Clica aquí para colocarla'
+                    : i === 0 ? '⬆ Antes de todo' : i === n ? '⬇ Después de todo' : '↕ Aquí';
         posBtn.innerHTML = `<span class="pos-icon">📍</span>${arrow}`;
         posBtn.addEventListener('click', () => tutSelectPosition(i));
         area.appendChild(posBtn);
@@ -337,7 +338,8 @@ require_once __DIR__ . '/../config.php'; ?>
         const i = parseInt(btn.dataset.pos);
         const total = document.querySelectorAll('#tut-timeline-area .pos-btn').length;
         const isSelected = i === pos;
-        const arrow = i === 0 ? '⬆ Antes de todo' : i === total - 1 ? '⬇ Después de todo' : '↕ Aquí';
+        const arrow = total === 1 ? '👉 Clica aquí para colocarla'
+                    : i === 0 ? '⬆ Antes de todo' : i === total - 1 ? '⬇ Después de todo' : '↕ Aquí';
         btn.innerHTML = isSelected
           ? `<span class="pos-icon">✅</span>${arrow}`
           : `<span class="pos-icon">📍</span>${arrow}`;

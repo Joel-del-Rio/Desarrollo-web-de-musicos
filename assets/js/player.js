@@ -395,7 +395,8 @@ function buildTimeline(timeline) {
     const posBtn = document.createElement('button');
     posBtn.className = 'pos-btn';
     posBtn.dataset.pos = i;
-    const arrow = i === 0 ? '⬆ Antes de todo' : i === n ? '⬇ Después de todo' : '↕ Aquí';
+    const arrow = n === 0 ? '👉 Clica aquí para colocarla'
+                : i === 0 ? '⬆ Antes de todo' : i === n ? '⬇ Después de todo' : '↕ Aquí';
     posBtn.innerHTML = `<span class="pos-icon">📍</span>${arrow}`;
     posBtn.addEventListener('click', () => selectPosition(i));
     area.appendChild(posBtn);
@@ -422,15 +423,17 @@ function selectPosition(pos) {
   document.querySelectorAll('.pos-btn').forEach(btn => {
     const isSelected = parseInt(btn.dataset.pos) === pos;
     btn.classList.toggle('selected', isSelected);
+    const total = document.querySelectorAll('.pos-btn').length;
     if (isSelected) {
-      const arrow = pos === 0 ? '⬆ Antes de todo'
-                 : pos === document.querySelectorAll('.pos-btn').length - 1 ? '⬇ Después de todo'
+      const arrow = total === 1 ? '👉 Clica aquí para colocarla'
+                 : pos === 0 ? '⬆ Antes de todo'
+                 : pos === total - 1 ? '⬇ Después de todo'
                  : '↕ Aquí';
       btn.innerHTML = `<span class="pos-icon">✅</span>${arrow}`;
     } else {
       const i = parseInt(btn.dataset.pos);
-      const total = document.querySelectorAll('.pos-btn').length;
-      const txt = i === 0 ? '⬆ Antes de todo' : i === total-1 ? '⬇ Después de todo' : '↕ Aquí';
+      const txt = total === 1 ? '👉 Clica aquí para colocarla'
+                : i === 0 ? '⬆ Antes de todo' : i === total-1 ? '⬇ Después de todo' : '↕ Aquí';
       btn.innerHTML = `<span class="pos-icon">📍</span>${txt}`;
     }
   });
