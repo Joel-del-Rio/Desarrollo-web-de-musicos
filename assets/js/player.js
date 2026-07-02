@@ -38,6 +38,7 @@ let pPreviewLoading   = false;
     // Sesión guardada — intentar recuperar el estado
     fetchState().then(state => {
       if (state && !state.error) applyState(state);
+      else if (state && state.error === 'Jugador no encontrado') handleKicked();
       else { clearSession(); showScreen('join'); }
     });
   } else {
@@ -68,9 +69,23 @@ function startPolling(ms = 1500) {
   pollTimer = setInterval(async () => {
     const s = await fetchState();
     if (s && !s.error) applyState(s);
+    else if (s && s.error === 'Jugador no encontrado') handleKicked();
   }, ms);
 }
 function stopPolling() { clearInterval(pollTimer); pollTimer = null; }
+
+/** El dinamizador ha expulsado al jugador de la sala — avisar y volver al join */
+function handleKicked() {
+  clearSession();
+  showScreen('join');
+  document.getElementById('pin-input').value  = '';
+  document.getElementById('name-input').value = '';
+  const errEl = document.getElementById('join-error');
+  if (errEl) {
+    errEl.textContent = '⛔ El dinamizador te ha expulsado de la partida.';
+    errEl.classList.remove('d-none');
+  }
+}
 
 /* ── Gestión de pantallas ─────────────────────────────────────── */
 function showScreen(name) {
