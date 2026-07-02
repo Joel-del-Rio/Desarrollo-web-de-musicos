@@ -153,4 +153,16 @@ class GameController {
         $newStatus = $this->game->nextRound($gameId);
         return ['success' => true, 'new_status' => $newStatus];
     }
+
+    /** Expulsa a un jugador de la sala de espera (solo el admin autorizado puede hacerlo) */
+    public function kickPlayer(): array {
+        $gameId   = (int)($_POST['game_id'] ?? 0);
+        $token    = $_POST['admin_token'] ?? '';
+        $playerId = (int)($_POST['player_id'] ?? 0);
+        if (!$this->game->verifyAdmin($gameId, $token)) return ['error' => 'No autorizado'];
+        if (!$playerId) return ['error' => 'Falta player_id'];
+
+        $ok = $this->player->remove($playerId, $gameId);
+        return $ok ? ['success' => true] : ['error' => 'No se pudo eliminar al jugador'];
+    }
 }

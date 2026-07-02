@@ -51,6 +51,13 @@ class Player {
         return $st->fetchAll();
     }
 
+    /** Elimina a un jugador de la partida (usado por el dinamizador para expulsar) */
+    public function remove(int $playerId, int $gameId): bool {
+        $st = $this->db->prepare("DELETE FROM players WHERE id=? AND game_id=?");
+        $st->execute([$playerId, $gameId]);
+        return $st->rowCount() > 0;
+    }
+
     /** Actualiza el timestamp de última actividad del jugador (keep-alive) */
     public function ping(int $playerId): void {
         $this->db->prepare("UPDATE players SET last_seen=NOW() WHERE id=?")->execute([$playerId]);

@@ -62,6 +62,12 @@ try {
             echo json_encode((new GameController())->nextRound());
             break;
 
+        case 'kick_player':
+            // Expulsa a un jugador de la sala de espera
+            require_once __DIR__ . '/GameController.php';
+            echo json_encode((new GameController())->kickPlayer());
+            break;
+
         // ── Autenticación del panel de premios ─────────
 
         case 'admin_login':

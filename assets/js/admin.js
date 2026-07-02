@@ -129,10 +129,15 @@ function renderWaiting(state) {
   (state.players || []).forEach(p => {
     const chip = document.createElement('div');
     chip.className = 'player-chip';
-    chip.style.cssText = `background:${p.avatar_color}22;border:2px solid ${p.avatar_color}`;
+    chip.style.cssText = `background:${p.avatar_color}22;border:2px solid ${p.avatar_color};display:flex;align-items:center;justify-content:space-between;gap:.5rem`;
     chip.innerHTML = `
-      <span class="avatar-circle" style="background:${p.avatar_color}">${p.name[0].toUpperCase()}</span>
-      <span>${esc(p.name)}</span>`;
+      <span style="display:flex;align-items:center;gap:.5rem;min-width:0">
+        <span class="avatar-circle" style="background:${p.avatar_color}">${p.name[0].toUpperCase()}</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
+      </span>
+      <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0"
+              style="font-size:.7rem;flex-shrink:0" title="Expulsar jugador"
+              onclick="kickPlayer(${p.id},'${esc(p.name)}')">✕</button>`;
     list.appendChild(chip);
   });
 
@@ -572,6 +577,14 @@ async function startGame() {
   const d = await apiPost('start_game');
   if (d.error) { alert(d.error); return; }
   const s = await fetchState(); applyState(s);
+}
+
+/** Expulsa a un jugador de la sala de espera */
+async function kickPlayer(playerId, name) {
+  if (!confirm(`¿Expulsar a "${name}" de la sala?`)) return;
+  const d = await apiPost('kick_player', { player_id: playerId });
+  if (d.error) { alert(d.error); return; }
+  const s = await fetchState(); if (s) applyState(s);
 }
 
 /** Llama a show_results para revelar el año; desactiva el botón durante la petición */
