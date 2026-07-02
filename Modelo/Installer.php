@@ -139,8 +139,15 @@ class Installer {
             $currentVersion = 13;
         }
 
+        // v14: avatar elegido por el jugador (emoji), editable solo en la sala de espera
+        if ($currentVersion === 13) {
+            try { $pdo->exec("ALTER TABLE players ADD COLUMN avatar VARCHAR(8) DEFAULT '🙂'"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=14");
+            $currentVersion = 14;
+        }
+
         // Esquema actualizado: verificar integridad y salir
-        if ($currentVersion >= 13) {
+        if ($currentVersion >= 14) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
@@ -213,6 +220,7 @@ class Installer {
                 name         VARCHAR(50) NOT NULL,
                 score        INT DEFAULT 0,
                 avatar_color VARCHAR(7) DEFAULT '#FF6B6B',
+                avatar       VARCHAR(8) DEFAULT '🙂',
                 email        VARCHAR(255) NULL,
                 streak       INT DEFAULT 0,
                 last_seen    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

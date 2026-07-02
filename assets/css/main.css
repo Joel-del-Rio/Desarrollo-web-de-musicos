@@ -162,6 +162,20 @@ body { background: var(--bg) !important; color: var(--text); }
 }
 .pos-btn .pos-icon { font-size: 1rem; }
 
+/* Selector de avatar (join y lobby) */
+.avatar-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: .5rem;
+}
+.avatar-opt {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; border-radius: 12px; border: 2px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04); cursor: pointer; transition: border-color .15s, background .15s, transform .1s;
+}
+.avatar-opt:hover  { border-color: var(--accent); transform: scale(1.06); }
+.avatar-opt.selected {
+  border-color: var(--accent); background: rgba(233,69,96,.2); transform: scale(1.06);
+}
+
 /* Canción nueva (sticky arriba en player) */
 .new-song-card {
   background: var(--bg2);

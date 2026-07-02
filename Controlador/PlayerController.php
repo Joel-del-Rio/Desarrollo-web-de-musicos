@@ -23,8 +23,9 @@ class PlayerController {
      * - PIN compartido: valida que la partida exista y acepte jugadores.
      */
     public function joinGame(): array {
-        $pin  = trim($_POST['pin']  ?? '');
-        $name = trim($_POST['name'] ?? '');
+        $pin    = trim($_POST['pin']  ?? '');
+        $name   = trim($_POST['name'] ?? '');
+        $avatar = trim($_POST['avatar'] ?? '');
 
         if (strlen($pin) !== 4 || !ctype_digit($pin)) return ['error' => 'PIN inválido (4 dígitos)'];
         if ($name === '' || strlen($name) > 30)        return ['error' => 'Nombre inválido (máx 30 caracteres)'];
@@ -36,7 +37,7 @@ class PlayerController {
 
             // Crear jugador y marcar el PIN como usado
             $email = $gameByIndiv['player_email'] ?? '';
-            $pl    = $this->player->create((int)$gameByIndiv['id'], $name, $email);
+            $pl    = $this->player->create((int)$gameByIndiv['id'], $name, $email, $avatar);
             $this->game->claimIndividualPin($pin, $pl['id']);
 
             return [
@@ -45,6 +46,7 @@ class PlayerController {
                 'game_id'      => (int)$gameByIndiv['id'],
                 'player_name'  => $name,
                 'player_color' => $pl['color'],
+                'player_avatar'=> $pl['avatar'],
             ];
         }
 
@@ -58,14 +60,33 @@ class PlayerController {
             return ['error' => 'Esta partida usa PINs individuales. Usa tu código personal.'];
         }
 
-        $pl = $this->player->create((int)$game['id'], $name);
+        $pl = $this->player->create((int)$game['id'], $name, '', $avatar);
         return [
             'success'      => true,
             'player_id'    => $pl['id'],
             'game_id'      => (int)$game['id'],
             'player_name'  => $name,
             'player_color' => $pl['color'],
+            'player_avatar'=> $pl['avatar'],
         ];
+    }
+
+    /** Cambia el avatar del jugador — solo permitido mientras la partida está en la sala de espera */
+    public function updateAvatar(): array {
+        $playerId = (int)($_POST['player_id'] ?? 0);
+        $avatar   = trim($_POST['avatar'] ?? '');
+        if (!$playerId) return ['error' => 'Falta player_id'];
+
+        $pl = $this->player->getById($playerId);
+        if (!$pl) return ['error' => 'Jugador no encontrado'];
+
+        $game = $this->game->getById((int)$pl['game_id']);
+        if (!$game || $game['status'] !== 'waiting') {
+            return ['error' => 'Solo puedes cambiar de avatar en la sala de espera'];
+        }
+
+        if (!$this->player->updateAvatar($playerId, $avatar)) return ['error' => 'Avatar no válido'];
+        return ['success' => true, 'avatar' => $avatar];
     }
 
     /**

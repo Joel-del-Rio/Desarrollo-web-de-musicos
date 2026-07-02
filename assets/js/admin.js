@@ -132,7 +132,7 @@ function renderWaiting(state) {
     chip.style.cssText = `background:${p.avatar_color}22;border:2px solid ${p.avatar_color};display:flex;align-items:center;justify-content:space-between;gap:.5rem`;
     chip.innerHTML = `
       <span style="display:flex;align-items:center;gap:.5rem;min-width:0">
-        <span class="avatar-circle" style="background:${p.avatar_color}">${p.name[0].toUpperCase()}</span>
+        <span class="avatar-circle" style="background:${p.avatar_color}">${p.avatar || p.name[0].toUpperCase()}</span>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
       </span>
       <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0"
@@ -275,7 +275,7 @@ function renderResults(state) {
     row.className = `res-row ${r.is_correct ? 'res-correct' : 'res-wrong'}`;
     row.innerHTML = `
       <span style="font-size:1.1rem">${r.is_correct ? '✅' : '❌'}</span>
-      <span class="avatar-circle" style="background:${r.avatar_color}">${r.name[0].toUpperCase()}</span>
+      <span class="avatar-circle" style="background:${r.avatar_color}">${r.avatar || r.name[0].toUpperCase()}</span>
       <span style="flex:1;font-weight:600">${esc(r.name)}</span>
       <span class="fw-bold" style="color:var(--accent)">+${r.points_earned} pts</span>`;
     list.appendChild(row);
@@ -310,7 +310,7 @@ function renderLeaderboard(id, players) {
     row.className = 'lb-row';
     row.innerHTML = `
       <span class="lb-rank">${medal}</span>
-      <span class="avatar-circle" style="background:${p.avatar_color}">${p.name[0].toUpperCase()}</span>
+      <span class="avatar-circle" style="background:${p.avatar_color}">${p.avatar || p.name[0].toUpperCase()}</span>
       <span class="lb-name">${esc(p.name)}</span>
       <span class="lb-score">${p.score} pts</span>`;
     el.appendChild(row);
@@ -333,7 +333,7 @@ function renderPodium(id, players) {
     step.className = `podium-step ${cls}`;
     step.innerHTML = `
       <div class="podium-medal" style="font-size:1.75rem">${medal}</div>
-      <div class="podium-avatar-big" style="background:${p.avatar_color}">${p.name[0].toUpperCase()}</div>
+      <div class="podium-avatar-big" style="background:${p.avatar_color}">${p.avatar || p.name[0].toUpperCase()}</div>
       <div style="font-size:.8rem;font-weight:700;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</div>
       <div style="font-size:.7rem;color:var(--muted)">${p.score} pts</div>
       <div class="podium-bar"></div>`;

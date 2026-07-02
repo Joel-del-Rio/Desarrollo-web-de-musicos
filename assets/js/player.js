@@ -16,6 +16,11 @@ let selectedPos  = null;        // Posición seleccionada en el timeline (índic
 let currentSong  = null;        // Canción de la ronda actual
 let questionTime = 30;          // Duración de la pregunta en segundos
 
+/* ── Selección de avatar ──────────────────────────────────────── */
+// Misma lista y orden que Player::AVATARS en el backend
+const AVATAR_LIST = ['🙂','😎','🤠','🥳','👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁','🐯','🐧','🦄','🐙','🐢','🦉','🐝'];
+let joinSelectedAvatar = AVATAR_LIST[Math.floor(Math.random() * AVATAR_LIST.length)];
+
 /* ── Estado del reproductor de audio ─────────────────────────── */
 const P_SVG_PLAY  = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
 const P_SVG_PAUSE = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
@@ -52,8 +57,50 @@ let pPreviewLoading   = false;
   // Enviar con Enter en el formulario de join
   document.getElementById('pin-input')?.addEventListener('keydown',  e => { if(e.key==='Enter') joinGame(); });
   document.getElementById('name-input')?.addEventListener('keydown', e => { if(e.key==='Enter') joinGame(); });
+  renderJoinAvatarGrid();
   initPlayerAudio();
 })();
+
+/* ── Selector de avatar en la pantalla de unirse ──────────────── */
+function renderJoinAvatarGrid() {
+  const grid = document.getElementById('join-avatar-grid');
+  if (!grid) return;
+  grid.innerHTML = AVATAR_LIST.map(a =>
+    `<button type="button" class="avatar-opt${a === joinSelectedAvatar ? ' selected' : ''}"
+             data-avatar="${a}" onclick="selectJoinAvatar('${a}')">${a}</button>`
+  ).join('');
+}
+function selectJoinAvatar(a) {
+  joinSelectedAvatar = a;
+  document.querySelectorAll('#join-avatar-grid .avatar-opt').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.avatar === a);
+  });
+}
+
+/* ── Selector de avatar en el lobby (editable mientras se espera) ── */
+function toggleLobbyAvatarPicker() {
+  const picker = document.getElementById('lobby-avatar-picker');
+  const grid   = document.getElementById('lobby-avatar-grid');
+  const opening = picker.classList.contains('d-none');
+  if (opening) {
+    const current = document.getElementById('lobby-avatar').textContent;
+    grid.innerHTML = AVATAR_LIST.map(a =>
+      `<button type="button" class="avatar-opt${a === current ? ' selected' : ''}"
+               data-avatar="${a}" onclick="chooseLobbyAvatar('${a}')">${a}</button>`
+    ).join('');
+  }
+  picker.classList.toggle('d-none', !opening);
+}
+async function chooseLobbyAvatar(a) {
+  document.getElementById('lobby-avatar').textContent = a;
+  document.getElementById('lobby-avatar-picker').classList.add('d-none');
+  const d = await fetch(`${API}?action=update_avatar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ player_id: playerId, avatar: a }),
+  }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
+  if (d.error) console.error('[Player] update_avatar:', d.error);
+}
 
 /* ── Llamada API ──────────────────────────────────────────────── */
 async function fetchState() {
@@ -158,7 +205,7 @@ function renderLobby(state) {
   document.getElementById('lobby-count').textContent = state.total_players || 0;
   const av = document.getElementById('lobby-avatar');
   av.style.background = p.avatar_color || '#e94560';
-  av.textContent = (p.name || '?')[0].toUpperCase();
+  av.textContent = p.avatar || (p.name || '?')[0].toUpperCase();
   startPolling(1500);
 }
 
@@ -588,7 +635,7 @@ function renderFinished(state) {
     const medal = ['🥇','🥈','🥉'][i] ?? `${i+1}.`;
     row.innerHTML = `
       <span class="lb-rank">${medal}</span>
-      <span class="avatar-circle" style="background:${pl.avatar_color}">${pl.name[0].toUpperCase()}</span>
+      <span class="avatar-circle" style="background:${pl.avatar_color}">${pl.avatar || pl.name[0].toUpperCase()}</span>
       <span class="lb-name">${esc(pl.name)}</span>
       <span class="lb-score">${pl.score} pts</span>`;
     board.appendChild(row);
@@ -607,7 +654,7 @@ function renderMiniLB(id, results, myName) {
     row.className = 'lb-row' + (r.name === myName ? ' me' : '');
     row.innerHTML = `
       <span class="lb-rank">${i+1}.</span>
-      <span class="avatar-circle" style="background:${r.avatar_color}">${r.name[0].toUpperCase()}</span>
+      <span class="avatar-circle" style="background:${r.avatar_color}">${r.avatar || r.name[0].toUpperCase()}</span>
       <span class="lb-name">${esc(r.name)}</span>
       <span style="font-size:.85rem;color:${r.is_correct?'var(--success)':'var(--error)'}">
         ${r.is_correct?'✅':'❌'}
@@ -669,7 +716,7 @@ async function joinGame() {
     const data = await fetch(`${API}?action=join_game`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ pin, name }),
+      body: new URLSearchParams({ pin, name, avatar: joinSelectedAvatar }),
     }).then(r => r.json());
 
     if (data.error) { showErr(data.error); return; }

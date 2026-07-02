@@ -14,6 +14,12 @@ class Player {
     // Paleta de colores para los avatares (asignación aleatoria al crear jugador)
     private const COLORS = ['#e94560','#4ECDC4','#45B7D1','#FF6B35','#DDA0DD','#2ecc71','#f39c12'];
 
+    // Emojis de avatar seleccionables — misma lista usada en el frontend para validar
+    public const AVATARS = [
+        '🙂','😎','🤠','🥳','👽','🤖','🐱','🐶','🦊','🐼',
+        '🐸','🐵','🦁','🐯','🐧','🦄','🐙','🐢','🦉','🐝',
+    ];
+
     public function __construct() {
         $this->db = Database::getInstance()->pdo();
     }
@@ -22,14 +28,17 @@ class Player {
 
     /**
      * Crea un nuevo jugador en la partida con un color de avatar aleatorio.
-     * @return array  id, name y color del jugador creado
+     * @return array  id, name, color y avatar del jugador creado
      */
-    public function create(int $gameId, string $name, string $email = ''): array {
+    public function create(int $gameId, string $name, string $email = '', string $avatar = ''): array {
         $color = self::COLORS[random_int(0, count(self::COLORS) - 1)];
+        if (!in_array($avatar, self::AVATARS, true)) {
+            $avatar = self::AVATARS[random_int(0, count(self::AVATARS) - 1)];
+        }
         $this->db->prepare(
-            "INSERT INTO players (game_id, name, avatar_color, email) VALUES (?,?,?,?)"
-        )->execute([$gameId, $name, $color, $email ?: null]);
-        return ['id' => (int)$this->db->lastInsertId(), 'name' => $name, 'color' => $color];
+            "INSERT INTO players (game_id, name, avatar_color, avatar, email) VALUES (?,?,?,?,?)"
+        )->execute([$gameId, $name, $color, $avatar, $email ?: null]);
+        return ['id' => (int)$this->db->lastInsertId(), 'name' => $name, 'color' => $color, 'avatar' => $avatar];
     }
 
     /** Devuelve todos los datos de un jugador por su ID */
@@ -42,7 +51,7 @@ class Player {
     /** Devuelve todos los jugadores de una partida, ordenados por puntuación */
     public function getByGame(int $gameId): array {
         $st = $this->db->prepare(
-            "SELECT id, name, score, avatar_color, streak
+            "SELECT id, name, score, avatar_color, avatar, streak
              FROM players
              WHERE game_id=?
              ORDER BY score DESC, name ASC"
@@ -56,6 +65,14 @@ class Player {
         $st = $this->db->prepare("DELETE FROM players WHERE id=? AND game_id=?");
         $st->execute([$playerId, $gameId]);
         return $st->rowCount() > 0;
+    }
+
+    /** Cambia el avatar del jugador (solo permitido mientras la partida está en espera) */
+    public function updateAvatar(int $playerId, string $avatar): bool {
+        if (!in_array($avatar, self::AVATARS, true)) return false;
+        $st = $this->db->prepare("UPDATE players SET avatar=? WHERE id=?");
+        $st->execute([$avatar, $playerId]);
+        return true;
     }
 
     /** Actualiza el timestamp de última actividad del jugador (keep-alive) */
@@ -190,7 +207,7 @@ class Player {
     /** Devuelve los resultados de todos los jugadores para la ronda actual */
     public function getRoundResults(int $gameId, int $songId): array {
         $st = $this->db->prepare(
-            "SELECT p.name, p.avatar_color, a.position_guess, a.is_correct, a.points_earned
+            "SELECT p.name, p.avatar_color, p.avatar, a.position_guess, a.is_correct, a.points_earned
              FROM answers a
              JOIN players p ON a.player_id = p.id
              WHERE a.game_id=? AND a.song_id=?
