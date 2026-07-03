@@ -25,7 +25,9 @@ class Player {
     public const GLASSES = ['👓','🕶️'];
     public const HATS = ['🎩','👒','🎓','👑'];
     public const HEADPHONES = ['🎧'];
-    public const FACIAL_HAIR = ['🥸'];
+    // Tokens (no emoji): el frontend los dibuja como SVG porque Unicode no tiene
+    // un glifo aislado de bigote/barba, solo caras completas
+    public const FACIAL_HAIR = ['mustache', 'beard'];
 
     public function __construct() {
         $this->db = Database::getInstance()->pdo();

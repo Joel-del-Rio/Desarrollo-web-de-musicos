@@ -33,21 +33,45 @@ function accessoryPos(p, key) {
   return { top: spec.defTop, left: spec.defLeft };
 }
 
+// Vello facial: Unicode no tiene glifo aislado de bigote/barba, se dibuja como SVG (misma
+// definición que en player.js — se guarda el token 'mustache'/'beard', no el dibujo)
+const FACIAL_HAIR_SVG = {
+  mustache: `<svg viewBox="0 0 120 40" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block"><path d="M60 14 C52 2,36 0,22 8 C30 6,40 10,46 18 C36 14,24 18,14 28 C26 24,38 20,48 24 C52 27,56 28,60 28 C64 28,68 27,72 24 C82 20,94 24,106 28 C96 18,84 14,74 18 C80 10,90 6,98 8 C84 0,68 2,60 14 Z" fill="#3b2415"/></svg>`,
+  beard:    `<svg viewBox="0 0 120 90" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block"><path d="M18 8 C10 30,10 55,30 74 C45 86,75 86,90 74 C110 55,110 30,102 8 C95 26,80 34,60 34 C40 34,25 26,18 8 Z" fill="#3b2415"/></svg>`,
+};
+function glyphHTML(key, value, sizePx) {
+  if (!value) return '';
+  if (key === 'facial_hair') {
+    const svg = FACIAL_HAIR_SVG[value];
+    if (!svg) return '';
+    const s = sizePx || 24;
+    return `<span style="display:inline-flex;width:${s.toFixed(1)}px;height:${(s*0.6).toFixed(1)}px;align-items:center;justify-content:center">${svg}</span>`;
+  }
+  return value;
+}
+
 /** Genera el HTML de las capas superpuestas del avatar (avatar + pelo + gafas + sombrero + auriculares + vello facial) */
 function avatarLayers(p, size) {
   size = size || 32;
   const base = p.avatar || (p.name ? p.name[0].toUpperCase() : '?');
-  const layer = (content, topPct, leftPct, fontPct, z) => content
-    ? `<span style="position:absolute;top:${topPct}%;left:${leftPct}%;transform:translate(-50%,-50%);font-size:${(size*fontPct).toFixed(1)}px;z-index:${z};line-height:1;pointer-events:none">${content}</span>`
-    : '';
-  let html = layer(base, 50, 50, 0.68, 1)
-           + layer(p.hair, 16, 50, 0.42, 0)
-           + layer(p.headphones, 46, 50, 0.62, 3);
+  const layer = (key, content, topPct, leftPct, fontPct, z) => {
+    if (!content) return '';
+    const px    = size * fontPct;
+    const inner = glyphHTML(key, content, px);
+    if (!inner) return '';
+    const style = key === 'facial_hair'
+      ? `position:absolute;top:${topPct}%;left:${leftPct}%;transform:translate(-50%,-50%);z-index:${z};pointer-events:none`
+      : `position:absolute;top:${topPct}%;left:${leftPct}%;transform:translate(-50%,-50%);font-size:${px.toFixed(1)}px;line-height:1;z-index:${z};pointer-events:none`;
+    return `<span style="${style}">${inner}</span>`;
+  };
+  let html = layer(null, base, 50, 50, 0.68, 1)
+           + layer(null, p.hair, 16, 50, 0.42, 0)
+           + layer(null, p.headphones, 46, 50, 0.62, 3);
   Object.keys(ACCESSORY_SPECS).forEach(key => {
     if (!p[key]) return;
     const spec = ACCESSORY_SPECS[key];
     const pos  = accessoryPos(p, key);
-    html += layer(p[key], pos.top, pos.left, spec.fontPct, spec.z);
+    html += layer(key, p[key], pos.top, pos.left, spec.fontPct, spec.z);
   });
   return html;
 }
