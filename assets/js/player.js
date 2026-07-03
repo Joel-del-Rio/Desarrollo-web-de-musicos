@@ -27,7 +27,6 @@ const HEADPHONES_LIST = ['🎧'];
 // Pestañas del personalizador — 'key' es el campo del jugador, 'none' permite quitar el complemento
 const CUSTOM_TABS = [
   { key: 'avatar',     label: '😀 Avatar',      list: AVATAR_LIST,     none: false },
-  { key: 'hair',       label: '💇 Pelo',        list: HAIR_LIST,       none: true  },
   { key: 'glasses',    label: '👓 Gafas',       list: GLASSES_LIST,    none: true  },
   { key: 'hat',        label: '🧢 Sombrero',    list: HATS_LIST,       none: true  },
   { key: 'headphones', label: '🎧 Auriculares', list: HEADPHONES_LIST, none: true  },
