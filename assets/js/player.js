@@ -145,6 +145,7 @@ function makeDraggable(span, container, custom, key, onDrop) {
     e.preventDefault();
     span.setPointerCapture(e.pointerId);
     span.style.cursor = 'grabbing';
+    const scale = accessoryPos(custom, key).scale; // conservar el tamaño actual al arrastrar
     const move = ev => {
       const rect = container.getBoundingClientRect();
       let x = ((ev.clientX - rect.left) / rect.width)  * 100;
@@ -153,7 +154,7 @@ function makeDraggable(span, container, custom, key, onDrop) {
       y = Math.max(0, Math.min(100, y));
       span.style.left = x.toFixed(1) + '%';
       span.style.top  = y.toFixed(1) + '%';
-      custom[key + '_pos'] = `${x.toFixed(1)},${y.toFixed(1)}`;
+      custom[key + '_pos'] = `${x.toFixed(1)},${y.toFixed(1)},${scale.toFixed(2)}`;
     };
     const up = () => {
       span.releasePointerCapture(e.pointerId);
