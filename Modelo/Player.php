@@ -33,12 +33,13 @@ class Player {
         $this->db = Database::getInstance()->pdo();
     }
 
-    /** Valida un string de posición "x,y" (porcentajes 0-100); devuelve '' si no es válido */
+    /** Valida un string de posición "x,y,escala" (x/y en % 0-100, escala 0.5-3); devuelve '' si no es válido */
     private static function sanitizePos(string $pos): string {
-        if (!preg_match('/^(\d{1,3}(?:\.\d{1,2})?),(\d{1,3}(?:\.\d{1,2})?)$/', $pos, $m)) return '';
-        $x = min(100.0, max(0.0, (float)$m[1]));
-        $y = min(100.0, max(0.0, (float)$m[2]));
-        return sprintf('%.1f,%.1f', $x, $y);
+        if (!preg_match('/^(\d{1,3}(?:\.\d{1,2})?),(\d{1,3}(?:\.\d{1,2})?)(?:,(\d(?:\.\d{1,2})?))?$/', $pos, $m)) return '';
+        $x     = min(100.0, max(0.0, (float)$m[1]));
+        $y     = min(100.0, max(0.0, (float)$m[2]));
+        $scale = isset($m[3]) ? min(3.0, max(0.5, (float)$m[3])) : 1.0;
+        return sprintf('%.1f,%.1f,%.2f', $x, $y, $scale);
     }
 
     // ── CRUD básico ───────────────────────────────────

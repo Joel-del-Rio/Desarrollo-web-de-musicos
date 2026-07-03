@@ -58,16 +58,23 @@ const ACCESSORY_SPECS = {
   facial_hair: { fontPct: 0.4,  z: 2, defTop: 62, defLeft: 50 },
 };
 
-/** Devuelve {top,left} en % para un complemento: usa la posición guardada si existe, si no la posición por defecto */
+/** Devuelve {top,left,scale} para un complemento: usa la posición/tamaño guardados o los valores por defecto */
 function accessoryPos(p, key) {
   const spec = ACCESSORY_SPECS[key];
   const raw = p[key + '_pos'];
   if (raw) {
     const parts = raw.split(',');
     const x = parseFloat(parts[0]), y = parseFloat(parts[1]);
-    if (!isNaN(x) && !isNaN(y)) return { top: y, left: x };
+    const scale = parts[2] !== undefined ? parseFloat(parts[2]) : 1;
+    if (!isNaN(x) && !isNaN(y)) return { top: y, left: x, scale: isNaN(scale) ? 1 : scale };
   }
-  return { top: spec.defTop, left: spec.defLeft };
+  return { top: spec.defTop, left: spec.defLeft, scale: 1 };
+}
+/** Guarda una nueva escala para el complemento manteniendo su posición actual */
+function setAccessoryScale(custom, key, scale) {
+  const pos = accessoryPos(custom, key);
+  const clamped = Math.max(0.5, Math.min(3, +scale.toFixed(2)));
+  custom[key + '_pos'] = `${pos.left.toFixed(1)},${pos.top.toFixed(1)},${clamped.toFixed(2)}`;
 }
 
 /** Genera el HTML (no interactivo) de las capas superpuestas — usado en chips, leaderboards, podio, resultados */
@@ -91,7 +98,7 @@ function avatarLayers(p, size) {
     if (!p[key]) return;
     const spec = ACCESSORY_SPECS[key];
     const pos  = accessoryPos(p, key);
-    html += layer(key, p[key], pos.top, pos.left, spec.fontPct, spec.z);
+    html += layer(key, p[key], pos.top, pos.left, spec.fontPct * pos.scale, spec.z);
   });
   return html;
 }
@@ -119,12 +126,13 @@ function renderDraggablePreview(containerEl, custom, size, onDrop) {
     const spec = ACCESSORY_SPECS[key];
     const pos  = accessoryPos(custom, key);
     const span = document.createElement('span');
+    const effFontPct = spec.fontPct * pos.scale;
     if (key === 'facial_hair') {
-      span.innerHTML = glyphHTML(key, val, size * spec.fontPct);
+      span.innerHTML = glyphHTML(key, val, size * effFontPct);
       span.style.cssText = `position:absolute;top:${pos.top}%;left:${pos.left}%;transform:translate(-50%,-50%);z-index:${spec.z};cursor:grab;touch-action:none;user-select:none`;
     } else {
       span.textContent = val;
-      span.style.cssText = `position:absolute;top:${pos.top}%;left:${pos.left}%;transform:translate(-50%,-50%);font-size:${(size*spec.fontPct).toFixed(1)}px;line-height:1;z-index:${spec.z};cursor:grab;touch-action:none;user-select:none`;
+      span.style.cssText = `position:absolute;top:${pos.top}%;left:${pos.left}%;transform:translate(-50%,-50%);font-size:${(size*effFontPct).toFixed(1)}px;line-height:1;z-index:${spec.z};cursor:grab;touch-action:none;user-select:none`;
     }
     containerEl.appendChild(span);
     makeDraggable(span, containerEl, custom, key, onDrop);
@@ -241,6 +249,7 @@ function renderJoinCustomGrid() {
     `<button type="button" class="avatar-opt${a === current ? ' selected' : ''}"
              onclick="selectJoinOption('${tab.key}','${a}')">${glyphHTML(tab.key, a, 24)}</button>`
   ).join('');
+  renderResizeControls(document.getElementById('join-custom-resize'), tab.key, current, 'adjustJoinScale');
 }
 function selectJoinOption(key, value) {
   joinCustom[key] = value;
@@ -248,9 +257,28 @@ function selectJoinOption(key, value) {
   renderJoinCustomGrid();
   updateJoinPreview();
 }
+function adjustJoinScale(key, delta) {
+  const pos = accessoryPos(joinCustom, key);
+  setAccessoryScale(joinCustom, key, pos.scale + delta);
+  updateJoinPreview();
+}
 function updateJoinPreview() {
   const el = document.getElementById('join-avatar-preview');
   if (el) renderDraggablePreview(el, joinCustom, 64, null);
+}
+
+/** Muestra los botones ➖/➕ para agrandar o encoger el complemento equipado en la pestaña activa */
+function renderResizeControls(el, tabKey, currentValue, fnName) {
+  if (!el) return;
+  if (!ACCESSORY_SPECS[tabKey] || !currentValue) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="d-flex align-items-center justify-content-center gap-2 mt-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm rounded-circle" style="width:32px;height:32px;padding:0"
+              onclick="${fnName}('${tabKey}',-0.15)">➖</button>
+      <span class="text-secondary small">Tamaño</span>
+      <button type="button" class="btn btn-outline-secondary btn-sm rounded-circle" style="width:32px;height:32px;padding:0"
+              onclick="${fnName}('${tabKey}',0.15)">➕</button>
+    </div>`;
 }
 
 /* ── Personalizador de avatar en el lobby (editable mientras se espera) ── */
@@ -308,6 +336,13 @@ function renderLobbyCustomGrid() {
     `<button type="button" class="avatar-opt${a === current ? ' selected' : ''}"
              onclick="chooseLobbyOption('${tab.key}','${a}')">${glyphHTML(tab.key, a, 24)}</button>`
   ).join('');
+  renderResizeControls(document.getElementById('lobby-custom-resize'), tab.key, current, 'adjustLobbyScale');
+}
+async function adjustLobbyScale(key, delta) {
+  const pos = accessoryPos(lobbyCustom, key);
+  setAccessoryScale(lobbyCustom, key, pos.scale + delta);
+  renderDraggablePreview(document.getElementById('lobby-avatar'), lobbyCustom, 90, saveLobbyPosition);
+  await saveLobbyPosition(key);
 }
 async function chooseLobbyOption(key, value) {
   lobbyCustom[key] = value;

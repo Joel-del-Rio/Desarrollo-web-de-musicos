@@ -28,9 +28,10 @@ function accessoryPos(p, key) {
   if (raw) {
     const parts = raw.split(',');
     const x = parseFloat(parts[0]), y = parseFloat(parts[1]);
-    if (!isNaN(x) && !isNaN(y)) return { top: y, left: x };
+    const scale = parts[2] !== undefined ? parseFloat(parts[2]) : 1;
+    if (!isNaN(x) && !isNaN(y)) return { top: y, left: x, scale: isNaN(scale) ? 1 : scale };
   }
-  return { top: spec.defTop, left: spec.defLeft };
+  return { top: spec.defTop, left: spec.defLeft, scale: 1 };
 }
 
 // Vello facial: Unicode no tiene glifo aislado de bigote/barba, se dibuja como SVG (misma
@@ -71,7 +72,7 @@ function avatarLayers(p, size) {
     if (!p[key]) return;
     const spec = ACCESSORY_SPECS[key];
     const pos  = accessoryPos(p, key);
-    html += layer(key, p[key], pos.top, pos.left, spec.fontPct, spec.z);
+    html += layer(key, p[key], pos.top, pos.left, spec.fontPct * pos.scale, spec.z);
   });
   return html;
 }
