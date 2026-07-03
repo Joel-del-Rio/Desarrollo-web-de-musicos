@@ -27,7 +27,7 @@ function avatarLayers(p, size) {
        + layer(p.hair, 16, 0.42, 0)
        + layer(p.glasses, 48, 0.46, 2)
        + layer(p.headphones, 46, 0.62, 3)
-       + layer(p.hat, 4, 0.5, 4);
+       + layer(p.hat, 12, 0.5, 4);
 }
 
 /* ── Arranque ── */
