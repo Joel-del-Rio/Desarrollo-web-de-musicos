@@ -23,7 +23,7 @@ function avatarLayers(p, size) {
   const layer = (content, topPct, fontPct, z) => content
     ? `<span style="position:absolute;top:${topPct}%;left:50%;transform:translate(-50%,-50%);font-size:${(size*fontPct).toFixed(1)}px;z-index:${z};line-height:1;pointer-events:none">${content}</span>`
     : '';
-  return layer(base, 55, 0.55, 1)
+  return layer(base, 50, 0.68, 1)
        + layer(p.hair, 16, 0.42, 0)
        + layer(p.glasses, 50, 0.36, 2)
        + layer(p.headphones, 50, 0.78, 3)
