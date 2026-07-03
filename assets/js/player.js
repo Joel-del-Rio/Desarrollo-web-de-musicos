@@ -18,20 +18,22 @@ let questionTime = 30;          // Duración de la pregunta en segundos
 
 /* ── Selección de avatar y complementos ───────────────────────── */
 // Mismas listas y orden que las constantes de Player.php en el backend
-const AVATAR_LIST     = ['🙂','😎','🤠','🥳','👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁','🐯','🐰','🐻','🐨','🐮','🐷','🐹'];
-const HAIR_LIST       = ['🦱','🦰','🦳','🦲','💇','🎀'];
-const GLASSES_LIST    = ['👓','🕶️','🥽'];
-const HATS_LIST       = ['🎩','👒','🎓','👑'];
-const HEADPHONES_LIST = ['🎧'];
+const AVATAR_LIST      = ['🙂','😎','🤠','🥳','👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁','🐯','🐰','🐻','🐨','🐮','🐷','🐹'];
+const HAIR_LIST        = ['🦱','🦰','🦳','🦲','💇','🎀'];
+const GLASSES_LIST     = ['👓','🕶️','🥽'];
+const HATS_LIST        = ['🎩','👒','🎓','👑'];
+const HEADPHONES_LIST  = ['🎧'];
+const FACIAL_HAIR_LIST = ['🥸'];
 
 // Pestañas del personalizador — 'key' es el campo del jugador, 'none' permite quitar el complemento
 const CUSTOM_TABS = [
-  { key: 'avatar',     label: '😀 Avatar',      list: AVATAR_LIST,     none: false },
-  { key: 'glasses',    label: '👓 Gafas',       list: GLASSES_LIST,    none: true  },
-  { key: 'hat',        label: '🎩 Sombrero',    list: HATS_LIST,       none: true  },
+  { key: 'avatar',      label: '😀 Avatar',       list: AVATAR_LIST,      none: false },
+  { key: 'glasses',     label: '👓 Gafas',        list: GLASSES_LIST,     none: true  },
+  { key: 'hat',         label: '🎩 Sombrero',     list: HATS_LIST,        none: true  },
+  { key: 'facial_hair', label: '🥸 Vello facial', list: FACIAL_HAIR_LIST, none: true  },
 ];
 
-/** Genera el HTML de las capas superpuestas (avatar + pelo + gafas + sombrero + auriculares) */
+/** Genera el HTML de las capas superpuestas (avatar + pelo + gafas + sombrero + auriculares + vello facial) */
 function avatarLayers(p, size) {
   size = size || 32;
   const base = p.avatar || (p.name ? p.name[0].toUpperCase() : '?');
@@ -42,18 +44,19 @@ function avatarLayers(p, size) {
        + layer(p.hair, 16, 0.42, 0)
        + layer(p.glasses, 48, 0.46, 2)
        + layer(p.headphones, 46, 0.62, 3)
+       + layer(p.facial_hair, 62, 0.4, 2)
        + layer(p.hat, 12, 0.5, 4);
 }
 
 // Selección en curso en la pantalla de unirse
 let joinCustom = {
   avatar: AVATAR_LIST[Math.floor(Math.random() * AVATAR_LIST.length)],
-  hair: '', glasses: '', hat: '', headphones: '',
+  hair: '', glasses: '', hat: '', headphones: '', facial_hair: '',
 };
 let joinActiveTab = 'avatar';
 
 // Selección en curso en el lobby (se sincroniza con el estado del jugador al entrar)
-let lobbyCustom = { avatar: '🙂', hair: '', glasses: '', hat: '', headphones: '' };
+let lobbyCustom = { avatar: '🙂', hair: '', glasses: '', hat: '', headphones: '', facial_hair: '' };
 let lobbyActiveTab = 'avatar';
 
 /* ── Estado del reproductor de audio ─────────────────────────── */
@@ -187,6 +190,7 @@ async function chooseLobbyOption(key, value) {
         player_id: playerId,
         hair: lobbyCustom.hair, glasses: lobbyCustom.glasses,
         hat: lobbyCustom.hat, headphones: lobbyCustom.headphones,
+        facial_hair: lobbyCustom.facial_hair,
       }),
     }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
     if (d.error) console.error('[Player] update_customization:', d.error);
@@ -303,7 +307,7 @@ function renderLobby(state) {
   if (!pickerOpen) {
     lobbyCustom = {
       avatar: p.avatar || '🙂', hair: p.hair || '', glasses: p.glasses || '',
-      hat: p.hat || '', headphones: p.headphones || '',
+      hat: p.hat || '', headphones: p.headphones || '', facial_hair: p.facial_hair || '',
     };
   }
   av.innerHTML = avatarLayers(lobbyCustom, 90);
@@ -821,6 +825,7 @@ async function joinGame() {
         pin, name, avatar: joinCustom.avatar,
         hair: joinCustom.hair, glasses: joinCustom.glasses,
         hat: joinCustom.hat, headphones: joinCustom.headphones,
+        facial_hair: joinCustom.facial_hair,
       }),
     }).then(r => r.json());
 

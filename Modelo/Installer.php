@@ -159,8 +159,15 @@ class Installer {
             $currentVersion = 15;
         }
 
+        // v16: vello facial (bigote/disfraz) como complemento adicional
+        if ($currentVersion === 15) {
+            try { $pdo->exec("ALTER TABLE players ADD COLUMN facial_hair VARCHAR(8) DEFAULT ''"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=16");
+            $currentVersion = 16;
+        }
+
         // Esquema actualizado: verificar integridad y salir
-        if ($currentVersion >= 15) {
+        if ($currentVersion >= 16) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
@@ -238,6 +245,7 @@ class Installer {
                 glasses      VARCHAR(8) DEFAULT '',
                 hat          VARCHAR(8) DEFAULT '',
                 headphones   VARCHAR(8) DEFAULT '',
+                facial_hair  VARCHAR(8) DEFAULT '',
                 email        VARCHAR(255) NULL,
                 streak       INT DEFAULT 0,
                 last_seen    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

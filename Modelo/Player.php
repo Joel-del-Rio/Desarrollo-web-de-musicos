@@ -25,6 +25,7 @@ class Player {
     public const GLASSES = ['👓','🕶️','🥽'];
     public const HATS = ['🎩','👒','🎓','👑'];
     public const HEADPHONES = ['🎧'];
+    public const FACIAL_HAIR = ['🥸'];
 
     public function __construct() {
         $this->db = Database::getInstance()->pdo();
@@ -38,7 +39,7 @@ class Player {
      */
     public function create(
         int $gameId, string $name, string $email = '', string $avatar = '',
-        string $hair = '', string $glasses = '', string $hat = '', string $headphones = ''
+        string $hair = '', string $glasses = '', string $hat = '', string $headphones = '', string $facialHair = ''
     ): array {
         $color = self::COLORS[random_int(0, count(self::COLORS) - 1)];
         if (!in_array($avatar, self::AVATARS, true)) {
@@ -48,14 +49,15 @@ class Player {
         $glasses    = in_array($glasses, self::GLASSES, true) ? $glasses : '';
         $hat        = in_array($hat, self::HATS, true) ? $hat : '';
         $headphones = in_array($headphones, self::HEADPHONES, true) ? $headphones : '';
+        $facialHair = in_array($facialHair, self::FACIAL_HAIR, true) ? $facialHair : '';
 
         $this->db->prepare(
-            "INSERT INTO players (game_id, name, avatar_color, avatar, hair, glasses, hat, headphones, email)
-             VALUES (?,?,?,?,?,?,?,?,?)"
-        )->execute([$gameId, $name, $color, $avatar, $hair, $glasses, $hat, $headphones, $email ?: null]);
+            "INSERT INTO players (game_id, name, avatar_color, avatar, hair, glasses, hat, headphones, facial_hair, email)
+             VALUES (?,?,?,?,?,?,?,?,?,?)"
+        )->execute([$gameId, $name, $color, $avatar, $hair, $glasses, $hat, $headphones, $facialHair, $email ?: null]);
         return [
             'id' => (int)$this->db->lastInsertId(), 'name' => $name, 'color' => $color, 'avatar' => $avatar,
-            'hair' => $hair, 'glasses' => $glasses, 'hat' => $hat, 'headphones' => $headphones,
+            'hair' => $hair, 'glasses' => $glasses, 'hat' => $hat, 'headphones' => $headphones, 'facial_hair' => $facialHair,
         ];
     }
 
@@ -69,7 +71,7 @@ class Player {
     /** Devuelve todos los jugadores de una partida, ordenados por puntuación */
     public function getByGame(int $gameId): array {
         $st = $this->db->prepare(
-            "SELECT id, name, score, avatar_color, avatar, hair, glasses, hat, headphones, streak
+            "SELECT id, name, score, avatar_color, avatar, hair, glasses, hat, headphones, facial_hair, streak
              FROM players
              WHERE game_id=?
              ORDER BY score DESC, name ASC"
@@ -93,14 +95,17 @@ class Player {
         return true;
     }
 
-    /** Cambia los complementos de personalización (pelo, gafas, sombrero, auriculares) */
-    public function updateCustomization(int $playerId, string $hair, string $glasses, string $hat, string $headphones): bool {
+    /** Cambia los complementos de personalización (pelo, gafas, sombrero, auriculares, vello facial) */
+    public function updateCustomization(
+        int $playerId, string $hair, string $glasses, string $hat, string $headphones, string $facialHair
+    ): bool {
         $hair       = in_array($hair, self::HAIR, true) ? $hair : '';
         $glasses    = in_array($glasses, self::GLASSES, true) ? $glasses : '';
         $hat        = in_array($hat, self::HATS, true) ? $hat : '';
         $headphones = in_array($headphones, self::HEADPHONES, true) ? $headphones : '';
-        $st = $this->db->prepare("UPDATE players SET hair=?, glasses=?, hat=?, headphones=? WHERE id=?");
-        $st->execute([$hair, $glasses, $hat, $headphones, $playerId]);
+        $facialHair = in_array($facialHair, self::FACIAL_HAIR, true) ? $facialHair : '';
+        $st = $this->db->prepare("UPDATE players SET hair=?, glasses=?, hat=?, headphones=?, facial_hair=? WHERE id=?");
+        $st->execute([$hair, $glasses, $hat, $headphones, $facialHair, $playerId]);
         return true;
     }
 
@@ -236,7 +241,7 @@ class Player {
     /** Devuelve los resultados de todos los jugadores para la ronda actual */
     public function getRoundResults(int $gameId, int $songId): array {
         $st = $this->db->prepare(
-            "SELECT p.name, p.avatar_color, p.avatar, p.hair, p.glasses, p.hat, p.headphones, a.position_guess, a.is_correct, a.points_earned
+            "SELECT p.name, p.avatar_color, p.avatar, p.hair, p.glasses, p.hat, p.headphones, p.facial_hair, a.position_guess, a.is_correct, a.points_earned
              FROM answers a
              JOIN players p ON a.player_id = p.id
              WHERE a.game_id=? AND a.song_id=?
