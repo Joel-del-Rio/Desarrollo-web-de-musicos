@@ -16,10 +16,47 @@ let selectedPos  = null;        // Posición seleccionada en el timeline (índic
 let currentSong  = null;        // Canción de la ronda actual
 let questionTime = 30;          // Duración de la pregunta en segundos
 
-/* ── Selección de avatar ──────────────────────────────────────── */
-// Misma lista y orden que Player::AVATARS en el backend
-const AVATAR_LIST = ['🙂','😎','🤠','🥳','👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁','🐯','🐧','🦄','🐙','🐢','🦉','🐝'];
-let joinSelectedAvatar = AVATAR_LIST[Math.floor(Math.random() * AVATAR_LIST.length)];
+/* ── Selección de avatar y complementos ───────────────────────── */
+// Mismas listas y orden que las constantes de Player.php en el backend
+const AVATAR_LIST     = ['🙂','😎','🤠','🥳','👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁','🐯','🐧','🦄','🐙','🐢','🦉','🐝'];
+const HAIR_LIST       = ['🦱','🦰','🦳','🦲','💇','🎀'];
+const GLASSES_LIST    = ['👓','🕶️'];
+const HATS_LIST       = ['🧢','🎩','👒','🎓'];
+const HEADPHONES_LIST = ['🎧'];
+
+// Pestañas del personalizador — 'key' es el campo del jugador, 'none' permite quitar el complemento
+const CUSTOM_TABS = [
+  { key: 'avatar',     label: '😀 Avatar',      list: AVATAR_LIST,     none: false },
+  { key: 'hair',       label: '💇 Pelo',        list: HAIR_LIST,       none: true  },
+  { key: 'glasses',    label: '👓 Gafas',       list: GLASSES_LIST,    none: true  },
+  { key: 'hat',        label: '🧢 Sombrero',    list: HATS_LIST,       none: true  },
+  { key: 'headphones', label: '🎧 Auriculares', list: HEADPHONES_LIST, none: true  },
+];
+
+/** Genera el HTML de las capas superpuestas (avatar + pelo + gafas + sombrero + auriculares) */
+function avatarLayers(p, size) {
+  size = size || 32;
+  const base = p.avatar || (p.name ? p.name[0].toUpperCase() : '?');
+  const layer = (content, topPct, fontPct, z) => content
+    ? `<span style="position:absolute;top:${topPct}%;left:50%;transform:translate(-50%,-50%);font-size:${(size*fontPct).toFixed(1)}px;z-index:${z};line-height:1;pointer-events:none">${content}</span>`
+    : '';
+  return layer(base, 55, 0.55, 1)
+       + layer(p.hair, 16, 0.42, 0)
+       + layer(p.glasses, 50, 0.36, 2)
+       + layer(p.headphones, 50, 0.78, 3)
+       + layer(p.hat, 4, 0.5, 4);
+}
+
+// Selección en curso en la pantalla de unirse
+let joinCustom = {
+  avatar: AVATAR_LIST[Math.floor(Math.random() * AVATAR_LIST.length)],
+  hair: '', glasses: '', hat: '', headphones: '',
+};
+let joinActiveTab = 'avatar';
+
+// Selección en curso en el lobby (se sincroniza con el estado del jugador al entrar)
+let lobbyCustom = { avatar: '🙂', hair: '', glasses: '', hat: '', headphones: '' };
+let lobbyActiveTab = 'avatar';
 
 /* ── Estado del reproductor de audio ─────────────────────────── */
 const P_SVG_PLAY  = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
@@ -57,49 +94,105 @@ let pPreviewLoading   = false;
   // Enviar con Enter en el formulario de join
   document.getElementById('pin-input')?.addEventListener('keydown',  e => { if(e.key==='Enter') joinGame(); });
   document.getElementById('name-input')?.addEventListener('keydown', e => { if(e.key==='Enter') joinGame(); });
-  renderJoinAvatarGrid();
+  renderJoinCustomizer();
   initPlayerAudio();
 })();
 
-/* ── Selector de avatar en la pantalla de unirse ──────────────── */
-function renderJoinAvatarGrid() {
-  const grid = document.getElementById('join-avatar-grid');
+/* ── Personalizador de avatar en la pantalla de unirse ────────── */
+function renderJoinCustomizer() {
+  const tabsEl = document.getElementById('join-custom-tabs');
+  if (!tabsEl) return;
+  tabsEl.innerHTML = CUSTOM_TABS.map(t =>
+    `<button type="button" class="custom-tab${t.key === joinActiveTab ? ' active' : ''}"
+             onclick="setJoinTab('${t.key}')">${t.label}</button>`
+  ).join('');
+  renderJoinCustomGrid();
+  updateJoinPreview();
+}
+function setJoinTab(key) {
+  joinActiveTab = key;
+  renderJoinCustomizer();
+}
+function renderJoinCustomGrid() {
+  const grid = document.getElementById('join-custom-grid');
   if (!grid) return;
-  grid.innerHTML = AVATAR_LIST.map(a =>
-    `<button type="button" class="avatar-opt${a === joinSelectedAvatar ? ' selected' : ''}"
-             data-avatar="${a}" onclick="selectJoinAvatar('${a}')">${a}</button>`
+  const tab = CUSTOM_TABS.find(t => t.key === joinActiveTab);
+  const current = joinCustom[tab.key];
+  const noneBtn = tab.none
+    ? `<button type="button" class="avatar-opt${current === '' ? ' selected' : ''}" onclick="selectJoinOption('${tab.key}','')" title="Ninguno">🚫</button>`
+    : '';
+  grid.innerHTML = noneBtn + tab.list.map(a =>
+    `<button type="button" class="avatar-opt${a === current ? ' selected' : ''}"
+             onclick="selectJoinOption('${tab.key}','${a}')">${a}</button>`
   ).join('');
 }
-function selectJoinAvatar(a) {
-  joinSelectedAvatar = a;
-  document.querySelectorAll('#join-avatar-grid .avatar-opt').forEach(btn => {
-    btn.classList.toggle('selected', btn.dataset.avatar === a);
-  });
+function selectJoinOption(key, value) {
+  joinCustom[key] = value;
+  renderJoinCustomGrid();
+  updateJoinPreview();
+}
+function updateJoinPreview() {
+  const el = document.getElementById('join-avatar-preview');
+  if (el) el.innerHTML = avatarLayers(joinCustom, 64);
 }
 
-/* ── Selector de avatar en el lobby (editable mientras se espera) ── */
+/* ── Personalizador de avatar en el lobby (editable mientras se espera) ── */
 function toggleLobbyAvatarPicker() {
   const picker = document.getElementById('lobby-avatar-picker');
-  const grid   = document.getElementById('lobby-avatar-grid');
   const opening = picker.classList.contains('d-none');
-  if (opening) {
-    const current = document.getElementById('lobby-avatar').textContent;
-    grid.innerHTML = AVATAR_LIST.map(a =>
-      `<button type="button" class="avatar-opt${a === current ? ' selected' : ''}"
-               data-avatar="${a}" onclick="chooseLobbyAvatar('${a}')">${a}</button>`
-    ).join('');
-  }
+  if (opening) { lobbyActiveTab = 'avatar'; renderLobbyCustomizer(); }
   picker.classList.toggle('d-none', !opening);
 }
-async function chooseLobbyAvatar(a) {
-  document.getElementById('lobby-avatar').textContent = a;
-  document.getElementById('lobby-avatar-picker').classList.add('d-none');
-  const d = await fetch(`${API}?action=update_avatar`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ player_id: playerId, avatar: a }),
-  }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
-  if (d.error) console.error('[Player] update_avatar:', d.error);
+function renderLobbyCustomizer() {
+  const tabsEl = document.getElementById('lobby-custom-tabs');
+  if (!tabsEl) return;
+  tabsEl.innerHTML = CUSTOM_TABS.map(t =>
+    `<button type="button" class="custom-tab${t.key === lobbyActiveTab ? ' active' : ''}"
+             onclick="setLobbyTab('${t.key}')">${t.label}</button>`
+  ).join('');
+  renderLobbyCustomGrid();
+}
+function setLobbyTab(key) {
+  lobbyActiveTab = key;
+  renderLobbyCustomizer();
+}
+function renderLobbyCustomGrid() {
+  const grid = document.getElementById('lobby-custom-grid');
+  if (!grid) return;
+  const tab = CUSTOM_TABS.find(t => t.key === lobbyActiveTab);
+  const current = lobbyCustom[tab.key];
+  const noneBtn = tab.none
+    ? `<button type="button" class="avatar-opt${current === '' ? ' selected' : ''}" onclick="chooseLobbyOption('${tab.key}','')" title="Ninguno">🚫</button>`
+    : '';
+  grid.innerHTML = noneBtn + tab.list.map(a =>
+    `<button type="button" class="avatar-opt${a === current ? ' selected' : ''}"
+             onclick="chooseLobbyOption('${tab.key}','${a}')">${a}</button>`
+  ).join('');
+}
+async function chooseLobbyOption(key, value) {
+  lobbyCustom[key] = value;
+  document.getElementById('lobby-avatar').innerHTML = avatarLayers(lobbyCustom, 90);
+  renderLobbyCustomGrid();
+
+  if (key === 'avatar') {
+    const d = await fetch(`${API}?action=update_avatar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ player_id: playerId, avatar: value }),
+    }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
+    if (d.error) console.error('[Player] update_avatar:', d.error);
+  } else {
+    const d = await fetch(`${API}?action=update_customization`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        player_id: playerId,
+        hair: lobbyCustom.hair, glasses: lobbyCustom.glasses,
+        hat: lobbyCustom.hat, headphones: lobbyCustom.headphones,
+      }),
+    }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
+    if (d.error) console.error('[Player] update_customization:', d.error);
+  }
 }
 
 /* ── Llamada API ──────────────────────────────────────────────── */
@@ -205,7 +298,17 @@ function renderLobby(state) {
   document.getElementById('lobby-count').textContent = state.total_players || 0;
   const av = document.getElementById('lobby-avatar');
   av.style.background = p.avatar_color || '#e94560';
-  av.textContent = p.avatar || (p.name || '?')[0].toUpperCase();
+
+  // Solo sincronizar con el servidor si el picker está cerrado, para no pisar
+  // una selección que el jugador está haciendo justo ahora
+  const pickerOpen = !document.getElementById('lobby-avatar-picker')?.classList.contains('d-none');
+  if (!pickerOpen) {
+    lobbyCustom = {
+      avatar: p.avatar || '🙂', hair: p.hair || '', glasses: p.glasses || '',
+      hat: p.hat || '', headphones: p.headphones || '',
+    };
+  }
+  av.innerHTML = avatarLayers(lobbyCustom, 90);
   startPolling(1500);
 }
 
@@ -635,7 +738,7 @@ function renderFinished(state) {
     const medal = ['🥇','🥈','🥉'][i] ?? `${i+1}.`;
     row.innerHTML = `
       <span class="lb-rank">${medal}</span>
-      <span class="avatar-circle" style="background:${pl.avatar_color}">${pl.avatar || pl.name[0].toUpperCase()}</span>
+      <span class="avatar-circle" style="background:${pl.avatar_color}">${avatarLayers(pl,28)}</span>
       <span class="lb-name">${esc(pl.name)}</span>
       <span class="lb-score">${pl.score} pts</span>`;
     board.appendChild(row);
@@ -654,7 +757,7 @@ function renderMiniLB(id, results, myName) {
     row.className = 'lb-row' + (r.name === myName ? ' me' : '');
     row.innerHTML = `
       <span class="lb-rank">${i+1}.</span>
-      <span class="avatar-circle" style="background:${r.avatar_color}">${r.avatar || r.name[0].toUpperCase()}</span>
+      <span class="avatar-circle" style="background:${r.avatar_color}">${avatarLayers(r,28)}</span>
       <span class="lb-name">${esc(r.name)}</span>
       <span style="font-size:.85rem;color:${r.is_correct?'var(--success)':'var(--error)'}">
         ${r.is_correct?'✅':'❌'}
@@ -716,7 +819,11 @@ async function joinGame() {
     const data = await fetch(`${API}?action=join_game`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ pin, name, avatar: joinSelectedAvatar }),
+      body: new URLSearchParams({
+        pin, name, avatar: joinCustom.avatar,
+        hair: joinCustom.hair, glasses: joinCustom.glasses,
+        hat: joinCustom.hat, headphones: joinCustom.headphones,
+      }),
     }).then(r => r.json());
 
     if (data.error) { showErr(data.error); return; }

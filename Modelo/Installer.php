@@ -146,8 +146,21 @@ class Installer {
             $currentVersion = 14;
         }
 
+        // v15: personalización del avatar — pelo, gafas, sombrero y auriculares
+        if ($currentVersion === 14) {
+            try { $pdo->exec("
+                ALTER TABLE players
+                ADD COLUMN hair        VARCHAR(8) DEFAULT '',
+                ADD COLUMN glasses     VARCHAR(8) DEFAULT '',
+                ADD COLUMN hat         VARCHAR(8) DEFAULT '',
+                ADD COLUMN headphones  VARCHAR(8) DEFAULT ''
+            "); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=15");
+            $currentVersion = 15;
+        }
+
         // Esquema actualizado: verificar integridad y salir
-        if ($currentVersion >= 14) {
+        if ($currentVersion >= 15) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
@@ -221,6 +234,10 @@ class Installer {
                 score        INT DEFAULT 0,
                 avatar_color VARCHAR(7) DEFAULT '#FF6B6B',
                 avatar       VARCHAR(8) DEFAULT '🙂',
+                hair         VARCHAR(8) DEFAULT '',
+                glasses      VARCHAR(8) DEFAULT '',
+                hat          VARCHAR(8) DEFAULT '',
+                headphones   VARCHAR(8) DEFAULT '',
                 email        VARCHAR(255) NULL,
                 streak       INT DEFAULT 0,
                 last_seen    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

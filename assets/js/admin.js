@@ -16,6 +16,20 @@ let lastQuestionRound = -1;                   // Última ronda renderizada
 let questionTime = 30;                        // Duración de la pregunta en segundos
 let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0, hard_mode: 0 }; // Opciones de la partida
 
+/** Genera el HTML de las capas superpuestas del avatar (avatar + pelo + gafas + sombrero + auriculares) */
+function avatarLayers(p, size) {
+  size = size || 32;
+  const base = p.avatar || (p.name ? p.name[0].toUpperCase() : '?');
+  const layer = (content, topPct, fontPct, z) => content
+    ? `<span style="position:absolute;top:${topPct}%;left:50%;transform:translate(-50%,-50%);font-size:${(size*fontPct).toFixed(1)}px;z-index:${z};line-height:1;pointer-events:none">${content}</span>`
+    : '';
+  return layer(base, 55, 0.55, 1)
+       + layer(p.hair, 16, 0.42, 0)
+       + layer(p.glasses, 50, 0.36, 2)
+       + layer(p.headphones, 50, 0.78, 3)
+       + layer(p.hat, 4, 0.5, 4);
+}
+
 /* ── Arranque ── */
 (function init() {
   onAudioToggle();     // sincronizar estado inicial del toggle de autoplay
@@ -132,7 +146,7 @@ function renderWaiting(state) {
     chip.style.cssText = `background:${p.avatar_color}22;border:2px solid ${p.avatar_color};display:flex;align-items:center;justify-content:space-between;gap:.5rem`;
     chip.innerHTML = `
       <span style="display:flex;align-items:center;gap:.5rem;min-width:0">
-        <span class="avatar-circle" style="background:${p.avatar_color}">${p.avatar || p.name[0].toUpperCase()}</span>
+        <span class="avatar-circle" style="background:${p.avatar_color}">${avatarLayers(p,28)}</span>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
       </span>
       <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0"
@@ -275,7 +289,7 @@ function renderResults(state) {
     row.className = `res-row ${r.is_correct ? 'res-correct' : 'res-wrong'}`;
     row.innerHTML = `
       <span style="font-size:1.1rem">${r.is_correct ? '✅' : '❌'}</span>
-      <span class="avatar-circle" style="background:${r.avatar_color}">${r.avatar || r.name[0].toUpperCase()}</span>
+      <span class="avatar-circle" style="background:${r.avatar_color}">${avatarLayers(r,28)}</span>
       <span style="flex:1;font-weight:600">${esc(r.name)}</span>
       <span class="fw-bold" style="color:var(--accent)">+${r.points_earned} pts</span>`;
     list.appendChild(row);
@@ -310,7 +324,7 @@ function renderLeaderboard(id, players) {
     row.className = 'lb-row';
     row.innerHTML = `
       <span class="lb-rank">${medal}</span>
-      <span class="avatar-circle" style="background:${p.avatar_color}">${p.avatar || p.name[0].toUpperCase()}</span>
+      <span class="avatar-circle" style="background:${p.avatar_color}">${avatarLayers(p,28)}</span>
       <span class="lb-name">${esc(p.name)}</span>
       <span class="lb-score">${p.score} pts</span>`;
     el.appendChild(row);
@@ -333,7 +347,7 @@ function renderPodium(id, players) {
     step.className = `podium-step ${cls}`;
     step.innerHTML = `
       <div class="podium-medal" style="font-size:1.75rem">${medal}</div>
-      <div class="podium-avatar-big" style="background:${p.avatar_color}">${p.avatar || p.name[0].toUpperCase()}</div>
+      <div class="podium-avatar-big" style="background:${p.avatar_color}">${avatarLayers(p,56)}</div>
       <div style="font-size:.8rem;font-weight:700;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</div>
       <div style="font-size:.7rem;color:var(--muted)">${p.score} pts</div>
       <div class="podium-bar"></div>`;

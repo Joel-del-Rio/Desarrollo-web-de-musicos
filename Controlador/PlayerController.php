@@ -23,9 +23,13 @@ class PlayerController {
      * - PIN compartido: valida que la partida exista y acepte jugadores.
      */
     public function joinGame(): array {
-        $pin    = trim($_POST['pin']  ?? '');
-        $name   = trim($_POST['name'] ?? '');
-        $avatar = trim($_POST['avatar'] ?? '');
+        $pin        = trim($_POST['pin']  ?? '');
+        $name       = trim($_POST['name'] ?? '');
+        $avatar     = trim($_POST['avatar'] ?? '');
+        $hair       = trim($_POST['hair'] ?? '');
+        $glasses    = trim($_POST['glasses'] ?? '');
+        $hat        = trim($_POST['hat'] ?? '');
+        $headphones = trim($_POST['headphones'] ?? '');
 
         if (strlen($pin) !== 4 || !ctype_digit($pin)) return ['error' => 'PIN inválido (4 dígitos)'];
         if ($name === '' || strlen($name) > 30)        return ['error' => 'Nombre inválido (máx 30 caracteres)'];
@@ -37,7 +41,7 @@ class PlayerController {
 
             // Crear jugador y marcar el PIN como usado
             $email = $gameByIndiv['player_email'] ?? '';
-            $pl    = $this->player->create((int)$gameByIndiv['id'], $name, $email, $avatar);
+            $pl    = $this->player->create((int)$gameByIndiv['id'], $name, $email, $avatar, $hair, $glasses, $hat, $headphones);
             $this->game->claimIndividualPin($pin, $pl['id']);
 
             return [
@@ -60,7 +64,7 @@ class PlayerController {
             return ['error' => 'Esta partida usa PINs individuales. Usa tu código personal.'];
         }
 
-        $pl = $this->player->create((int)$game['id'], $name, '', $avatar);
+        $pl = $this->player->create((int)$game['id'], $name, '', $avatar, $hair, $glasses, $hat, $headphones);
         return [
             'success'      => true,
             'player_id'    => $pl['id'],
@@ -87,6 +91,27 @@ class PlayerController {
 
         if (!$this->player->updateAvatar($playerId, $avatar)) return ['error' => 'Avatar no válido'];
         return ['success' => true, 'avatar' => $avatar];
+    }
+
+    /** Cambia los complementos (pelo, gafas, sombrero, auriculares) — solo en la sala de espera */
+    public function updateCustomization(): array {
+        $playerId   = (int)($_POST['player_id'] ?? 0);
+        $hair       = trim($_POST['hair'] ?? '');
+        $glasses    = trim($_POST['glasses'] ?? '');
+        $hat        = trim($_POST['hat'] ?? '');
+        $headphones = trim($_POST['headphones'] ?? '');
+        if (!$playerId) return ['error' => 'Falta player_id'];
+
+        $pl = $this->player->getById($playerId);
+        if (!$pl) return ['error' => 'Jugador no encontrado'];
+
+        $game = $this->game->getById((int)$pl['game_id']);
+        if (!$game || $game['status'] !== 'waiting') {
+            return ['error' => 'Solo puedes personalizar tu avatar en la sala de espera'];
+        }
+
+        $this->player->updateCustomization($playerId, $hair, $glasses, $hat, $headphones);
+        return ['success' => true, 'hair' => $hair, 'glasses' => $glasses, 'hat' => $hat, 'headphones' => $headphones];
     }
 
     /**

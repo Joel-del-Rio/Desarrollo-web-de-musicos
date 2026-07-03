@@ -199,6 +199,12 @@ try {
             echo json_encode((new PlayerController())->updateAvatar());
             break;
 
+        case 'update_customization':
+            // Cambia pelo/gafas/sombrero/auriculares del jugador (solo en la sala de espera)
+            require_once __DIR__ . '/PlayerController.php';
+            echo json_encode((new PlayerController())->updateCustomization());
+            break;
+
         case 'submit_answer':
             // Envía la posición elegida por el jugador para la canción actual
             require_once __DIR__ . '/PlayerController.php';

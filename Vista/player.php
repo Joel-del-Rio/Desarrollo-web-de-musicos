@@ -19,7 +19,7 @@ require_once __DIR__ . '/../config.php'; ?>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Hitstoric — Jugador</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=5">
+  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=6">
   <style>
     #screen-question {
       height: 100dvh; /* dynamic viewport height (iOS safe) */
@@ -61,8 +61,14 @@ require_once __DIR__ . '/../config.php'; ?>
                placeholder="¿Cómo te llamas?" maxlength="30" autocomplete="off">
       </div>
       <div class="mb-3">
-        <label class="form-label text-secondary small fw-semibold text-uppercase">Elige tu avatar</label>
-        <div id="join-avatar-grid" class="avatar-grid"></div>
+        <label class="form-label text-secondary small fw-semibold text-uppercase">Personaliza tu avatar</label>
+
+        <div class="d-flex justify-content-center mb-2">
+          <div id="join-avatar-preview" class="avatar-preview"></div>
+        </div>
+
+        <div id="join-custom-tabs" class="custom-tabs mb-2"></div>
+        <div id="join-custom-grid" class="avatar-grid"></div>
       </div>
       <button class="btn btn-game btn-lg w-100 rounded-pill fw-bold" onclick="joinGame()">
         Entrar a la partida →
@@ -80,12 +86,12 @@ require_once __DIR__ . '/../config.php'; ?>
 <!-- ══ LOBBY ══ -->
 <div id="screen-lobby" class="screen align-items-center justify-content-center gap-3">
   <button type="button" id="lobby-avatar" onclick="toggleLobbyAvatarPicker()"
-       style="width:90px;height:90px;border-radius:50%;font-size:2.5rem;font-weight:900;color:#fff;
-              display:flex;align-items:center;justify-content:center;text-shadow:0 2px 4px rgba(0,0,0,.4);
-              border:3px solid rgba(255,255,255,.25);cursor:pointer;padding:0" title="Toca para cambiar tu avatar">?</button>
+       class="avatar-preview avatar-preview-lg" style="cursor:pointer;border:3px solid rgba(255,255,255,.25)"
+       title="Toca para personalizar tu avatar"></button>
   <div class="fw-black fs-3" id="lobby-name">—</div>
   <div id="lobby-avatar-picker" class="d-none w-100" style="max-width:340px">
-    <div id="lobby-avatar-grid" class="avatar-grid"></div>
+    <div id="lobby-custom-tabs" class="custom-tabs mb-2"></div>
+    <div id="lobby-custom-grid" class="avatar-grid"></div>
   </div>
   <p class="text-secondary mb-0">
     Esperando al dinamizador
@@ -239,6 +245,6 @@ require_once __DIR__ . '/../config.php'; ?>
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=38"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=39"></script>
 </body>
 </html>
