@@ -17,7 +17,7 @@ class Player {
     // Emojis de avatar seleccionables — misma lista usada en el frontend para validar
     public const AVATARS = [
         '🙂','😎','🤠','🥳','👽','🤖','🐱','🐶','🦊','🐼',
-        '🐸','🐵','🦁','🐯','🐧','🦄','🐙','🐢','🦉','🐝',
+        '🐸','🐵','🦁','🐯','🐰','🐻','🐨','🐮','🐷','🐹',
     ];
 
     // Complementos de personalización — vacío ('') siempre válido como "Ninguno"
