@@ -20,9 +20,9 @@ let questionTime = 30;          // Duración de la pregunta en segundos
 // Mismas listas y orden que las constantes de Player.php en el backend
 const AVATAR_LIST     = ['🙂','😎','🤠','🥳','👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁','🐯','🐰','🐻','🐨','🐮','🐷','🐹'];
 const HAIR_LIST       = ['🦱','🦰','🦳','🦲','💇','🎀'];
-const GLASSES_LIST    = ['👓','🕶️'];
+const GLASSES_LIST    = ['👓','🕶️','🥽'];
 const HATS_LIST       = ['🎩','👒','🎓','👑','⛑️','🪖'];
-const HEADPHONES_LIST = ['🎧'];
+const HEADPHONES_LIST = ['🎧','🎙️','📻'];
 
 // Pestañas del personalizador — 'key' es el campo del jugador, 'none' permite quitar el complemento
 const CUSTOM_TABS = [
@@ -41,8 +41,8 @@ function avatarLayers(p, size) {
     : '';
   return layer(base, 50, 0.68, 1)
        + layer(p.hair, 16, 0.42, 0)
-       + layer(p.glasses, 50, 0.36, 2)
-       + layer(p.headphones, 50, 0.78, 3)
+       + layer(p.glasses, 48, 0.46, 2)
+       + layer(p.headphones, 46, 0.62, 3)
        + layer(p.hat, 4, 0.5, 4);
 }
 
