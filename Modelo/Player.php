@@ -24,7 +24,7 @@ class Player {
     public const HAIR = ['🦱','🦰','🦳','🦲','💇','🎀'];
     public const GLASSES = ['👓','🕶️','🥽'];
     public const HATS = ['🎩','👒','🎓','👑','⛑️','🪖'];
-    public const HEADPHONES = ['🎧','🎙️','📻'];
+    public const HEADPHONES = ['🎧'];
 
     public function __construct() {
         $this->db = Database::getInstance()->pdo();

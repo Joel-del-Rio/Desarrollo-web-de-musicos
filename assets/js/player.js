@@ -22,7 +22,7 @@ const AVATAR_LIST     = ['🙂','😎','🤠','🥳','👽','🤖','🐱','🐶'
 const HAIR_LIST       = ['🦱','🦰','🦳','🦲','💇','🎀'];
 const GLASSES_LIST    = ['👓','🕶️','🥽'];
 const HATS_LIST       = ['🎩','👒','🎓','👑','⛑️','🪖'];
-const HEADPHONES_LIST = ['🎧','🎙️','📻'];
+const HEADPHONES_LIST = ['🎧'];
 
 // Pestañas del personalizador — 'key' es el campo del jugador, 'none' permite quitar el complemento
 const CUSTOM_TABS = [
