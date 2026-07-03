@@ -23,7 +23,7 @@ class Player {
     // Complementos de personalización — vacío ('') siempre válido como "Ninguno"
     public const HAIR = ['🦱','🦰','🦳','🦲','💇','🎀'];
     public const GLASSES = ['👓','🕶️'];
-    public const HATS = ['🧢','🎩','👒','🎓'];
+    public const HATS = ['🎩','👒','🎓','👑','⛑️','🪖'];
     public const HEADPHONES = ['🎧'];
 
     public function __construct() {
