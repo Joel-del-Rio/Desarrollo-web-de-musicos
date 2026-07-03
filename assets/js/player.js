@@ -33,30 +33,115 @@ const CUSTOM_TABS = [
   { key: 'facial_hair', label: '🥸 Vello facial', list: FACIAL_HAIR_LIST, none: true  },
 ];
 
-/** Genera el HTML de las capas superpuestas (avatar + pelo + gafas + sombrero + auriculares + vello facial) */
+// Complementos arrastrables: posición por defecto (top%, left%) y tamaño/orden de capa
+const ACCESSORY_SPECS = {
+  glasses:     { fontPct: 0.46, z: 2, defTop: 48, defLeft: 50 },
+  hat:         { fontPct: 0.5,  z: 4, defTop: 12, defLeft: 50 },
+  facial_hair: { fontPct: 0.4,  z: 2, defTop: 62, defLeft: 50 },
+};
+
+/** Devuelve {top,left} en % para un complemento: usa la posición guardada si existe, si no la posición por defecto */
+function accessoryPos(p, key) {
+  const spec = ACCESSORY_SPECS[key];
+  const raw = p[key + '_pos'];
+  if (raw) {
+    const parts = raw.split(',');
+    const x = parseFloat(parts[0]), y = parseFloat(parts[1]);
+    if (!isNaN(x) && !isNaN(y)) return { top: y, left: x };
+  }
+  return { top: spec.defTop, left: spec.defLeft };
+}
+
+/** Genera el HTML (no interactivo) de las capas superpuestas — usado en chips, leaderboards, podio, resultados */
 function avatarLayers(p, size) {
   size = size || 32;
   const base = p.avatar || (p.name ? p.name[0].toUpperCase() : '?');
-  const layer = (content, topPct, fontPct, z) => content
-    ? `<span style="position:absolute;top:${topPct}%;left:50%;transform:translate(-50%,-50%);font-size:${(size*fontPct).toFixed(1)}px;z-index:${z};line-height:1;pointer-events:none">${content}</span>`
+  const layer = (content, topPct, leftPct, fontPct, z) => content
+    ? `<span style="position:absolute;top:${topPct}%;left:${leftPct}%;transform:translate(-50%,-50%);font-size:${(size*fontPct).toFixed(1)}px;z-index:${z};line-height:1;pointer-events:none">${content}</span>`
     : '';
-  return layer(base, 50, 0.68, 1)
-       + layer(p.hair, 16, 0.42, 0)
-       + layer(p.glasses, 48, 0.46, 2)
-       + layer(p.headphones, 46, 0.62, 3)
-       + layer(p.facial_hair, 62, 0.4, 2)
-       + layer(p.hat, 12, 0.5, 4);
+  let html = layer(base, 50, 50, 0.68, 1)
+           + layer(p.hair, 16, 50, 0.42, 0)
+           + layer(p.headphones, 46, 50, 0.62, 3);
+  Object.keys(ACCESSORY_SPECS).forEach(key => {
+    if (!p[key]) return;
+    const spec = ACCESSORY_SPECS[key];
+    const pos  = accessoryPos(p, key);
+    html += layer(p[key], pos.top, pos.left, spec.fontPct, spec.z);
+  });
+  return html;
+}
+
+/** Renderiza el avatar con capas arrastrables (drag & drop) dentro de un contenedor real (join / lobby) */
+function renderDraggablePreview(containerEl, custom, size, onDrop) {
+  containerEl.innerHTML = '';
+  containerEl.style.touchAction = 'none';
+
+  const baseSpan = document.createElement('span');
+  baseSpan.textContent = custom.avatar || '🙂';
+  baseSpan.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:${(size*0.68).toFixed(1)}px;line-height:1;z-index:1;pointer-events:none`;
+  containerEl.appendChild(baseSpan);
+
+  if (custom.headphones) {
+    const s = document.createElement('span');
+    s.textContent = custom.headphones;
+    s.style.cssText = `position:absolute;top:46%;left:50%;transform:translate(-50%,-50%);font-size:${(size*0.62).toFixed(1)}px;line-height:1;z-index:3;pointer-events:none`;
+    containerEl.appendChild(s);
+  }
+
+  Object.keys(ACCESSORY_SPECS).forEach(key => {
+    const val = custom[key];
+    if (!val) return;
+    const spec = ACCESSORY_SPECS[key];
+    const pos  = accessoryPos(custom, key);
+    const span = document.createElement('span');
+    span.textContent = val;
+    span.style.cssText = `position:absolute;top:${pos.top}%;left:${pos.left}%;transform:translate(-50%,-50%);font-size:${(size*spec.fontPct).toFixed(1)}px;line-height:1;z-index:${spec.z};cursor:grab;touch-action:none;user-select:none`;
+    containerEl.appendChild(span);
+    makeDraggable(span, containerEl, custom, key, onDrop);
+  });
+}
+
+/** Habilita arrastrar un complemento dentro de su contenedor, actualizando `custom[key+'_pos']` en vivo */
+function makeDraggable(span, container, custom, key, onDrop) {
+  span.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    span.setPointerCapture(e.pointerId);
+    span.style.cursor = 'grabbing';
+    const move = ev => {
+      const rect = container.getBoundingClientRect();
+      let x = ((ev.clientX - rect.left) / rect.width)  * 100;
+      let y = ((ev.clientY - rect.top)  / rect.height) * 100;
+      x = Math.max(0, Math.min(100, x));
+      y = Math.max(0, Math.min(100, y));
+      span.style.left = x.toFixed(1) + '%';
+      span.style.top  = y.toFixed(1) + '%';
+      custom[key + '_pos'] = `${x.toFixed(1)},${y.toFixed(1)}`;
+    };
+    const up = () => {
+      span.releasePointerCapture(e.pointerId);
+      span.style.cursor = 'grab';
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      if (onDrop) onDrop(key);
+    };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+  });
 }
 
 // Selección en curso en la pantalla de unirse
 let joinCustom = {
   avatar: AVATAR_LIST[Math.floor(Math.random() * AVATAR_LIST.length)],
   hair: '', glasses: '', hat: '', headphones: '', facial_hair: '',
+  glasses_pos: '', hat_pos: '', facial_hair_pos: '',
 };
 let joinActiveTab = 'avatar';
 
 // Selección en curso en el lobby (se sincroniza con el estado del jugador al entrar)
-let lobbyCustom = { avatar: '🙂', hair: '', glasses: '', hat: '', headphones: '', facial_hair: '' };
+let lobbyCustom = {
+  avatar: '🙂', hair: '', glasses: '', hat: '', headphones: '', facial_hair: '',
+  glasses_pos: '', hat_pos: '', facial_hair_pos: '',
+};
 let lobbyActiveTab = 'avatar';
 
 /* ── Estado del reproductor de audio ─────────────────────────── */
@@ -129,20 +214,44 @@ function renderJoinCustomGrid() {
 }
 function selectJoinOption(key, value) {
   joinCustom[key] = value;
+  if (ACCESSORY_SPECS[key]) joinCustom[key + '_pos'] = '';
   renderJoinCustomGrid();
   updateJoinPreview();
 }
 function updateJoinPreview() {
   const el = document.getElementById('join-avatar-preview');
-  if (el) el.innerHTML = avatarLayers(joinCustom, 64);
+  if (el) renderDraggablePreview(el, joinCustom, 64, null);
 }
 
 /* ── Personalizador de avatar en el lobby (editable mientras se espera) ── */
 function toggleLobbyAvatarPicker() {
   const picker = document.getElementById('lobby-avatar-picker');
+  const av     = document.getElementById('lobby-avatar');
   const opening = picker.classList.contains('d-none');
-  if (opening) { lobbyActiveTab = 'avatar'; renderLobbyCustomizer(); }
+  if (opening) {
+    lobbyActiveTab = 'avatar';
+    renderLobbyCustomizer();
+    renderDraggablePreview(av, lobbyCustom, 90, saveLobbyPosition);
+  } else {
+    av.innerHTML = avatarLayers(lobbyCustom, 90);
+  }
   picker.classList.toggle('d-none', !opening);
+}
+/** Guarda en el servidor la nueva posición de un complemento tras soltarlo */
+async function saveLobbyPosition(key) {
+  const d = await fetch(`${API}?action=update_customization`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      player_id: playerId,
+      hair: lobbyCustom.hair, glasses: lobbyCustom.glasses,
+      hat: lobbyCustom.hat, headphones: lobbyCustom.headphones,
+      facial_hair: lobbyCustom.facial_hair,
+      glasses_pos: lobbyCustom.glasses_pos, hat_pos: lobbyCustom.hat_pos,
+      facial_hair_pos: lobbyCustom.facial_hair_pos,
+    }),
+  }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
+  if (d.error) console.error('[Player] update_customization (pos):', d.error);
 }
 function renderLobbyCustomizer() {
   const tabsEl = document.getElementById('lobby-custom-tabs');
@@ -172,7 +281,9 @@ function renderLobbyCustomGrid() {
 }
 async function chooseLobbyOption(key, value) {
   lobbyCustom[key] = value;
-  document.getElementById('lobby-avatar').innerHTML = avatarLayers(lobbyCustom, 90);
+  // Cambiar de complemento reinicia su posición a la posición por defecto
+  if (ACCESSORY_SPECS[key]) lobbyCustom[key + '_pos'] = '';
+  renderDraggablePreview(document.getElementById('lobby-avatar'), lobbyCustom, 90, saveLobbyPosition);
   renderLobbyCustomGrid();
 
   if (key === 'avatar') {
@@ -183,17 +294,7 @@ async function chooseLobbyOption(key, value) {
     }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
     if (d.error) console.error('[Player] update_avatar:', d.error);
   } else {
-    const d = await fetch(`${API}?action=update_customization`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        player_id: playerId,
-        hair: lobbyCustom.hair, glasses: lobbyCustom.glasses,
-        hat: lobbyCustom.hat, headphones: lobbyCustom.headphones,
-        facial_hair: lobbyCustom.facial_hair,
-      }),
-    }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
-    if (d.error) console.error('[Player] update_customization:', d.error);
+    await saveLobbyPosition(key);
   }
 }
 
@@ -302,15 +403,16 @@ function renderLobby(state) {
   av.style.background = p.avatar_color || '#e94560';
 
   // Solo sincronizar con el servidor si el picker está cerrado, para no pisar
-  // una selección que el jugador está haciendo justo ahora
+  // una selección (o un arrastre en curso) que el jugador está haciendo justo ahora
   const pickerOpen = !document.getElementById('lobby-avatar-picker')?.classList.contains('d-none');
   if (!pickerOpen) {
     lobbyCustom = {
       avatar: p.avatar || '🙂', hair: p.hair || '', glasses: p.glasses || '',
       hat: p.hat || '', headphones: p.headphones || '', facial_hair: p.facial_hair || '',
+      glasses_pos: p.glasses_pos || '', hat_pos: p.hat_pos || '', facial_hair_pos: p.facial_hair_pos || '',
     };
+    av.innerHTML = avatarLayers(lobbyCustom, 90);
   }
-  av.innerHTML = avatarLayers(lobbyCustom, 90);
   startPolling(1500);
 }
 
@@ -826,6 +928,8 @@ async function joinGame() {
         hair: joinCustom.hair, glasses: joinCustom.glasses,
         hat: joinCustom.hat, headphones: joinCustom.headphones,
         facial_hair: joinCustom.facial_hair,
+        glasses_pos: joinCustom.glasses_pos, hat_pos: joinCustom.hat_pos,
+        facial_hair_pos: joinCustom.facial_hair_pos,
       }),
     }).then(r => r.json());
 

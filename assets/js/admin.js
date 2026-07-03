@@ -16,19 +16,40 @@ let lastQuestionRound = -1;                   // Última ronda renderizada
 let questionTime = 30;                        // Duración de la pregunta en segundos
 let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0, hard_mode: 0 }; // Opciones de la partida
 
-/** Genera el HTML de las capas superpuestas del avatar (avatar + pelo + gafas + sombrero + auriculares) */
+// Complementos arrastrables: posición por defecto (top%, left%) — debe coincidir con player.js
+const ACCESSORY_SPECS = {
+  glasses:     { fontPct: 0.46, z: 2, defTop: 48, defLeft: 50 },
+  hat:         { fontPct: 0.5,  z: 4, defTop: 12, defLeft: 50 },
+  facial_hair: { fontPct: 0.4,  z: 2, defTop: 62, defLeft: 50 },
+};
+function accessoryPos(p, key) {
+  const spec = ACCESSORY_SPECS[key];
+  const raw = p[key + '_pos'];
+  if (raw) {
+    const parts = raw.split(',');
+    const x = parseFloat(parts[0]), y = parseFloat(parts[1]);
+    if (!isNaN(x) && !isNaN(y)) return { top: y, left: x };
+  }
+  return { top: spec.defTop, left: spec.defLeft };
+}
+
+/** Genera el HTML de las capas superpuestas del avatar (avatar + pelo + gafas + sombrero + auriculares + vello facial) */
 function avatarLayers(p, size) {
   size = size || 32;
   const base = p.avatar || (p.name ? p.name[0].toUpperCase() : '?');
-  const layer = (content, topPct, fontPct, z) => content
-    ? `<span style="position:absolute;top:${topPct}%;left:50%;transform:translate(-50%,-50%);font-size:${(size*fontPct).toFixed(1)}px;z-index:${z};line-height:1;pointer-events:none">${content}</span>`
+  const layer = (content, topPct, leftPct, fontPct, z) => content
+    ? `<span style="position:absolute;top:${topPct}%;left:${leftPct}%;transform:translate(-50%,-50%);font-size:${(size*fontPct).toFixed(1)}px;z-index:${z};line-height:1;pointer-events:none">${content}</span>`
     : '';
-  return layer(base, 50, 0.68, 1)
-       + layer(p.hair, 16, 0.42, 0)
-       + layer(p.glasses, 48, 0.46, 2)
-       + layer(p.headphones, 46, 0.62, 3)
-       + layer(p.facial_hair, 62, 0.4, 2)
-       + layer(p.hat, 12, 0.5, 4);
+  let html = layer(base, 50, 50, 0.68, 1)
+           + layer(p.hair, 16, 50, 0.42, 0)
+           + layer(p.headphones, 46, 50, 0.62, 3);
+  Object.keys(ACCESSORY_SPECS).forEach(key => {
+    if (!p[key]) return;
+    const spec = ACCESSORY_SPECS[key];
+    const pos  = accessoryPos(p, key);
+    html += layer(p[key], pos.top, pos.left, spec.fontPct, spec.z);
+  });
+  return html;
 }
 
 /* ── Arranque ── */

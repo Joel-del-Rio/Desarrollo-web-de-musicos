@@ -31,6 +31,9 @@ class PlayerController {
         $hat        = trim($_POST['hat'] ?? '');
         $headphones = trim($_POST['headphones'] ?? '');
         $facialHair = trim($_POST['facial_hair'] ?? '');
+        $glassesPos    = trim($_POST['glasses_pos'] ?? '');
+        $hatPos        = trim($_POST['hat_pos'] ?? '');
+        $facialHairPos = trim($_POST['facial_hair_pos'] ?? '');
 
         if (strlen($pin) !== 4 || !ctype_digit($pin)) return ['error' => 'PIN inválido (4 dígitos)'];
         if ($name === '' || strlen($name) > 30)        return ['error' => 'Nombre inválido (máx 30 caracteres)'];
@@ -42,7 +45,10 @@ class PlayerController {
 
             // Crear jugador y marcar el PIN como usado
             $email = $gameByIndiv['player_email'] ?? '';
-            $pl    = $this->player->create((int)$gameByIndiv['id'], $name, $email, $avatar, $hair, $glasses, $hat, $headphones, $facialHair);
+            $pl    = $this->player->create(
+                (int)$gameByIndiv['id'], $name, $email, $avatar, $hair, $glasses, $hat, $headphones, $facialHair,
+                $glassesPos, $hatPos, $facialHairPos
+            );
             $this->game->claimIndividualPin($pin, $pl['id']);
 
             return [
@@ -65,7 +71,10 @@ class PlayerController {
             return ['error' => 'Esta partida usa PINs individuales. Usa tu código personal.'];
         }
 
-        $pl = $this->player->create((int)$game['id'], $name, '', $avatar, $hair, $glasses, $hat, $headphones, $facialHair);
+        $pl = $this->player->create(
+            (int)$game['id'], $name, '', $avatar, $hair, $glasses, $hat, $headphones, $facialHair,
+            $glassesPos, $hatPos, $facialHairPos
+        );
         return [
             'success'      => true,
             'player_id'    => $pl['id'],
@@ -94,7 +103,7 @@ class PlayerController {
         return ['success' => true, 'avatar' => $avatar];
     }
 
-    /** Cambia los complementos (pelo, gafas, sombrero, auriculares, vello facial) — solo en la sala de espera */
+    /** Cambia los complementos (pelo, gafas, sombrero, auriculares, vello facial) y sus posiciones — solo en la sala de espera */
     public function updateCustomization(): array {
         $playerId   = (int)($_POST['player_id'] ?? 0);
         $hair       = trim($_POST['hair'] ?? '');
@@ -102,6 +111,9 @@ class PlayerController {
         $hat        = trim($_POST['hat'] ?? '');
         $headphones = trim($_POST['headphones'] ?? '');
         $facialHair = trim($_POST['facial_hair'] ?? '');
+        $glassesPos    = trim($_POST['glasses_pos'] ?? '');
+        $hatPos        = trim($_POST['hat_pos'] ?? '');
+        $facialHairPos = trim($_POST['facial_hair_pos'] ?? '');
         if (!$playerId) return ['error' => 'Falta player_id'];
 
         $pl = $this->player->getById($playerId);
@@ -112,10 +124,13 @@ class PlayerController {
             return ['error' => 'Solo puedes personalizar tu avatar en la sala de espera'];
         }
 
-        $this->player->updateCustomization($playerId, $hair, $glasses, $hat, $headphones, $facialHair);
+        $this->player->updateCustomization(
+            $playerId, $hair, $glasses, $hat, $headphones, $facialHair, $glassesPos, $hatPos, $facialHairPos
+        );
         return [
             'success' => true, 'hair' => $hair, 'glasses' => $glasses,
             'hat' => $hat, 'headphones' => $headphones, 'facial_hair' => $facialHair,
+            'glasses_pos' => $glassesPos, 'hat_pos' => $hatPos, 'facial_hair_pos' => $facialHairPos,
         ];
     }
 

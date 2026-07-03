@@ -166,8 +166,20 @@ class Installer {
             $currentVersion = 16;
         }
 
+        // v17: posición arrastrable de gafas/sombrero/vello facial ("x,y" en % sobre el círculo)
+        if ($currentVersion === 16) {
+            try { $pdo->exec("
+                ALTER TABLE players
+                ADD COLUMN glasses_pos     VARCHAR(16) DEFAULT '',
+                ADD COLUMN hat_pos         VARCHAR(16) DEFAULT '',
+                ADD COLUMN facial_hair_pos VARCHAR(16) DEFAULT ''
+            "); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=17");
+            $currentVersion = 17;
+        }
+
         // Esquema actualizado: verificar integridad y salir
-        if ($currentVersion >= 16) {
+        if ($currentVersion >= 17) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
@@ -246,6 +258,9 @@ class Installer {
                 hat          VARCHAR(8) DEFAULT '',
                 headphones   VARCHAR(8) DEFAULT '',
                 facial_hair  VARCHAR(8) DEFAULT '',
+                glasses_pos     VARCHAR(16) DEFAULT '',
+                hat_pos         VARCHAR(16) DEFAULT '',
+                facial_hair_pos VARCHAR(16) DEFAULT '',
                 email        VARCHAR(255) NULL,
                 streak       INT DEFAULT 0,
                 last_seen    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

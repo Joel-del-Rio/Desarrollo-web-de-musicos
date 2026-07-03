@@ -31,6 +31,14 @@ class Player {
         $this->db = Database::getInstance()->pdo();
     }
 
+    /** Valida un string de posición "x,y" (porcentajes 0-100); devuelve '' si no es válido */
+    private static function sanitizePos(string $pos): string {
+        if (!preg_match('/^(\d{1,3}(?:\.\d{1,2})?),(\d{1,3}(?:\.\d{1,2})?)$/', $pos, $m)) return '';
+        $x = min(100.0, max(0.0, (float)$m[1]));
+        $y = min(100.0, max(0.0, (float)$m[2]));
+        return sprintf('%.1f,%.1f', $x, $y);
+    }
+
     // ── CRUD básico ───────────────────────────────────
 
     /**
@@ -39,25 +47,34 @@ class Player {
      */
     public function create(
         int $gameId, string $name, string $email = '', string $avatar = '',
-        string $hair = '', string $glasses = '', string $hat = '', string $headphones = '', string $facialHair = ''
+        string $hair = '', string $glasses = '', string $hat = '', string $headphones = '', string $facialHair = '',
+        string $glassesPos = '', string $hatPos = '', string $facialHairPos = ''
     ): array {
         $color = self::COLORS[random_int(0, count(self::COLORS) - 1)];
         if (!in_array($avatar, self::AVATARS, true)) {
             $avatar = self::AVATARS[random_int(0, count(self::AVATARS) - 1)];
         }
-        $hair       = in_array($hair, self::HAIR, true) ? $hair : '';
-        $glasses    = in_array($glasses, self::GLASSES, true) ? $glasses : '';
-        $hat        = in_array($hat, self::HATS, true) ? $hat : '';
-        $headphones = in_array($headphones, self::HEADPHONES, true) ? $headphones : '';
-        $facialHair = in_array($facialHair, self::FACIAL_HAIR, true) ? $facialHair : '';
+        $hair          = in_array($hair, self::HAIR, true) ? $hair : '';
+        $glasses       = in_array($glasses, self::GLASSES, true) ? $glasses : '';
+        $hat           = in_array($hat, self::HATS, true) ? $hat : '';
+        $headphones    = in_array($headphones, self::HEADPHONES, true) ? $headphones : '';
+        $facialHair    = in_array($facialHair, self::FACIAL_HAIR, true) ? $facialHair : '';
+        $glassesPos    = self::sanitizePos($glassesPos);
+        $hatPos        = self::sanitizePos($hatPos);
+        $facialHairPos = self::sanitizePos($facialHairPos);
 
         $this->db->prepare(
-            "INSERT INTO players (game_id, name, avatar_color, avatar, hair, glasses, hat, headphones, facial_hair, email)
-             VALUES (?,?,?,?,?,?,?,?,?,?)"
-        )->execute([$gameId, $name, $color, $avatar, $hair, $glasses, $hat, $headphones, $facialHair, $email ?: null]);
+            "INSERT INTO players (game_id, name, avatar_color, avatar, hair, glasses, hat, headphones, facial_hair,
+              glasses_pos, hat_pos, facial_hair_pos, email)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
+        )->execute([
+            $gameId, $name, $color, $avatar, $hair, $glasses, $hat, $headphones, $facialHair,
+            $glassesPos, $hatPos, $facialHairPos, $email ?: null,
+        ]);
         return [
             'id' => (int)$this->db->lastInsertId(), 'name' => $name, 'color' => $color, 'avatar' => $avatar,
             'hair' => $hair, 'glasses' => $glasses, 'hat' => $hat, 'headphones' => $headphones, 'facial_hair' => $facialHair,
+            'glasses_pos' => $glassesPos, 'hat_pos' => $hatPos, 'facial_hair_pos' => $facialHairPos,
         ];
     }
 
@@ -71,7 +88,8 @@ class Player {
     /** Devuelve todos los jugadores de una partida, ordenados por puntuación */
     public function getByGame(int $gameId): array {
         $st = $this->db->prepare(
-            "SELECT id, name, score, avatar_color, avatar, hair, glasses, hat, headphones, facial_hair, streak
+            "SELECT id, name, score, avatar_color, avatar, hair, glasses, hat, headphones, facial_hair,
+                    glasses_pos, hat_pos, facial_hair_pos, streak
              FROM players
              WHERE game_id=?
              ORDER BY score DESC, name ASC"
@@ -95,17 +113,24 @@ class Player {
         return true;
     }
 
-    /** Cambia los complementos de personalización (pelo, gafas, sombrero, auriculares, vello facial) */
+    /** Cambia los complementos de personalización y sus posiciones arrastrables */
     public function updateCustomization(
-        int $playerId, string $hair, string $glasses, string $hat, string $headphones, string $facialHair
+        int $playerId, string $hair, string $glasses, string $hat, string $headphones, string $facialHair,
+        string $glassesPos = '', string $hatPos = '', string $facialHairPos = ''
     ): bool {
-        $hair       = in_array($hair, self::HAIR, true) ? $hair : '';
-        $glasses    = in_array($glasses, self::GLASSES, true) ? $glasses : '';
-        $hat        = in_array($hat, self::HATS, true) ? $hat : '';
-        $headphones = in_array($headphones, self::HEADPHONES, true) ? $headphones : '';
-        $facialHair = in_array($facialHair, self::FACIAL_HAIR, true) ? $facialHair : '';
-        $st = $this->db->prepare("UPDATE players SET hair=?, glasses=?, hat=?, headphones=?, facial_hair=? WHERE id=?");
-        $st->execute([$hair, $glasses, $hat, $headphones, $facialHair, $playerId]);
+        $hair          = in_array($hair, self::HAIR, true) ? $hair : '';
+        $glasses       = in_array($glasses, self::GLASSES, true) ? $glasses : '';
+        $hat           = in_array($hat, self::HATS, true) ? $hat : '';
+        $headphones    = in_array($headphones, self::HEADPHONES, true) ? $headphones : '';
+        $facialHair    = in_array($facialHair, self::FACIAL_HAIR, true) ? $facialHair : '';
+        $glassesPos    = self::sanitizePos($glassesPos);
+        $hatPos        = self::sanitizePos($hatPos);
+        $facialHairPos = self::sanitizePos($facialHairPos);
+        $st = $this->db->prepare(
+            "UPDATE players SET hair=?, glasses=?, hat=?, headphones=?, facial_hair=?,
+                    glasses_pos=?, hat_pos=?, facial_hair_pos=? WHERE id=?"
+        );
+        $st->execute([$hair, $glasses, $hat, $headphones, $facialHair, $glassesPos, $hatPos, $facialHairPos, $playerId]);
         return true;
     }
 
@@ -241,7 +266,8 @@ class Player {
     /** Devuelve los resultados de todos los jugadores para la ronda actual */
     public function getRoundResults(int $gameId, int $songId): array {
         $st = $this->db->prepare(
-            "SELECT p.name, p.avatar_color, p.avatar, p.hair, p.glasses, p.hat, p.headphones, p.facial_hair, a.position_guess, a.is_correct, a.points_earned
+            "SELECT p.name, p.avatar_color, p.avatar, p.hair, p.glasses, p.hat, p.headphones, p.facial_hair,
+                    p.glasses_pos, p.hat_pos, p.facial_hair_pos, a.position_guess, a.is_correct, a.points_earned
              FROM answers a
              JOIN players p ON a.player_id = p.id
              WHERE a.game_id=? AND a.song_id=?
