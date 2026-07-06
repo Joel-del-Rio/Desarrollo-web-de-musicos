@@ -16,7 +16,7 @@ let lastQuestionRound = -1;                   // Última ronda renderizada
 let questionTime = 30;                        // Duración de la pregunta en segundos
 let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0, hard_mode: 0 }; // Opciones de la partida
 
-// Complementos arrastrables: posición por defecto (top%, left%) — debe coincidir con player.js
+// Complementos: posición FIJA (top%, left%) — debe coincidir con player.js. No son arrastrables.
 const ACCESSORY_SPECS = {
   glasses:     { fontPct: 0.46, z: 2, defTop: 48, defLeft: 50 },
   hat:         { fontPct: 0.5,  z: 4, defTop: 12, defLeft: 50 },
@@ -25,13 +25,13 @@ const ACCESSORY_SPECS = {
 function accessoryPos(p, key) {
   const spec = ACCESSORY_SPECS[key];
   const raw = p[key + '_pos'];
+  let scale = 1;
   if (raw) {
     const parts = raw.split(',');
-    const x = parseFloat(parts[0]), y = parseFloat(parts[1]);
-    const scale = parts[2] !== undefined ? parseFloat(parts[2]) : 1;
-    if (!isNaN(x) && !isNaN(y)) return { top: y, left: x, scale: isNaN(scale) ? 1 : scale };
+    const s = parseFloat(parts[parts.length - 1]);
+    if (!isNaN(s)) scale = s;
   }
-  return { top: spec.defTop, left: spec.defLeft, scale: 1 };
+  return { top: spec.defTop, left: spec.defLeft, scale };
 }
 
 // Vello facial: Unicode no tiene glifo aislado de bigote/barba, se dibuja como SVG (misma

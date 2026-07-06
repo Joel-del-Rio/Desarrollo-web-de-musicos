@@ -14,7 +14,7 @@ require_once __DIR__ . '/../config.php'; ?>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hitstoric</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=6">
+  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=7">
 </head>
 
 <body class="d-flex align-items-center justify-content-center min-vh-100">

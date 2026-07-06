@@ -15,9 +15,10 @@ class Player {
     private const COLORS = ['#e94560','#4ECDC4','#45B7D1','#FF6B35','#DDA0DD','#2ecc71','#f39c12'];
 
     // Emojis de avatar seleccionables — misma lista usada en el frontend para validar
+    // Solo animales/objetos con cara de frente (nada humano, nada de perfil)
     public const AVATARS = [
-        '🙂','😎','🤠','🥳','👽','🤖','🐱','🐶','🦊','🐼',
-        '🐸','🐵','🦁','🐯','🐰','🐻','🐨','🐮','🐷','🐹',
+        '👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁','🐯',
+        '🐰','🐻','🐨','🐮','🐷','🐹','🐭','🦝','🐺','🐤',
     ];
 
     // Complementos de personalización — vacío ('') siempre válido como "Ninguno"
@@ -33,13 +34,19 @@ class Player {
         $this->db = Database::getInstance()->pdo();
     }
 
-    /** Valida un string de posición "x,y,escala" (x/y en % 0-100, escala 0.5-3); devuelve '' si no es válido */
+    /**
+     * Valida el tamaño guardado de un complemento (escala 0.5-3). Los complementos ya no
+     * se pueden arrastrar — la posición es fija por tipo — así que solo se guarda la escala.
+     * Acepta también el formato antiguo "x,y,escala" por compatibilidad, quedándose con el
+     * último número (la escala).
+     */
     private static function sanitizePos(string $pos): string {
-        if (!preg_match('/^(\d{1,3}(?:\.\d{1,2})?),(\d{1,3}(?:\.\d{1,2})?)(?:,(\d(?:\.\d{1,2})?))?$/', $pos, $m)) return '';
-        $x     = min(100.0, max(0.0, (float)$m[1]));
-        $y     = min(100.0, max(0.0, (float)$m[2]));
-        $scale = isset($m[3]) ? min(3.0, max(0.5, (float)$m[3])) : 1.0;
-        return sprintf('%.1f,%.1f,%.2f', $x, $y, $scale);
+        if ($pos === '') return '';
+        $parts = explode(',', $pos);
+        $scaleStr = end($parts);
+        if (!is_numeric($scaleStr)) return '';
+        $scale = min(3.0, max(0.5, (float)$scaleStr));
+        return sprintf('%.2f', $scale);
     }
 
     // ── CRUD básico ───────────────────────────────────

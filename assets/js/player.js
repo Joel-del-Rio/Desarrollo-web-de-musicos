@@ -18,7 +18,7 @@ let questionTime = 30;          // Duración de la pregunta en segundos
 
 /* ── Selección de avatar y complementos ───────────────────────── */
 // Mismas listas y orden que las constantes de Player.php en el backend
-const AVATAR_LIST      = ['🙂','😎','🤠','🥳','👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁','🐯','🐰','🐻','🐨','🐮','🐷','🐹'];
+const AVATAR_LIST      = ['👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁','🐯','🐰','🐻','🐨','🐮','🐷','🐹','🐭','🦝','🐺','🐤'];
 const HAIR_LIST        = ['🦱','🦰','🦳','🦲','💇','🎀'];
 const GLASSES_LIST     = ['👓','🕶️','🤿','🎉'];
 const HATS_LIST        = ['🎩','👒','🎓','👑'];
@@ -51,30 +51,30 @@ const CUSTOM_TABS = [
   { key: 'facial_hair', label: '🧔 Vello facial', list: FACIAL_HAIR_LIST, none: true  },
 ];
 
-// Complementos arrastrables: posición por defecto (top%, left%) y tamaño/orden de capa
+// Complementos: posición FIJA (top%, left%) y tamaño/orden de capa — no son arrastrables.
+// Ajusta defTop para subir (menos) o bajar (más) cada complemento.
 const ACCESSORY_SPECS = {
   glasses:     { fontPct: 0.46, z: 2, defTop: 48, defLeft: 50 },
   hat:         { fontPct: 0.5,  z: 4, defTop: 12, defLeft: 50 },
   facial_hair: { fontPct: 0.4,  z: 2, defTop: 62, defLeft: 50 },
 };
 
-/** Devuelve {top,left,scale} para un complemento: usa la posición/tamaño guardados o los valores por defecto */
+/** Devuelve {top,left,scale} para un complemento: posición siempre fija, solo la escala es guardable */
 function accessoryPos(p, key) {
   const spec = ACCESSORY_SPECS[key];
   const raw = p[key + '_pos'];
+  let scale = 1;
   if (raw) {
     const parts = raw.split(',');
-    const x = parseFloat(parts[0]), y = parseFloat(parts[1]);
-    const scale = parts[2] !== undefined ? parseFloat(parts[2]) : 1;
-    if (!isNaN(x) && !isNaN(y)) return { top: y, left: x, scale: isNaN(scale) ? 1 : scale };
+    const s = parseFloat(parts[parts.length - 1]);
+    if (!isNaN(s)) scale = s;
   }
-  return { top: spec.defTop, left: spec.defLeft, scale: 1 };
+  return { top: spec.defTop, left: spec.defLeft, scale };
 }
-/** Guarda una nueva escala para el complemento manteniendo su posición actual */
+/** Guarda una nueva escala para el complemento */
 function setAccessoryScale(custom, key, scale) {
-  const pos = accessoryPos(custom, key);
   const clamped = Math.max(0.5, Math.min(3, +scale.toFixed(2)));
-  custom[key + '_pos'] = `${pos.left.toFixed(1)},${pos.top.toFixed(1)},${clamped.toFixed(2)}`;
+  custom[key + '_pos'] = clamped.toFixed(2);
 }
 
 /** Genera el HTML (no interactivo) de las capas superpuestas — usado en chips, leaderboards, podio, resultados */
@@ -103,69 +103,9 @@ function avatarLayers(p, size) {
   return html;
 }
 
-/** Renderiza el avatar con capas arrastrables (drag & drop) dentro de un contenedor real (join / lobby) */
-function renderDraggablePreview(containerEl, custom, size, onDrop) {
-  containerEl.innerHTML = '';
-  containerEl.style.touchAction = 'none';
-
-  const baseSpan = document.createElement('span');
-  baseSpan.textContent = custom.avatar || '🙂';
-  baseSpan.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:${(size*0.68).toFixed(1)}px;line-height:1;z-index:1;pointer-events:none`;
-  containerEl.appendChild(baseSpan);
-
-  if (custom.headphones) {
-    const s = document.createElement('span');
-    s.textContent = custom.headphones;
-    s.style.cssText = `position:absolute;top:46%;left:50%;transform:translate(-50%,-50%);font-size:${(size*0.62).toFixed(1)}px;line-height:1;z-index:3;pointer-events:none`;
-    containerEl.appendChild(s);
-  }
-
-  Object.keys(ACCESSORY_SPECS).forEach(key => {
-    const val = custom[key];
-    if (!val) return;
-    const spec = ACCESSORY_SPECS[key];
-    const pos  = accessoryPos(custom, key);
-    const span = document.createElement('span');
-    const effFontPct = spec.fontPct * pos.scale;
-    if (key === 'facial_hair') {
-      span.innerHTML = glyphHTML(key, val, size * effFontPct);
-      span.style.cssText = `position:absolute;top:${pos.top}%;left:${pos.left}%;transform:translate(-50%,-50%);z-index:${spec.z};cursor:grab;touch-action:none;user-select:none`;
-    } else {
-      span.textContent = val;
-      span.style.cssText = `position:absolute;top:${pos.top}%;left:${pos.left}%;transform:translate(-50%,-50%);font-size:${(size*effFontPct).toFixed(1)}px;line-height:1;z-index:${spec.z};cursor:grab;touch-action:none;user-select:none`;
-    }
-    containerEl.appendChild(span);
-    makeDraggable(span, containerEl, custom, key, onDrop);
-  });
-}
-
-/** Habilita arrastrar un complemento dentro de su contenedor, actualizando `custom[key+'_pos']` en vivo */
-function makeDraggable(span, container, custom, key, onDrop) {
-  span.addEventListener('pointerdown', e => {
-    e.preventDefault();
-    span.setPointerCapture(e.pointerId);
-    span.style.cursor = 'grabbing';
-    const scale = accessoryPos(custom, key).scale; // conservar el tamaño actual al arrastrar
-    const move = ev => {
-      const rect = container.getBoundingClientRect();
-      let x = ((ev.clientX - rect.left) / rect.width)  * 100;
-      let y = ((ev.clientY - rect.top)  / rect.height) * 100;
-      x = Math.max(0, Math.min(100, x));
-      y = Math.max(0, Math.min(100, y));
-      span.style.left = x.toFixed(1) + '%';
-      span.style.top  = y.toFixed(1) + '%';
-      custom[key + '_pos'] = `${x.toFixed(1)},${y.toFixed(1)},${scale.toFixed(2)}`;
-    };
-    const up = () => {
-      span.releasePointerCapture(e.pointerId);
-      span.style.cursor = 'grab';
-      document.removeEventListener('pointermove', move);
-      document.removeEventListener('pointerup', up);
-      if (onDrop) onDrop(key);
-    };
-    document.addEventListener('pointermove', move);
-    document.addEventListener('pointerup', up);
-  });
+/** Renderiza el avatar (posiciones fijas, no arrastrables) dentro de un contenedor real (join / lobby) */
+function renderStaticPreview(containerEl, custom, size) {
+  containerEl.innerHTML = avatarLayers(custom, size);
 }
 
 // Selección en curso en la pantalla de unirse
@@ -265,7 +205,7 @@ function adjustJoinScale(key, delta) {
 }
 function updateJoinPreview() {
   const el = document.getElementById('join-avatar-preview');
-  if (el) renderDraggablePreview(el, joinCustom, 64, null);
+  if (el) renderStaticPreview(el, joinCustom, 110);
 }
 
 /** Muestra los botones ➖/➕ para agrandar o encoger el complemento equipado en la pestaña activa */
@@ -290,13 +230,13 @@ function toggleLobbyAvatarPicker() {
   if (opening) {
     lobbyActiveTab = 'avatar';
     renderLobbyCustomizer();
-    renderDraggablePreview(av, lobbyCustom, 90, saveLobbyPosition);
+    renderStaticPreview(av, lobbyCustom, 150);
   } else {
-    av.innerHTML = avatarLayers(lobbyCustom, 90);
+    av.innerHTML = avatarLayers(lobbyCustom, 150);
   }
   picker.classList.toggle('d-none', !opening);
 }
-/** Guarda en el servidor la nueva posición de un complemento tras soltarlo */
+/** Guarda en el servidor el nuevo tamaño de un complemento */
 async function saveLobbyPosition(key) {
   const d = await fetch(`${API}?action=update_customization`, {
     method: 'POST',
@@ -342,14 +282,14 @@ function renderLobbyCustomGrid() {
 async function adjustLobbyScale(key, delta) {
   const pos = accessoryPos(lobbyCustom, key);
   setAccessoryScale(lobbyCustom, key, pos.scale + delta);
-  renderDraggablePreview(document.getElementById('lobby-avatar'), lobbyCustom, 90, saveLobbyPosition);
+  renderStaticPreview(document.getElementById('lobby-avatar'), lobbyCustom, 150);
   await saveLobbyPosition(key);
 }
 async function chooseLobbyOption(key, value) {
   lobbyCustom[key] = value;
-  // Cambiar de complemento reinicia su posición a la posición por defecto
+  // Cambiar de complemento reinicia su tamaño al valor por defecto
   if (ACCESSORY_SPECS[key]) lobbyCustom[key + '_pos'] = '';
-  renderDraggablePreview(document.getElementById('lobby-avatar'), lobbyCustom, 90, saveLobbyPosition);
+  renderStaticPreview(document.getElementById('lobby-avatar'), lobbyCustom, 150);
   renderLobbyCustomGrid();
 
   if (key === 'avatar') {
@@ -469,7 +409,7 @@ function renderLobby(state) {
   av.style.background = p.avatar_color || '#e94560';
 
   // Solo sincronizar con el servidor si el picker está cerrado, para no pisar
-  // una selección (o un arrastre en curso) que el jugador está haciendo justo ahora
+  // una selección que el jugador está haciendo justo ahora
   const pickerOpen = !document.getElementById('lobby-avatar-picker')?.classList.contains('d-none');
   if (!pickerOpen) {
     lobbyCustom = {
@@ -477,7 +417,7 @@ function renderLobby(state) {
       hat: p.hat || '', headphones: p.headphones || '', facial_hair: p.facial_hair || '',
       glasses_pos: p.glasses_pos || '', hat_pos: p.hat_pos || '', facial_hair_pos: p.facial_hair_pos || '',
     };
-    av.innerHTML = avatarLayers(lobbyCustom, 90);
+    av.innerHTML = avatarLayers(lobbyCustom, 150);
   }
   startPolling(1500);
 }
