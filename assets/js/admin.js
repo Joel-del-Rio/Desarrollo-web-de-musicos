@@ -22,9 +22,22 @@ const ACCESSORY_SPECS = {
   hat:         { fontPct: 0.6,  z: 4, defTop: 12, defLeft: 50 },
   facial_hair: { fontPct: 0.5,  z: 2, defTop: 62, defLeft: 50 },
 };
+
+// Ajuste vertical de las gafas según el avatar — debe coincidir con player.js
+const GLASSES_TOP_BY_AVATAR = {
+  '🐸': 40,
+  '😐': 45,
+  '👽': 51, '🐼': 51, '🐨': 51,
+  '🐱': 54, '🦊': 54, '🐰': 54, '🐭': 54,
+  '🐹': 57, '🦝': 57,
+};
+
 function accessoryPos(p, key) {
   const spec = ACCESSORY_SPECS[key];
-  return { top: spec.defTop, left: spec.defLeft };
+  const top  = key === 'glasses' && GLASSES_TOP_BY_AVATAR[p.avatar] !== undefined
+    ? GLASSES_TOP_BY_AVATAR[p.avatar]
+    : spec.defTop;
+  return { top, left: spec.defLeft };
 }
 
 // Vello facial: Unicode no tiene glifo aislado de bigote/barba, se dibuja como SVG (misma

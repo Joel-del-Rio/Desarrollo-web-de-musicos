@@ -59,10 +59,22 @@ const ACCESSORY_SPECS = {
   facial_hair: { fontPct: 0.5,  z: 2, defTop: 62, defLeft: 50 },
 };
 
-/** Devuelve {top,left} fijos para un complemento */
+// Ajuste vertical de las gafas según el avatar (los ojos no están a la misma altura en cada cara)
+const GLASSES_TOP_BY_AVATAR = {
+  '🐸': 40,                       // Rana — más arriba
+  '😐': 45,                       // Cara de humano — un pelín arriba
+  '👽': 51, '🐼': 51, '🐨': 51,   // Alien, Panda, Oso perezoso — un pelín abajo
+  '🐱': 54, '🦊': 54, '🐰': 54, '🐭': 54, // Gato, zorro, Conejo, Ratón marrón — más abajo
+  '🐹': 57, '🦝': 57,             // Ratón gris, Mapache — aún más abajo
+};
+
+/** Devuelve {top,left} fijos para un complemento (las gafas varían la altura según el avatar) */
 function accessoryPos(p, key) {
   const spec = ACCESSORY_SPECS[key];
-  return { top: spec.defTop, left: spec.defLeft };
+  const top  = key === 'glasses' && GLASSES_TOP_BY_AVATAR[p.avatar] !== undefined
+    ? GLASSES_TOP_BY_AVATAR[p.avatar]
+    : spec.defTop;
+  return { top, left: spec.defLeft };
 }
 
 /** Genera el HTML (no interactivo) de las capas superpuestas — usado en chips, leaderboards, podio, resultados */
