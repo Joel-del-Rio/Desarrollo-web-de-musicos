@@ -81,6 +81,8 @@ function accessoryPos(p, key) {
 const GLYPH_SCALE = { '🤿': 1.2 };
 // Desplazamiento horizontal (en puntos %) para emojis concretos que no quedan centrados
 const GLYPH_LEFT_OFFSET = { '🤿': 6 };
+// Corrección vertical extra por emoji (el dibujo de cada glifo tiene distinto padding interno)
+const GLYPH_TOP_OFFSET = { '🤿': 0 };
 
 /** Genera el HTML (no interactivo) de las capas superpuestas — usado en chips, leaderboards, podio, resultados */
 function avatarLayers(p, size) {
@@ -105,7 +107,8 @@ function avatarLayers(p, size) {
     const pos   = accessoryPos(p, key);
     const scale = GLYPH_SCALE[p[key]] || 1;
     const left  = pos.left + (GLYPH_LEFT_OFFSET[p[key]] || 0);
-    html += layer(key, p[key], pos.top, left, spec.fontPct * scale, spec.z);
+    const top   = pos.top  + (GLYPH_TOP_OFFSET[p[key]]  || 0);
+    html += layer(key, p[key], top, left, spec.fontPct * scale, spec.z);
   });
   return html;
 }
