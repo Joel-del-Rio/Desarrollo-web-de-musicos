@@ -80,7 +80,7 @@ function accessoryPos(p, key) {
 // Ajuste de tamaño para emojis concretos que se ven más pequeños que el resto de su categoría
 const GLYPH_SCALE = { '🤿': 1.2 };
 // Desplazamiento horizontal (en puntos %) para emojis concretos que no quedan centrados
-const GLYPH_LEFT_OFFSET = { '🤿': 8 };
+const GLYPH_LEFT_OFFSET = { '🤿': 6 };
 
 /** Genera el HTML (no interactivo) de las capas superpuestas — usado en chips, leaderboards, podio, resultados */
 function avatarLayers(p, size) {
