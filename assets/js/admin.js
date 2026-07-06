@@ -16,22 +16,15 @@ let lastQuestionRound = -1;                   // Última ronda renderizada
 let questionTime = 30;                        // Duración de la pregunta en segundos
 let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0, hard_mode: 0 }; // Opciones de la partida
 
-// Complementos: posición FIJA (top%, left%) — debe coincidir con player.js. No son arrastrables.
+// Complementos: posición y tamaño FIJOS — debe coincidir con player.js. No son ajustables por el jugador.
 const ACCESSORY_SPECS = {
-  glasses:     { fontPct: 0.46, z: 2, defTop: 48, defLeft: 50 },
-  hat:         { fontPct: 0.5,  z: 4, defTop: 12, defLeft: 50 },
-  facial_hair: { fontPct: 0.4,  z: 2, defTop: 62, defLeft: 50 },
+  glasses:     { fontPct: 0.56, z: 2, defTop: 48, defLeft: 50 },
+  hat:         { fontPct: 0.6,  z: 4, defTop: 12, defLeft: 50 },
+  facial_hair: { fontPct: 0.5,  z: 2, defTop: 62, defLeft: 50 },
 };
 function accessoryPos(p, key) {
   const spec = ACCESSORY_SPECS[key];
-  const raw = p[key + '_pos'];
-  let scale = 1;
-  if (raw) {
-    const parts = raw.split(',');
-    const s = parseFloat(parts[parts.length - 1]);
-    if (!isNaN(s)) scale = s;
-  }
-  return { top: spec.defTop, left: spec.defLeft, scale };
+  return { top: spec.defTop, left: spec.defLeft };
 }
 
 // Vello facial: Unicode no tiene glifo aislado de bigote/barba, se dibuja como SVG (misma
@@ -72,7 +65,7 @@ function avatarLayers(p, size) {
     if (!p[key]) return;
     const spec = ACCESSORY_SPECS[key];
     const pos  = accessoryPos(p, key);
-    html += layer(key, p[key], pos.top, pos.left, spec.fontPct * pos.scale, spec.z);
+    html += layer(key, p[key], pos.top, pos.left, spec.fontPct, spec.z);
   });
   return html;
 }

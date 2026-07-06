@@ -69,7 +69,6 @@ require_once __DIR__ . '/../config.php'; ?>
 
         <div id="join-custom-tabs" class="custom-tabs mb-2"></div>
         <div id="join-custom-grid" class="avatar-grid"></div>
-        <div id="join-custom-resize"></div>
       </div>
       <button class="btn btn-game btn-lg w-100 rounded-pill fw-bold" onclick="joinGame()">
         Entrar a la partida →
@@ -93,7 +92,6 @@ require_once __DIR__ . '/../config.php'; ?>
   <div id="lobby-avatar-picker" class="d-none w-100" style="max-width:340px">
     <div id="lobby-custom-tabs" class="custom-tabs mb-2"></div>
     <div id="lobby-custom-grid" class="avatar-grid"></div>
-    <div id="lobby-custom-resize"></div>
   </div>
   <p class="text-secondary mb-0">
     Esperando al dinamizador
@@ -247,6 +245,6 @@ require_once __DIR__ . '/../config.php'; ?>
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=58"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=59"></script>
 </body>
 </html>

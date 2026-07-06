@@ -51,30 +51,18 @@ const CUSTOM_TABS = [
   { key: 'facial_hair', label: '🧔 Vello facial', list: FACIAL_HAIR_LIST, none: true  },
 ];
 
-// Complementos: posición FIJA (top%, left%) y tamaño/orden de capa — no son arrastrables.
-// Ajusta defTop para subir (menos) o bajar (más) cada complemento.
+// Complementos: posición y tamaño FIJOS (no arrastrables, no redimensionables).
+// Ajusta defTop para subir (menos) o bajar (más) cada complemento, o fontPct para el tamaño.
 const ACCESSORY_SPECS = {
-  glasses:     { fontPct: 0.46, z: 2, defTop: 48, defLeft: 50 },
-  hat:         { fontPct: 0.5,  z: 4, defTop: 12, defLeft: 50 },
-  facial_hair: { fontPct: 0.4,  z: 2, defTop: 62, defLeft: 50 },
+  glasses:     { fontPct: 0.56, z: 2, defTop: 48, defLeft: 50 },
+  hat:         { fontPct: 0.6,  z: 4, defTop: 12, defLeft: 50 },
+  facial_hair: { fontPct: 0.5,  z: 2, defTop: 62, defLeft: 50 },
 };
 
-/** Devuelve {top,left,scale} para un complemento: posición siempre fija, solo la escala es guardable */
+/** Devuelve {top,left} fijos para un complemento */
 function accessoryPos(p, key) {
   const spec = ACCESSORY_SPECS[key];
-  const raw = p[key + '_pos'];
-  let scale = 1;
-  if (raw) {
-    const parts = raw.split(',');
-    const s = parseFloat(parts[parts.length - 1]);
-    if (!isNaN(s)) scale = s;
-  }
-  return { top: spec.defTop, left: spec.defLeft, scale };
-}
-/** Guarda una nueva escala para el complemento */
-function setAccessoryScale(custom, key, scale) {
-  const clamped = Math.max(0.5, Math.min(3, +scale.toFixed(2)));
-  custom[key + '_pos'] = clamped.toFixed(2);
+  return { top: spec.defTop, left: spec.defLeft };
 }
 
 /** Genera el HTML (no interactivo) de las capas superpuestas — usado en chips, leaderboards, podio, resultados */
@@ -98,7 +86,7 @@ function avatarLayers(p, size) {
     if (!p[key]) return;
     const spec = ACCESSORY_SPECS[key];
     const pos  = accessoryPos(p, key);
-    html += layer(key, p[key], pos.top, pos.left, spec.fontPct * pos.scale, spec.z);
+    html += layer(key, p[key], pos.top, pos.left, spec.fontPct, spec.z);
   });
   return html;
 }
@@ -112,14 +100,12 @@ function renderStaticPreview(containerEl, custom, size) {
 let joinCustom = {
   avatar: AVATAR_LIST[Math.floor(Math.random() * AVATAR_LIST.length)],
   hair: '', glasses: '', hat: '', headphones: '', facial_hair: '',
-  glasses_pos: '', hat_pos: '', facial_hair_pos: '',
 };
 let joinActiveTab = 'avatar';
 
 // Selección en curso en el lobby (se sincroniza con el estado del jugador al entrar)
 let lobbyCustom = {
   avatar: '🙂', hair: '', glasses: '', hat: '', headphones: '', facial_hair: '',
-  glasses_pos: '', hat_pos: '', facial_hair_pos: '',
 };
 let lobbyActiveTab = 'avatar';
 
@@ -190,36 +176,15 @@ function renderJoinCustomGrid() {
     `<button type="button" class="avatar-opt${a === current ? ' selected' : ''}"
              onclick="selectJoinOption('${tab.key}','${a}')">${glyphHTML(tab.key, a, 24)}</button>`
   ).join('');
-  renderResizeControls(document.getElementById('join-custom-resize'), tab.key, current, 'adjustJoinScale');
 }
 function selectJoinOption(key, value) {
   joinCustom[key] = value;
-  if (ACCESSORY_SPECS[key]) joinCustom[key + '_pos'] = '';
   renderJoinCustomGrid();
-  updateJoinPreview();
-}
-function adjustJoinScale(key, delta) {
-  const pos = accessoryPos(joinCustom, key);
-  setAccessoryScale(joinCustom, key, pos.scale + delta);
   updateJoinPreview();
 }
 function updateJoinPreview() {
   const el = document.getElementById('join-avatar-preview');
   if (el) renderStaticPreview(el, joinCustom, 110);
-}
-
-/** Muestra los botones ➖/➕ para agrandar o encoger el complemento equipado en la pestaña activa */
-function renderResizeControls(el, tabKey, currentValue, fnName) {
-  if (!el) return;
-  if (!ACCESSORY_SPECS[tabKey] || !currentValue) { el.innerHTML = ''; return; }
-  el.innerHTML = `
-    <div class="d-flex align-items-center justify-content-center gap-2 mt-2">
-      <button type="button" class="btn btn-outline-secondary btn-sm rounded-circle" style="width:32px;height:32px;padding:0"
-              onclick="${fnName}('${tabKey}',-0.15)">➖</button>
-      <span class="text-secondary small">Tamaño</span>
-      <button type="button" class="btn btn-outline-secondary btn-sm rounded-circle" style="width:32px;height:32px;padding:0"
-              onclick="${fnName}('${tabKey}',0.15)">➕</button>
-    </div>`;
 }
 
 /* ── Personalizador de avatar en el lobby (editable mientras se espera) ── */
@@ -236,8 +201,8 @@ function toggleLobbyAvatarPicker() {
   }
   picker.classList.toggle('d-none', !opening);
 }
-/** Guarda en el servidor el nuevo tamaño de un complemento */
-async function saveLobbyPosition(key) {
+/** Guarda en el servidor los complementos elegidos por el jugador */
+async function saveLobbyCustomization() {
   const d = await fetch(`${API}?action=update_customization`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -246,11 +211,9 @@ async function saveLobbyPosition(key) {
       hair: lobbyCustom.hair, glasses: lobbyCustom.glasses,
       hat: lobbyCustom.hat, headphones: lobbyCustom.headphones,
       facial_hair: lobbyCustom.facial_hair,
-      glasses_pos: lobbyCustom.glasses_pos, hat_pos: lobbyCustom.hat_pos,
-      facial_hair_pos: lobbyCustom.facial_hair_pos,
     }),
   }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
-  if (d.error) console.error('[Player] update_customization (pos):', d.error);
+  if (d.error) console.error('[Player] update_customization:', d.error);
 }
 function renderLobbyCustomizer() {
   const tabsEl = document.getElementById('lobby-custom-tabs');
@@ -277,18 +240,9 @@ function renderLobbyCustomGrid() {
     `<button type="button" class="avatar-opt${a === current ? ' selected' : ''}"
              onclick="chooseLobbyOption('${tab.key}','${a}')">${glyphHTML(tab.key, a, 24)}</button>`
   ).join('');
-  renderResizeControls(document.getElementById('lobby-custom-resize'), tab.key, current, 'adjustLobbyScale');
-}
-async function adjustLobbyScale(key, delta) {
-  const pos = accessoryPos(lobbyCustom, key);
-  setAccessoryScale(lobbyCustom, key, pos.scale + delta);
-  renderStaticPreview(document.getElementById('lobby-avatar'), lobbyCustom, 150);
-  await saveLobbyPosition(key);
 }
 async function chooseLobbyOption(key, value) {
   lobbyCustom[key] = value;
-  // Cambiar de complemento reinicia su tamaño al valor por defecto
-  if (ACCESSORY_SPECS[key]) lobbyCustom[key + '_pos'] = '';
   renderStaticPreview(document.getElementById('lobby-avatar'), lobbyCustom, 150);
   renderLobbyCustomGrid();
 
@@ -300,7 +254,7 @@ async function chooseLobbyOption(key, value) {
     }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
     if (d.error) console.error('[Player] update_avatar:', d.error);
   } else {
-    await saveLobbyPosition(key);
+    await saveLobbyCustomization();
   }
 }
 
@@ -415,7 +369,6 @@ function renderLobby(state) {
     lobbyCustom = {
       avatar: p.avatar || '🙂', hair: p.hair || '', glasses: p.glasses || '',
       hat: p.hat || '', headphones: p.headphones || '', facial_hair: p.facial_hair || '',
-      glasses_pos: p.glasses_pos || '', hat_pos: p.hat_pos || '', facial_hair_pos: p.facial_hair_pos || '',
     };
     av.innerHTML = avatarLayers(lobbyCustom, 150);
   }
@@ -934,8 +887,6 @@ async function joinGame() {
         hair: joinCustom.hair, glasses: joinCustom.glasses,
         hat: joinCustom.hat, headphones: joinCustom.headphones,
         facial_hair: joinCustom.facial_hair,
-        glasses_pos: joinCustom.glasses_pos, hat_pos: joinCustom.hat_pos,
-        facial_hair_pos: joinCustom.facial_hair_pos,
       }),
     }).then(r => r.json());
 
