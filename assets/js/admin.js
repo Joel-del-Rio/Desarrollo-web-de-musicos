@@ -34,7 +34,7 @@ const GLASSES_TOP_BY_AVATAR = {
 
 // Ajuste vertical del sombrero según el avatar — debe coincidir con player.js
 const HAT_TOP_BY_AVATAR = {
-  '🤖': 14, '🐶': 14, '🐼': 14, '🐸': 14, '🦁': 14, '🐯': 14, '🐻': 14, '🐨': 14, '🐮': 14, '🐷': 14,
+  '🤖': 14, '🐶': 14, '🐼': 14, '🐸': 14, '🦁': 14, '🐯': 14, '🐻': 14, '🐨': 14, '🐮': 14, '🐷': 14, '🐵': 14,
   '🐱': 20, '🦊': 20, '🦝': 20, '🐺': 20,
   '🐰': 26, '🐭': 26, '🐹': 26,
 };

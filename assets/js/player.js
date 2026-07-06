@@ -70,7 +70,7 @@ const GLASSES_TOP_BY_AVATAR = {
 
 // Ajuste vertical del sombrero según el avatar
 const HAT_TOP_BY_AVATAR = {
-  '🤖': 14, '🐶': 14, '🐼': 14, '🐸': 14, '🦁': 14, '🐯': 14, '🐻': 14, '🐨': 14, '🐮': 14, '🐷': 14, // un poco
+  '🤖': 14, '🐶': 14, '🐼': 14, '🐸': 14, '🦁': 14, '🐯': 14, '🐻': 14, '🐨': 14, '🐮': 14, '🐷': 14, '🐵': 14, // un poco
   '🐱': 20, '🦊': 20, '🦝': 20, '🐺': 20,                                                            // normal
   '🐰': 26, '🐭': 26, '🐹': 26,                                                                       // mucho
 };
