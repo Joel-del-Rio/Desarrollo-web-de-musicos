@@ -42,6 +42,7 @@ function accessoryPos(p, key) {
 
 // Ajuste de tamaño para emojis concretos — debe coincidir con player.js
 const GLYPH_SCALE = { '🤿': 1.2 };
+const GLYPH_LEFT_OFFSET = { '🤿': 4 };
 
 // Vello facial: Unicode no tiene glifo aislado de bigote/barba, se dibuja como SVG (misma
 // definición que en player.js — se guarda el token 'mustache'/'beard', no el dibujo)
@@ -82,7 +83,8 @@ function avatarLayers(p, size) {
     const spec  = ACCESSORY_SPECS[key];
     const pos   = accessoryPos(p, key);
     const scale = GLYPH_SCALE[p[key]] || 1;
-    html += layer(key, p[key], pos.top, pos.left, spec.fontPct * scale, spec.z);
+    const left  = pos.left + (GLYPH_LEFT_OFFSET[p[key]] || 0);
+    html += layer(key, p[key], pos.top, left, spec.fontPct * scale, spec.z);
   });
   return html;
 }

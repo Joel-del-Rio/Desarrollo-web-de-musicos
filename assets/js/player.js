@@ -79,6 +79,8 @@ function accessoryPos(p, key) {
 
 // Ajuste de tamaño para emojis concretos que se ven más pequeños que el resto de su categoría
 const GLYPH_SCALE = { '🤿': 1.2 };
+// Desplazamiento horizontal (en puntos %) para emojis concretos que no quedan centrados
+const GLYPH_LEFT_OFFSET = { '🤿': 4 };
 
 /** Genera el HTML (no interactivo) de las capas superpuestas — usado en chips, leaderboards, podio, resultados */
 function avatarLayers(p, size) {
@@ -102,7 +104,8 @@ function avatarLayers(p, size) {
     const spec  = ACCESSORY_SPECS[key];
     const pos   = accessoryPos(p, key);
     const scale = GLYPH_SCALE[p[key]] || 1;
-    html += layer(key, p[key], pos.top, pos.left, spec.fontPct * scale, spec.z);
+    const left  = pos.left + (GLYPH_LEFT_OFFSET[p[key]] || 0);
+    html += layer(key, p[key], pos.top, left, spec.fontPct * scale, spec.z);
   });
   return html;
 }
