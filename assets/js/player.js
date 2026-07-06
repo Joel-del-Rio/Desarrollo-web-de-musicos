@@ -68,12 +68,19 @@ const GLASSES_TOP_BY_AVATAR = {
   '🐹': 63, '🐭': 63, '🦝': 57,   // Ratón gris, Ratón marrón — aún más abajo | Mapache
 };
 
-/** Devuelve {top,left} fijos para un complemento (las gafas varían la altura según el avatar) */
+// Ajuste vertical del sombrero según el avatar
+const HAT_TOP_BY_AVATAR = {
+  '🤖': 14, '🐶': 14, '🐼': 14, '🐸': 14, '🦁': 14, '🐯': 14, '🐻': 14, '🐨': 14, '🐮': 14, '🐷': 14, // un poco
+  '🐱': 20, '🦊': 20, '🦝': 20, '🐺': 20,                                                            // normal
+  '🐰': 26, '🐭': 26, '🐹': 26,                                                                       // mucho
+};
+
+/** Devuelve {top,left} fijos para un complemento (gafas y sombrero varían la altura según el avatar) */
 function accessoryPos(p, key) {
   const spec = ACCESSORY_SPECS[key];
-  const top  = key === 'glasses' && GLASSES_TOP_BY_AVATAR[p.avatar] !== undefined
-    ? GLASSES_TOP_BY_AVATAR[p.avatar]
-    : spec.defTop;
+  let top = spec.defTop;
+  if (key === 'glasses' && GLASSES_TOP_BY_AVATAR[p.avatar] !== undefined) top = GLASSES_TOP_BY_AVATAR[p.avatar];
+  if (key === 'hat' && HAT_TOP_BY_AVATAR[p.avatar] !== undefined) top = HAT_TOP_BY_AVATAR[p.avatar];
   return { top, left: spec.defLeft };
 }
 

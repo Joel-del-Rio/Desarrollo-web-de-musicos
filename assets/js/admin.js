@@ -32,11 +32,18 @@ const GLASSES_TOP_BY_AVATAR = {
   '🐹': 63, '🐭': 63, '🦝': 57,
 };
 
+// Ajuste vertical del sombrero según el avatar — debe coincidir con player.js
+const HAT_TOP_BY_AVATAR = {
+  '🤖': 14, '🐶': 14, '🐼': 14, '🐸': 14, '🦁': 14, '🐯': 14, '🐻': 14, '🐨': 14, '🐮': 14, '🐷': 14,
+  '🐱': 20, '🦊': 20, '🦝': 20, '🐺': 20,
+  '🐰': 26, '🐭': 26, '🐹': 26,
+};
+
 function accessoryPos(p, key) {
   const spec = ACCESSORY_SPECS[key];
-  const top  = key === 'glasses' && GLASSES_TOP_BY_AVATAR[p.avatar] !== undefined
-    ? GLASSES_TOP_BY_AVATAR[p.avatar]
-    : spec.defTop;
+  let top = spec.defTop;
+  if (key === 'glasses' && GLASSES_TOP_BY_AVATAR[p.avatar] !== undefined) top = GLASSES_TOP_BY_AVATAR[p.avatar];
+  if (key === 'hat' && HAT_TOP_BY_AVATAR[p.avatar] !== undefined) top = HAT_TOP_BY_AVATAR[p.avatar];
   return { top, left: spec.defLeft };
 }
 
