@@ -19,7 +19,7 @@ let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0, hard_mode: 0 
 // Complementos: posición y tamaño FIJOS — debe coincidir con player.js. No son ajustables por el jugador.
 const ACCESSORY_SPECS = {
   glasses:     { fontPct: 0.56, z: 2, defTop: 48, defLeft: 50 },
-  hat:         { fontPct: 0.42, z: 4, defTop: 12, defLeft: 50 },
+  hat:         { fontPct: 0.42, z: 4, defTop: 28, defLeft: 50 },
   facial_hair: { fontPct: 0.5,  z: 2, defTop: 62, defLeft: 50 },
 };
 
