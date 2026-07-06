@@ -48,7 +48,6 @@ const CUSTOM_TABS = [
   { key: 'avatar',      label: '😀 Avatar',       list: AVATAR_LIST,      none: false },
   { key: 'glasses',     label: '👓 Gafas',        list: GLASSES_LIST,     none: true  },
   { key: 'hat',         label: '🎩 Sombrero',     list: HATS_LIST,        none: true  },
-  { key: 'facial_hair', label: '🧔 Vello facial', list: FACIAL_HAIR_LIST, none: true  },
 ];
 
 // Complementos: posición y tamaño FIJOS (no arrastrables, no redimensionables).
