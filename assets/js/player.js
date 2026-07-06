@@ -18,7 +18,7 @@ let questionTime = 30;          // Duración de la pregunta en segundos
 
 /* ── Selección de avatar y complementos ───────────────────────── */
 // Mismas listas y orden que las constantes de Player.php en el backend
-const AVATAR_LIST      = ['👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁','🐯','🐰','🐻','🐨','🐮','🐷','🐹','🐭','🦝','🐺','🐘'];
+const AVATAR_LIST      = ['🐲','👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁','🐯','🐰','🐻','🐨','🐮','🐷','🐹','🐭','🦝','🐺'];
 const HAIR_LIST        = ['🦱','🦰','🦳','🦲','💇','🎀'];
 const GLASSES_LIST     = ['👓','🕶️','🤿','🎉'];
 const HATS_LIST        = ['🎩','👒','🎓','👑'];
