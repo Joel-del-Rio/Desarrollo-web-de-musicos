@@ -82,7 +82,7 @@ const GLYPH_SCALE = { '🤿': 1.2 };
 // Desplazamiento horizontal (en puntos %) para emojis concretos que no quedan centrados
 const GLYPH_LEFT_OFFSET = { '🤿': 6 };
 // Corrección vertical extra por emoji (el dibujo de cada glifo tiene distinto padding interno)
-const GLYPH_TOP_OFFSET = { '🤿': 0 };
+const GLYPH_TOP_OFFSET = { '🤿': -20 };
 
 /** Genera el HTML (no interactivo) de las capas superpuestas — usado en chips, leaderboards, podio, resultados */
 function avatarLayers(p, size) {
