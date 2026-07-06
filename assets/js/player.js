@@ -18,7 +18,7 @@ let questionTime = 30;          // Duración de la pregunta en segundos
 
 /* ── Selección de avatar y complementos ───────────────────────── */
 // Mismas listas y orden que las constantes de Player.php en el backend
-const AVATAR_LIST      = ['😐','👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁','🐯','🐰','🐻','🐨','🐮','🐷','🐹','🐭','🦝','🐺'];
+const AVATAR_LIST      = ['😐','👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁','🐯','🐰','🐻','🐨','🐮','🐷','🐹','🐭'];
 const HAIR_LIST        = ['🦱','🦰','🦳','🦲','💇','🎀'];
 const GLASSES_LIST     = ['👓','🕶️','🤿'];
 const HATS_LIST        = ['🎩','👒','🎓','👑'];
@@ -64,13 +64,13 @@ const GLASSES_TOP_BY_AVATAR = {
   '😐': 45,                       // Cara de humano — un pelín arriba
   '👽': 51, '🐼': 51, '🐨': 51,   // Alien, Panda, Oso perezoso — un pelín abajo
   '🐱': 54, '🦊': 54, '🐰': 54,   // Gato, zorro, Conejo — más abajo
-  '🐹': 63, '🐭': 63, '🦝': 57,   // Ratón gris, Ratón marrón — aún más abajo | Mapache
+  '🐹': 63, '🐭': 63,             // Ratón gris, Ratón marrón — aún más abajo
 };
 
 // Ajuste vertical del sombrero según el avatar
 const HAT_TOP_BY_AVATAR = {
   '🤖': 14, '🐶': 14, '🐼': 14, '🐸': 14, '🦁': 14, '🐯': 14, '🐻': 14, '🐨': 14, '🐮': 14, '🐷': 14, '🐵': 14, // un poco
-  '🐱': 20, '🦊': 20, '🦝': 20, '🐺': 20,                                                            // normal
+  '🐱': 20, '🦊': 20,                                                                                 // normal
   '🐰': 26, '🐭': 26, '🐹': 26,                                                                       // mucho
 };
 

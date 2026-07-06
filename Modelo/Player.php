@@ -18,7 +18,7 @@ class Player {
     // Solo animales/objetos con cara de frente (nada humano, nada de perfil)
     public const AVATARS = [
         '😐','👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁',
-        '🐯','🐰','🐻','🐨','🐮','🐷','🐹','🐭','🦝','🐺',
+        '🐯','🐰','🐻','🐨','🐮','🐷','🐹','🐭',
     ];
 
     // Complementos de personalización — vacío ('') siempre válido como "Ninguno"
