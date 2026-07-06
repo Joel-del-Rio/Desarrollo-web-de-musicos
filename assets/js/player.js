@@ -55,7 +55,7 @@ const CUSTOM_TABS = [
 // Ajusta defTop para subir (menos) o bajar (más) cada complemento, o fontPct para el tamaño.
 const ACCESSORY_SPECS = {
   glasses:     { fontPct: 0.56, z: 2, defTop: 48, defLeft: 50 },
-  hat:         { fontPct: 0.6,  z: 4, defTop: 12, defLeft: 50 },
+  hat:         { fontPct: 0.42, z: 4, defTop: 12, defLeft: 50 },
   facial_hair: { fontPct: 0.5,  z: 2, defTop: 62, defLeft: 50 },
 };
 
