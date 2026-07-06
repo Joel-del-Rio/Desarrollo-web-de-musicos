@@ -64,8 +64,8 @@ const GLASSES_TOP_BY_AVATAR = {
   '🐸': 40,                       // Rana — más arriba
   '😐': 45,                       // Cara de humano — un pelín arriba
   '👽': 51, '🐼': 51, '🐨': 51,   // Alien, Panda, Oso perezoso — un pelín abajo
-  '🐱': 54, '🦊': 54, '🐰': 54, '🐭': 54, // Gato, zorro, Conejo, Ratón marrón — más abajo
-  '🐹': 63, '🦝': 57,             // Ratón gris — aún más abajo | Mapache
+  '🐱': 54, '🦊': 54, '🐰': 54,   // Gato, zorro, Conejo — más abajo
+  '🐹': 63, '🐭': 63, '🦝': 57,   // Ratón gris, Ratón marrón — aún más abajo | Mapache
 };
 
 /** Devuelve {top,left} fijos para un complemento (las gafas varían la altura según el avatar) */
