@@ -142,11 +142,6 @@ try {
             echo json_encode((new SuperadminController())->getGameDetail());
             break;
 
-        case 'superadmin_reset_points':
-            require_once __DIR__ . '/SuperadminController.php';
-            echo json_encode((new SuperadminController())->resetPoints());
-            break;
-
         // ── Proxy iTunes (evita CORS en móviles) ──────
 
         case 'itunes_preview':
