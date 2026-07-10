@@ -71,4 +71,25 @@ class SongController {
 
         return ['success' => true, 'id' => (int)$this->db->lastInsertId()];
     }
+
+    /**
+     * Elimina una canción del catálogo.
+     * Si ya se usó en alguna partida (game_songs/player_timeline/answers referencian
+     * su id sin ON DELETE CASCADE), la FK rechaza el borrado y se devuelve un aviso claro.
+     */
+    public function deleteSong(): array {
+        $id = (int)($_POST['id'] ?? 0);
+        if (!$id) return ['error' => 'ID de canción inválido'];
+
+        try {
+            $this->db->prepare("DELETE FROM songs WHERE id=?")->execute([$id]);
+        } catch (\PDOException $e) {
+            if ($e->getCode() === '23000') {
+                return ['error' => 'No se puede eliminar: esta canción ya se ha usado en alguna partida'];
+            }
+            throw $e;
+        }
+
+        return ['success' => true];
+    }
 }

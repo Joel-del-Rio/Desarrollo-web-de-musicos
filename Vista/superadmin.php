@@ -95,6 +95,24 @@ require_once __DIR__ . '/../config.php'; ?>
       -webkit-appearance: none; width: 12px; height: 12px;
       border-radius: 50%; background: var(--accent);
     }
+
+    /* ── Catálogo actual ── */
+    .catalog-row {
+      display: flex; align-items: center; gap: .75rem;
+      padding: .55rem .9rem; border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .catalog-row:last-child { border-bottom: none; }
+    .catalog-row-info { flex: 1; min-width: 0; }
+    .catalog-row-title { font-weight: 600; font-size: .86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .catalog-row-sub { font-size: .74rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .catalog-del-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      background: transparent; border: 1.5px solid rgba(255,255,255,.15);
+      color: var(--muted); cursor: pointer; transition: all .15s; font-size: .85rem;
+    }
+    .catalog-del-btn:hover { background: rgba(220,53,69,.15); border-color: rgba(220,53,69,.5); color: #dc3545; }
+    .catalog-del-btn:disabled { opacity: .4; cursor: default; }
   </style>
 </head>
 <body>
@@ -148,7 +166,7 @@ require_once __DIR__ . '/../config.php'; ?>
         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-partidas" type="button">Partidas</button>
       </li>
       <li class="nav-item">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-canciones" type="button" onclick="ensureGenreOptions()">Canciones</button>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-canciones" type="button" onclick="ensureGenreOptions();loadCatalog()">Canciones</button>
       </li>
     </ul>
 
@@ -223,6 +241,19 @@ require_once __DIR__ . '/../config.php'; ?>
       <div id="song-results" class="card p-0" style="overflow:hidden;display:none"></div>
       <div id="song-search-status" class="text-secondary small mt-2"></div>
 
+      <!-- Catálogo actual -->
+      <div class="d-flex align-items-center justify-content-between mb-3 mt-5 gap-2 flex-wrap">
+        <h6 class="text-secondary text-uppercase fw-semibold mb-0" style="letter-spacing:.08em">Catálogo actual</h6>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <input type="search" id="catalog-search" class="search-bar" style="max-width:240px" placeholder="Buscar título, artista o género…" oninput="filterCatalog()">
+          <span class="small" id="catalog-count" style="color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <div id="catalog-list" class="card p-0" style="overflow:hidden">
+        <div class="text-center py-4 text-secondary">Cargando…</div>
+      </div>
+
     </div>
     </div>
 
@@ -251,6 +282,7 @@ const SONG_GENRES = <?= json_encode(array_values(array_filter(GENRES, fn($g) => 
 let allGames = [];
 let detailModal;
 let genreOptionsReady = false;
+let allCatalogSongs = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   detailModal = new bootstrap.Modal(document.getElementById('gameDetailModal'));
@@ -611,10 +643,72 @@ async function addSongFromHit(i) {
     btn.textContent = '✓ Añadida';
     btn.classList.remove('btn-game');
     btn.classList.add('btn-outline-secondary');
+    loadCatalog();
   } else {
     btn.disabled = false;
     btn.textContent = '+ Añadir';
     alert(r.error || 'Error al añadir la canción');
+  }
+}
+
+/* ── Catálogo actual (listado + borrado) ── */
+
+async function loadCatalog() {
+  const box = document.getElementById('catalog-list');
+  const r = await fetch(`${API}?action=get_songs`).then(r => r.json()).catch(() => null);
+  if (!Array.isArray(r)) {
+    box.innerHTML = '<div class="text-center py-4 text-secondary">Error al cargar el catálogo</div>';
+    return;
+  }
+  allCatalogSongs = r;
+  renderCatalog(allCatalogSongs);
+}
+
+function filterCatalog() {
+  const q = document.getElementById('catalog-search').value.toLowerCase();
+  renderCatalog(allCatalogSongs.filter(s =>
+    s.title.toLowerCase().includes(q) ||
+    s.artist.toLowerCase().includes(q) ||
+    (s.genre || '').toLowerCase().includes(q)
+  ));
+}
+
+function renderCatalog(songs) {
+  document.getElementById('catalog-count').textContent = `${songs.length} canciones`;
+  const box = document.getElementById('catalog-list');
+  if (!songs.length) {
+    box.innerHTML = '<div class="text-center py-4 text-secondary">Sin canciones</div>';
+    return;
+  }
+  box.innerHTML = songs.map(s => `
+    <div class="catalog-row" id="catalog-row-${s.id}">
+      <div class="catalog-row-info">
+        <div class="catalog-row-title">${esc(s.title)}</div>
+        <div class="catalog-row-sub">${esc(s.artist)} · ${s.year} · ${esc(s.genre || '—')}</div>
+      </div>
+      <button class="catalog-del-btn" onclick="deleteCatalogSong(${s.id})" title="Eliminar del catálogo">✕</button>
+    </div>
+  `).join('');
+}
+
+async function deleteCatalogSong(id) {
+  if (!confirm('¿Eliminar esta canción del catálogo? Esta acción no se puede deshacer.')) return;
+
+  const row = document.getElementById(`catalog-row-${id}`);
+  const btn = row?.querySelector('.catalog-del-btn');
+  if (btn) btn.disabled = true;
+
+  const r = await fetch(`${API}?action=delete_song`, {
+    method: 'POST',
+    body: new URLSearchParams({ id }),
+  }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
+
+  if (r.success) {
+    allCatalogSongs = allCatalogSongs.filter(s => s.id !== id);
+    filterCatalog();
+  } else {
+    if (btn) btn.disabled = false;
+    alert(r.error || 'Error al eliminar la canción');
   }
 }
 

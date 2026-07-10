@@ -180,6 +180,12 @@ try {
             echo json_encode((new SongController())->addSong());
             break;
 
+        case 'delete_song':
+            // Elimina una canción del catálogo (panel superadmin)
+            require_once __DIR__ . '/SongController.php';
+            echo json_encode((new SongController())->deleteSong());
+            break;
+
         // ── Jugador ────────────────────────────────────
 
         case 'join_game':
