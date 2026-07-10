@@ -65,6 +65,16 @@ require_once __DIR__ . '/../config.php'; ?>
     .song-hit-info { flex: 1; min-width: 0; }
     .song-hit-title { font-weight: 600; font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .song-hit-sub { font-size: .76rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .song-play-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(233,69,96,.15); border: 1.5px solid rgba(233,69,96,.5);
+      color: var(--accent); cursor: pointer;
+      transition: background .15s;
+    }
+    .song-play-btn:hover  { background: rgba(233,69,96,.3); }
+    .song-play-btn:disabled { opacity: .4; cursor: default; }
   </style>
 </head>
 <body>
@@ -413,11 +423,62 @@ function ensureGenreOptions() {
   sel.innerHTML = SONG_GENRES.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
 }
 
+/* ── Reproductor de previews en resultados de búsqueda ── */
+const SVG_PLAY  = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+const SVG_PAUSE = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+
+const songAudio = new Audio();
+let songPreviewUrls = [];
+let activePreviewIdx = null;
+
+songAudio.addEventListener('ended', () => {
+  if (activePreviewIdx !== null) resetPreviewBtn(activePreviewIdx);
+  activePreviewIdx = null;
+});
+
+function resetPreviewBtn(i) {
+  const btn = document.getElementById(`play-${i}`);
+  if (btn) btn.innerHTML = SVG_PLAY;
+}
+
+async function togglePreview(i) {
+  const url = songPreviewUrls[i];
+  if (!url) return;
+  const btn = document.getElementById(`play-${i}`);
+
+  if (activePreviewIdx === i) {
+    if (songAudio.paused) {
+      await songAudio.play().catch(() => {});
+      btn.innerHTML = SVG_PAUSE;
+    } else {
+      songAudio.pause();
+      btn.innerHTML = SVG_PLAY;
+    }
+    return;
+  }
+
+  if (activePreviewIdx !== null) resetPreviewBtn(activePreviewIdx);
+
+  activePreviewIdx = i;
+  songAudio.src = url;
+  songAudio.load();
+  try {
+    await songAudio.play();
+    btn.innerHTML = SVG_PAUSE;
+  } catch {
+    resetPreviewBtn(i);
+    activePreviewIdx = null;
+  }
+}
+
 async function searchSongs() {
   const term = document.getElementById('song-search-input').value.trim();
   const box  = document.getElementById('song-results');
   const status = document.getElementById('song-search-status');
   if (!term) { status.textContent = 'Escribe un título o artista para buscar.'; box.style.display = 'none'; return; }
+
+  songAudio.pause();
+  activePreviewIdx = null;
 
   status.textContent = 'Buscando…';
   box.style.display = 'none';
@@ -432,9 +493,12 @@ async function searchSongs() {
       return;
     }
 
+    songPreviewUrls = hits.map(t => t.previewUrl || null);
+
     box.innerHTML = hits.map((t, i) => {
       const year = t.releaseDate ? new Date(t.releaseDate).getFullYear() : '—';
       const art  = (t.artworkUrl60 || t.artworkUrl100 || '').replace('60x60', '80x80');
+      const hasPreview = !!t.previewUrl;
       return `
       <div class="song-hit" id="hit-${i}">
         ${art ? `<img src="${art}" alt="">` : ''}
@@ -442,6 +506,10 @@ async function searchSongs() {
           <div class="song-hit-title">${esc(t.trackName)}</div>
           <div class="song-hit-sub">${esc(t.artistName)} · ${year}</div>
         </div>
+        <button class="song-play-btn" id="play-${i}" onclick="togglePreview(${i})"
+                ${hasPreview ? '' : 'disabled'} title="${hasPreview ? 'Escuchar preview (30s)' : 'Preview no disponible'}">
+          ${SVG_PLAY}
+        </button>
         <button class="btn btn-sm btn-game rounded-pill px-3" style="font-size:.78rem"
                 onclick="addSongFromHit(${i})"
                 data-title="${esc(t.trackName)}" data-artist="${esc(t.artistName)}" data-year="${year}">
