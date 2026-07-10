@@ -236,9 +236,7 @@ require_once __DIR__ . '/../config.php'; ?>
 
       <div id="song-results" class="card p-0" style="overflow:hidden;display:none"></div>
       <div id="song-search-status" class="text-secondary small mt-2"></div>
-      <div class="text-center mt-2">
-        <button id="load-more-btn" class="btn btn-sm btn-outline-secondary rounded-pill px-4 d-none" onclick="loadMoreSongs()">Cargar más</button>
-      </div>
+      <div id="song-pages" class="d-flex gap-2 justify-content-center mt-3 flex-wrap"></div>
 
       <!-- Catálogo actual -->
       <div class="d-flex align-items-center justify-content-between mb-3 mt-5 gap-2 flex-wrap">
@@ -553,22 +551,21 @@ function fmtTime(s) {
   return `${m}:${Math.floor(s % 60).toString().padStart(2,'0')}`;
 }
 
-const SONG_PAGE_SIZE = 15;
-let songSearchTerm = '';
-let songSearchOffset = 0;
-let songSearchHasMore = false;
+const SONG_PAGE_SIZE   = 15; // canciones por pestaña de página
+const SONG_FETCH_LIMIT = 50; // máximo de resultados únicos que se piden a iTunes por búsqueda
+let currentSongPage = 1;
 
-function renderSongHitRow(t, i, hitData) {
-  const year = hitData.year ?? '—';
-  const art  = (t.artworkUrl60 || t.artworkUrl100 || '').replace('60x60', '80x80');
-  const hasPreview = !!t.previewUrl;
-  const already = isInCatalog(t.trackName, t.artistName);
+function renderSongHitRow(i) {
+  const hit = songHitsData[i];
+  const year = hit.year ?? '—';
+  const hasPreview = !!songPreviewUrls[i];
+  const already = isInCatalog(hit.title, hit.artist);
   return `
   <div class="song-hit" id="hit-${i}">
-    ${art ? `<img src="${art}" alt="">` : ''}
+    ${hit.art ? `<img src="${hit.art}" alt="">` : ''}
     <div class="song-hit-info">
-      <div class="song-hit-title">${esc(t.trackName)}</div>
-      <div class="song-hit-sub">${esc(t.artistName)} · ${year}</div>
+      <div class="song-hit-title">${esc(hit.title)}</div>
+      <div class="song-hit-sub">${esc(hit.artist)} · ${year}</div>
     </div>
     <button class="song-play-btn" id="play-${i}" onclick="togglePreview(${i})"
             ${hasPreview ? '' : 'disabled'} title="${hasPreview ? 'Escuchar preview (30s)' : 'Preview no disponible'}">
@@ -594,68 +591,81 @@ function renderSongHitRow(t, i, hitData) {
 
 async function searchSongs() {
   const term = document.getElementById('song-search-input').value.trim();
-  if (!term) {
-    document.getElementById('song-search-status').textContent = 'Escribe un título o artista para buscar.';
-    document.getElementById('song-results').style.display = 'none';
-    return;
-  }
+  const box  = document.getElementById('song-results');
+  const status = document.getElementById('song-search-status');
+  if (!term) { status.textContent = 'Escribe un título o artista para buscar.'; box.style.display = 'none'; return; }
 
   songAudio.pause();
   activePreviewIdx = null;
-  songSearchTerm = term;
-  songSearchOffset = 0;
-  songPreviewUrls = [];
-  songHitsData = [];
-  document.getElementById('song-results').innerHTML = '';
-
-  await loadCatalog(); // refresca allCatalogSongs para saber qué ya está añadido
-  await fetchSongPage();
-}
-
-async function loadMoreSongs() {
-  await fetchSongPage();
-}
-
-async function fetchSongPage() {
-  const box = document.getElementById('song-results');
-  const status = document.getElementById('song-search-status');
-  const moreBtn = document.getElementById('load-more-btn');
-
-  status.textContent = songSearchOffset === 0 ? 'Buscando…' : 'Cargando más…';
-  moreBtn.disabled = true;
+  status.textContent = 'Buscando…';
+  box.style.display = 'none';
+  document.getElementById('song-pages').innerHTML = '';
 
   try {
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(songSearchTerm)}&media=music&entity=song&limit=${SONG_PAGE_SIZE}&offset=${songSearchOffset}`);
+    await loadCatalog(); // refresca allCatalogSongs para saber qué ya está añadido
+
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&entity=song&limit=${SONG_FETCH_LIMIT}`);
     const data = await res.json();
-    const hits = data.results || [];
+    const raw = data.results || [];
+
+    // La API de iTunes puede devolver la misma canción más de una vez (distintas ediciones/álbumes)
+    const seen = new Set();
+    const hits = raw.filter(t => {
+      const key = `${t.trackName}|${t.artistName}`.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 
     if (!hits.length) {
-      if (songSearchOffset === 0) status.textContent = 'Sin resultados.';
-      songSearchHasMore = false;
-      moreBtn.classList.add('d-none');
+      status.textContent = 'Sin resultados.';
       return;
     }
 
-    const baseIndex = songHitsData.length;
-    const newHitsData = hits.map(t => ({
+    songPreviewUrls = hits.map(t => t.previewUrl || null);
+    songHitsData = hits.map(t => ({
       title:  t.trackName,
       artist: t.artistName,
       year:   t.releaseDate ? new Date(t.releaseDate).getFullYear() : null,
+      art:    (t.artworkUrl60 || t.artworkUrl100 || '').replace('60x60', '80x80'),
     }));
-    songPreviewUrls = songPreviewUrls.concat(hits.map(t => t.previewUrl || null));
-    songHitsData = songHitsData.concat(newHitsData);
 
-    box.insertAdjacentHTML('beforeend', hits.map((t, localI) => renderSongHitRow(t, baseIndex + localI, newHitsData[localI])).join(''));
-    box.style.display = 'block';
-
-    songSearchOffset += hits.length;
-    songSearchHasMore = hits.length === SONG_PAGE_SIZE;
-    moreBtn.classList.toggle('d-none', !songSearchHasMore);
-    moreBtn.disabled = false;
+    currentSongPage = 1;
+    renderSongPager();
+    goToSongPage(1);
     status.textContent = `${songHitsData.length} resultados`;
   } catch {
     status.textContent = 'Error al buscar. Inténtalo de nuevo.';
   }
+}
+
+function goToSongPage(page) {
+  currentSongPage = page;
+  const start = (page - 1) * SONG_PAGE_SIZE;
+  const end   = Math.min(start + SONG_PAGE_SIZE, songHitsData.length);
+
+  const box = document.getElementById('song-results');
+  let html = '';
+  for (let i = start; i < end; i++) html += renderSongHitRow(i);
+  box.innerHTML = html;
+  box.style.display = 'block';
+
+  document.querySelectorAll('#song-pages button').forEach(btn => {
+    btn.classList.toggle('btn-game', +btn.dataset.page === page);
+    btn.classList.toggle('btn-outline-secondary', +btn.dataset.page !== page);
+  });
+}
+
+function renderSongPager() {
+  const pager = document.getElementById('song-pages');
+  const totalPages = Math.ceil(songHitsData.length / SONG_PAGE_SIZE);
+  if (totalPages <= 1) { pager.innerHTML = ''; return; }
+
+  let html = '';
+  for (let p = 1; p <= totalPages; p++) {
+    html += `<button type="button" class="btn btn-sm rounded-pill" style="width:34px" data-page="${p}" onclick="goToSongPage(${p})">${p}</button>`;
+  }
+  pager.innerHTML = html;
 }
 
 function showGenrePicker(i) {
