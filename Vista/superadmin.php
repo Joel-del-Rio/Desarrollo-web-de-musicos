@@ -75,6 +75,26 @@ require_once __DIR__ . '/../config.php'; ?>
     }
     .song-play-btn:hover  { background: rgba(233,69,96,.3); }
     .song-play-btn:disabled { opacity: .4; cursor: default; }
+
+    .song-player-ctrl { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+    .song-bar {
+      flex: 1; height: 5px; background: rgba(255,255,255,.12);
+      border-radius: 3px; cursor: pointer; position: relative; min-width: 60px;
+    }
+    .song-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; width: 0%; pointer-events: none; }
+    .song-time { font-size: .68rem; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+    .song-vol-wrap { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .song-vol-wrap svg { opacity: .45; flex-shrink: 0; }
+    .song-vol {
+      width: 60px; accent-color: var(--accent);
+      -webkit-appearance: none; appearance: none;
+      height: 4px; border-radius: 2px; background: rgba(255,255,255,.15);
+      cursor: pointer;
+    }
+    .song-vol::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 12px; height: 12px;
+      border-radius: 50%; background: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -430,15 +450,32 @@ const SVG_PAUSE = `<svg viewBox="0 0 24 24" width="13" height="13" fill="current
 const songAudio = new Audio();
 let songPreviewUrls = [];
 let activePreviewIdx = null;
+let previewVolLevel = 0.7;
+songAudio.volume = previewVolLevel;
+
+songAudio.addEventListener('timeupdate', () => {
+  if (activePreviewIdx === null || !songAudio.duration) return;
+  const i = activePreviewIdx;
+  const fill = document.getElementById(`fill-${i}`);
+  const time = document.getElementById(`time-${i}`);
+  if (fill) fill.style.width = (songAudio.currentTime / songAudio.duration * 100) + '%';
+  if (time) time.textContent = fmtTime(songAudio.currentTime) + ' / ' + fmtTime(songAudio.duration);
+});
 
 songAudio.addEventListener('ended', () => {
-  if (activePreviewIdx !== null) resetPreviewBtn(activePreviewIdx);
+  if (activePreviewIdx !== null) resetPreviewRow(activePreviewIdx);
   activePreviewIdx = null;
 });
 
-function resetPreviewBtn(i) {
+function resetPreviewRow(i) {
   const btn = document.getElementById(`play-${i}`);
   if (btn) btn.innerHTML = SVG_PLAY;
+  document.getElementById(`ctrl-${i}`)?.classList.add('d-none');
+  document.getElementById(`vol-wrap-${i}`)?.classList.add('d-none');
+  const fill = document.getElementById(`fill-${i}`);
+  if (fill) fill.style.width = '0%';
+  const time = document.getElementById(`time-${i}`);
+  if (time) time.textContent = '0:00';
 }
 
 async function togglePreview(i) {
@@ -457,18 +494,39 @@ async function togglePreview(i) {
     return;
   }
 
-  if (activePreviewIdx !== null) resetPreviewBtn(activePreviewIdx);
+  if (activePreviewIdx !== null) resetPreviewRow(activePreviewIdx);
 
   activePreviewIdx = i;
   songAudio.src = url;
+  songAudio.volume = previewVolLevel;
   songAudio.load();
   try {
     await songAudio.play();
     btn.innerHTML = SVG_PAUSE;
+    document.getElementById(`ctrl-${i}`)?.classList.remove('d-none');
+    document.getElementById(`vol-wrap-${i}`)?.classList.remove('d-none');
+    const volEl = document.getElementById(`vol-${i}`);
+    if (volEl) volEl.value = Math.round(previewVolLevel * 100);
   } catch {
-    resetPreviewBtn(i);
+    resetPreviewRow(i);
     activePreviewIdx = null;
   }
+}
+
+function seekPreview(i, e, bar) {
+  if (activePreviewIdx !== i || !songAudio.duration) return;
+  const rect = bar.getBoundingClientRect();
+  songAudio.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * songAudio.duration;
+}
+
+function setPreviewVol(val) {
+  previewVolLevel = val / 100;
+  songAudio.volume = previewVolLevel;
+}
+
+function fmtTime(s) {
+  const m = Math.floor(s / 60);
+  return `${m}:${Math.floor(s % 60).toString().padStart(2,'0')}`;
 }
 
 async function searchSongs() {
@@ -510,6 +568,16 @@ async function searchSongs() {
                 ${hasPreview ? '' : 'disabled'} title="${hasPreview ? 'Escuchar preview (30s)' : 'Preview no disponible'}">
           ${SVG_PLAY}
         </button>
+        <div class="song-player-ctrl d-none" id="ctrl-${i}">
+          <div class="song-bar" id="bar-${i}" onclick="seekPreview(${i}, event, this)">
+            <div class="song-bar-fill" id="fill-${i}"></div>
+          </div>
+          <span class="song-time" id="time-${i}">0:00</span>
+        </div>
+        <div class="song-vol-wrap d-none" id="vol-wrap-${i}">
+          <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
+          <input type="range" class="song-vol" id="vol-${i}" min="0" max="100" value="70" oninput="setPreviewVol(this.value)">
+        </div>
         <button class="btn btn-sm btn-game rounded-pill px-3" style="font-size:.78rem"
                 onclick="addSongFromHit(${i})"
                 data-title="${esc(t.trackName)}" data-artist="${esc(t.artistName)}" data-year="${year}">
