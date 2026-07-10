@@ -166,7 +166,7 @@ require_once __DIR__ . '/../config.php'; ?>
         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-partidas" type="button">Partidas</button>
       </li>
       <li class="nav-item">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-canciones" type="button" onclick="ensureGenreOptions();loadCatalog()">Canciones</button>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-canciones" type="button" onclick="loadCatalog()">Canciones</button>
       </li>
     </ul>
 
@@ -230,10 +230,6 @@ require_once __DIR__ . '/../config.php'; ?>
             <input type="search" id="song-search-input" class="search-bar" placeholder="Título o artista…"
                    onkeydown="if(event.key==='Enter'){event.preventDefault();searchSongs();}">
           </div>
-          <div style="min-width:200px">
-            <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Género del catálogo</label>
-            <select id="song-genre-select" class="form-select form-select-sm"></select>
-          </div>
           <button class="btn btn-game rounded-pill fw-bold px-4" onclick="searchSongs()">Buscar</button>
         </div>
       </div>
@@ -281,8 +277,8 @@ const API = '<?= BASE_URL ?>/Controlador/api.php';
 const SONG_GENRES = <?= json_encode(array_values(array_filter(GENRES, fn($g) => $g !== 'Todos'))) ?>;
 let allGames = [];
 let detailModal;
-let genreOptionsReady = false;
 let allCatalogSongs = [];
+let songHitsData = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   detailModal = new bootstrap.Modal(document.getElementById('gameDetailModal'));
@@ -468,13 +464,6 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function ensureGenreOptions() {
-  if (genreOptionsReady) return;
-  genreOptionsReady = true;
-  const sel = document.getElementById('song-genre-select');
-  sel.innerHTML = SONG_GENRES.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
-}
-
 /* ── Reproductor de previews en resultados de búsqueda ── */
 const SVG_PLAY  = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
 const SVG_PAUSE = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
@@ -584,9 +573,14 @@ async function searchSongs() {
     }
 
     songPreviewUrls = hits.map(t => t.previewUrl || null);
+    songHitsData = hits.map(t => ({
+      title:  t.trackName,
+      artist: t.artistName,
+      year:   t.releaseDate ? new Date(t.releaseDate).getFullYear() : null,
+    }));
 
     box.innerHTML = hits.map((t, i) => {
-      const year = t.releaseDate ? new Date(t.releaseDate).getFullYear() : '—';
+      const year = songHitsData[i].year ?? '—';
       const art  = (t.artworkUrl60 || t.artworkUrl100 || '').replace('60x60', '80x80');
       const hasPreview = !!t.previewUrl;
       return `
@@ -610,11 +604,11 @@ async function searchSongs() {
           <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
           <input type="range" class="song-vol" id="vol-${i}" min="0" max="100" value="70" oninput="setPreviewVol(this.value)">
         </div>
-        <button class="btn btn-sm btn-game rounded-pill px-3" id="add-${i}" style="font-size:.78rem"
-                onclick="addSongFromHit(${i})"
-                data-title="${esc(t.trackName)}" data-artist="${esc(t.artistName)}" data-year="${year}">
-          + Añadir
-        </button>
+        <div id="add-wrap-${i}">
+          <button class="btn btn-sm btn-game rounded-pill px-3" style="font-size:.78rem" onclick="showGenrePicker(${i})">
+            + Añadir
+          </button>
+        </div>
       </div>`;
     }).join('');
     box.style.display = 'block';
@@ -624,15 +618,25 @@ async function searchSongs() {
   }
 }
 
-async function addSongFromHit(i) {
-  const btn = document.getElementById(`add-${i}`);
-  const genre = document.getElementById('song-genre-select').value;
-  const { title, artist, year } = btn.dataset;
+function showGenrePicker(i) {
+  const wrap = document.getElementById(`add-wrap-${i}`);
+  const year = songHitsData[i]?.year;
+  if (!year) { alert('No se pudo determinar el año de esta canción.'); return; }
 
-  if (!year || year === 'NaN') { alert('No se pudo determinar el año de esta canción.'); return; }
+  wrap.innerHTML = `
+    <select class="form-select form-select-sm" style="font-size:.78rem;width:auto" onchange="addSongFromHit(${i}, this.value)">
+      <option value="" selected disabled>Elegir género…</option>
+      ${SONG_GENRES.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('')}
+    </select>
+  `;
+}
 
-  btn.disabled = true;
-  btn.textContent = 'Añadiendo…';
+async function addSongFromHit(i, genre) {
+  if (!genre) return;
+  const wrap = document.getElementById(`add-wrap-${i}`);
+  const { title, artist, year } = songHitsData[i];
+
+  wrap.innerHTML = `<span class="small text-secondary">Añadiendo…</span>`;
 
   const r = await fetch(`${API}?action=add_song`, {
     method: 'POST',
@@ -640,13 +644,13 @@ async function addSongFromHit(i) {
   }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
 
   if (r.success) {
-    btn.textContent = '✓ Añadida';
-    btn.classList.remove('btn-game');
-    btn.classList.add('btn-outline-secondary');
+    wrap.innerHTML = `<span class="small" style="color:var(--muted)">✓ Añadida en ${esc(genre)}</span>`;
     loadCatalog();
   } else {
-    btn.disabled = false;
-    btn.textContent = '+ Añadir';
+    wrap.innerHTML = `
+      <button class="btn btn-sm btn-game rounded-pill px-3" style="font-size:.78rem" onclick="showGenrePicker(${i})">
+        + Añadir
+      </button>`;
     alert(r.error || 'Error al añadir la canción');
   }
 }
