@@ -578,7 +578,7 @@ async function searchSongs() {
           <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
           <input type="range" class="song-vol" id="vol-${i}" min="0" max="100" value="70" oninput="setPreviewVol(this.value)">
         </div>
-        <button class="btn btn-sm btn-game rounded-pill px-3" style="font-size:.78rem"
+        <button class="btn btn-sm btn-game rounded-pill px-3" id="add-${i}" style="font-size:.78rem"
                 onclick="addSongFromHit(${i})"
                 data-title="${esc(t.trackName)}" data-artist="${esc(t.artistName)}" data-year="${year}">
           + Añadir
@@ -593,8 +593,7 @@ async function searchSongs() {
 }
 
 async function addSongFromHit(i) {
-  const row = document.getElementById(`hit-${i}`);
-  const btn = row.querySelector('button');
+  const btn = document.getElementById(`add-${i}`);
   const genre = document.getElementById('song-genre-select').value;
   const { title, artist, year } = btn.dataset;
 
