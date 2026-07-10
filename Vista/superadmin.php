@@ -563,6 +563,7 @@ async function searchSongs() {
   box.style.display = 'none';
 
   try {
+    await loadCatalog(); // refresca allCatalogSongs para saber qué ya está añadido
     const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&entity=song&limit=15`);
     const data = await res.json();
     const hits = data.results || [];
@@ -583,6 +584,7 @@ async function searchSongs() {
       const year = songHitsData[i].year ?? '—';
       const art  = (t.artworkUrl60 || t.artworkUrl100 || '').replace('60x60', '80x80');
       const hasPreview = !!t.previewUrl;
+      const already = isInCatalog(t.trackName, t.artistName);
       return `
       <div class="song-hit" id="hit-${i}">
         ${art ? `<img src="${art}" alt="">` : ''}
@@ -605,9 +607,9 @@ async function searchSongs() {
           <input type="range" class="song-vol" id="vol-${i}" min="0" max="100" value="70" oninput="setPreviewVol(this.value)">
         </div>
         <div id="add-wrap-${i}">
-          <button class="btn btn-sm btn-game rounded-pill px-3" style="font-size:.78rem" onclick="showGenrePicker(${i})">
-            + Añadir
-          </button>
+          ${already
+            ? `<span class="small" style="color:var(--muted)">✓ En catálogo</span>`
+            : `<button class="btn btn-sm btn-game rounded-pill px-3" style="font-size:.78rem" onclick="showGenrePicker(${i})">+ Añadir</button>`}
         </div>
       </div>`;
     }).join('');
@@ -653,6 +655,12 @@ async function addSongFromHit(i, genre) {
       </button>`;
     alert(r.error || 'Error al añadir la canción');
   }
+}
+
+function isInCatalog(title, artist) {
+  const t = title.trim().toLowerCase();
+  const a = artist.trim().toLowerCase();
+  return allCatalogSongs.some(s => s.title.trim().toLowerCase() === t && s.artist.trim().toLowerCase() === a);
 }
 
 /* ── Catálogo actual (listado + borrado) ── */
