@@ -54,6 +54,17 @@ require_once __DIR__ . '/../config.php'; ?>
                   color: #fff; padding: .45rem .9rem; width: 100%; outline: none; font-size: .9rem; }
     .search-bar::placeholder { color: var(--muted); }
     .search-bar:focus { border-color: var(--accent); }
+
+    /* ── Buscador de canciones ── */
+    .song-hit {
+      display: flex; align-items: center; gap: .75rem;
+      padding: .6rem .9rem; border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .song-hit:last-child { border-bottom: none; }
+    .song-hit img { width: 42px; height: 42px; border-radius: 6px; flex-shrink: 0; }
+    .song-hit-info { flex: 1; min-width: 0; }
+    .song-hit-title { font-weight: 600; font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .song-hit-sub { font-size: .76rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   </style>
 </head>
 <body>
@@ -101,6 +112,20 @@ require_once __DIR__ . '/../config.php'; ?>
 
   <div class="container-fluid py-4 px-3 px-md-4" style="max-width:1100px">
 
+    <!-- Pestañas -->
+    <ul class="nav nav-tabs mb-4" id="sa-tabs">
+      <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-partidas" type="button">Partidas</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-canciones" type="button" onclick="ensureGenreOptions()">Canciones</button>
+      </li>
+    </ul>
+
+    <div class="tab-content">
+    <!-- ══ PESTAÑA: PARTIDAS ══ -->
+    <div class="tab-pane fade show active" id="tab-partidas">
+
     <!-- Estadísticas globales -->
     <h6 class="text-secondary text-uppercase fw-semibold mb-3" style="letter-spacing:.08em">Estadísticas globales</h6>
     <div class="row g-3 mb-4" id="stats-row">
@@ -144,6 +169,33 @@ require_once __DIR__ . '/../config.php'; ?>
       </div>
     </div>
 
+    </div>
+    <!-- ══ PESTAÑA: CANCIONES ══ -->
+    <div class="tab-pane fade" id="tab-canciones">
+
+      <h6 class="text-secondary text-uppercase fw-semibold mb-3" style="letter-spacing:.08em">Añadir canción al catálogo</h6>
+
+      <div class="card p-3 mb-3">
+        <div class="d-flex gap-2 flex-wrap align-items-end">
+          <div style="flex:1;min-width:220px">
+            <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Buscar canción</label>
+            <input type="search" id="song-search-input" class="search-bar" placeholder="Título o artista…"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();searchSongs();}">
+          </div>
+          <div style="min-width:200px">
+            <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Género del catálogo</label>
+            <select id="song-genre-select" class="form-select form-select-sm"></select>
+          </div>
+          <button class="btn btn-game rounded-pill fw-bold px-4" onclick="searchSongs()">Buscar</button>
+        </div>
+      </div>
+
+      <div id="song-results" class="card p-0" style="overflow:hidden;display:none"></div>
+      <div id="song-search-status" class="text-secondary small mt-2"></div>
+
+    </div>
+    </div>
+
   </div>
 </div>
 
@@ -165,8 +217,10 @@ require_once __DIR__ . '/../config.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const API = '<?= BASE_URL ?>/Controlador/api.php';
+const SONG_GENRES = <?= json_encode(array_values(array_filter(GENRES, fn($g) => $g !== 'Todos'))) ?>;
 let allGames = [];
 let detailModal;
+let genreOptionsReady = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   detailModal = new bootstrap.Modal(document.getElementById('gameDetailModal'));
@@ -344,6 +398,89 @@ async function openDetail(gameId) {
     <h6 class="fw-bold mb-2">Canciones jugadas</h6>
     <div class="card p-0" style="overflow:hidden">${songsHtml}</div>
   `;
+}
+
+/* ══ Buscador de canciones (pestaña Canciones) ══ */
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function ensureGenreOptions() {
+  if (genreOptionsReady) return;
+  genreOptionsReady = true;
+  const sel = document.getElementById('song-genre-select');
+  sel.innerHTML = SONG_GENRES.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
+}
+
+async function searchSongs() {
+  const term = document.getElementById('song-search-input').value.trim();
+  const box  = document.getElementById('song-results');
+  const status = document.getElementById('song-search-status');
+  if (!term) { status.textContent = 'Escribe un título o artista para buscar.'; box.style.display = 'none'; return; }
+
+  status.textContent = 'Buscando…';
+  box.style.display = 'none';
+
+  try {
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&entity=song&limit=15`);
+    const data = await res.json();
+    const hits = data.results || [];
+
+    if (!hits.length) {
+      status.textContent = 'Sin resultados.';
+      return;
+    }
+
+    box.innerHTML = hits.map((t, i) => {
+      const year = t.releaseDate ? new Date(t.releaseDate).getFullYear() : '—';
+      const art  = (t.artworkUrl60 || t.artworkUrl100 || '').replace('60x60', '80x80');
+      return `
+      <div class="song-hit" id="hit-${i}">
+        ${art ? `<img src="${art}" alt="">` : ''}
+        <div class="song-hit-info">
+          <div class="song-hit-title">${esc(t.trackName)}</div>
+          <div class="song-hit-sub">${esc(t.artistName)} · ${year}</div>
+        </div>
+        <button class="btn btn-sm btn-game rounded-pill px-3" style="font-size:.78rem"
+                onclick="addSongFromHit(${i})"
+                data-title="${esc(t.trackName)}" data-artist="${esc(t.artistName)}" data-year="${year}">
+          + Añadir
+        </button>
+      </div>`;
+    }).join('');
+    box.style.display = 'block';
+    status.textContent = `${hits.length} resultados`;
+  } catch {
+    status.textContent = 'Error al buscar. Inténtalo de nuevo.';
+  }
+}
+
+async function addSongFromHit(i) {
+  const row = document.getElementById(`hit-${i}`);
+  const btn = row.querySelector('button');
+  const genre = document.getElementById('song-genre-select').value;
+  const { title, artist, year } = btn.dataset;
+
+  if (!year || year === 'NaN') { alert('No se pudo determinar el año de esta canción.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Añadiendo…';
+
+  const r = await fetch(`${API}?action=add_song`, {
+    method: 'POST',
+    body: new URLSearchParams({ title, artist, year, genre }),
+  }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
+
+  if (r.success) {
+    btn.textContent = '✓ Añadida';
+    btn.classList.remove('btn-game');
+    btn.classList.add('btn-outline-secondary');
+  } else {
+    btn.disabled = false;
+    btn.textContent = '+ Añadir';
+    alert(r.error || 'Error al añadir la canción');
+  }
 }
 
 </script>

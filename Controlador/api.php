@@ -174,6 +174,12 @@ try {
             echo json_encode((new SongController())->updateLinks());
             break;
 
+        case 'add_song':
+            // Añade una canción nueva al catálogo (buscador del panel superadmin)
+            require_once __DIR__ . '/SongController.php';
+            echo json_encode((new SongController())->addSong());
+            break;
+
         // ── Jugador ────────────────────────────────────
 
         case 'join_game':

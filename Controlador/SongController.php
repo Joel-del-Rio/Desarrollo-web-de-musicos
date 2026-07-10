@@ -46,4 +46,29 @@ class SongController {
 
         return ['success' => true];
     }
+
+    /**
+     * Añade una canción nueva al catálogo (desde el buscador del panel superadmin).
+     * Queda disponible de inmediato para cualquier partida que se cree a partir de ahora.
+     */
+    public function addSong(): array {
+        $title  = trim($_POST['title']  ?? '');
+        $artist = trim($_POST['artist'] ?? '');
+        $year   = (int)($_POST['year']  ?? 0);
+        $genre  = trim($_POST['genre']  ?? '');
+
+        if (!$title || !$artist) return ['error' => 'Título y artista son obligatorios'];
+        if ($year < 1900 || $year > 2100) return ['error' => 'Año inválido'];
+        if (!in_array($genre, GENRES, true) || $genre === 'Todos') return ['error' => 'Género inválido'];
+
+        $dup = $this->db->prepare("SELECT id FROM songs WHERE title=? AND artist=?");
+        $dup->execute([$title, $artist]);
+        if ($dup->fetchColumn()) return ['error' => 'Esa canción ya está en el catálogo'];
+
+        $this->db->prepare(
+            "INSERT INTO songs (title, artist, year, genre) VALUES (?,?,?,?)"
+        )->execute([$title, $artist, $year, $genre]);
+
+        return ['success' => true, 'id' => (int)$this->db->lastInsertId()];
+    }
 }
