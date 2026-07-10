@@ -236,6 +236,9 @@ require_once __DIR__ . '/../config.php'; ?>
 
       <div id="song-results" class="card p-0" style="overflow:hidden;display:none"></div>
       <div id="song-search-status" class="text-secondary small mt-2"></div>
+      <div class="text-center mt-2">
+        <button id="load-more-btn" class="btn btn-sm btn-outline-secondary rounded-pill px-4 d-none" onclick="loadMoreSongs()">Cargar más</button>
+      </div>
 
       <!-- Catálogo actual -->
       <div class="d-flex align-items-center justify-content-between mb-3 mt-5 gap-2 flex-wrap">
@@ -550,71 +553,106 @@ function fmtTime(s) {
   return `${m}:${Math.floor(s % 60).toString().padStart(2,'0')}`;
 }
 
+const SONG_PAGE_SIZE = 15;
+let songSearchTerm = '';
+let songSearchOffset = 0;
+let songSearchHasMore = false;
+
+function renderSongHitRow(t, i, hitData) {
+  const year = hitData.year ?? '—';
+  const art  = (t.artworkUrl60 || t.artworkUrl100 || '').replace('60x60', '80x80');
+  const hasPreview = !!t.previewUrl;
+  const already = isInCatalog(t.trackName, t.artistName);
+  return `
+  <div class="song-hit" id="hit-${i}">
+    ${art ? `<img src="${art}" alt="">` : ''}
+    <div class="song-hit-info">
+      <div class="song-hit-title">${esc(t.trackName)}</div>
+      <div class="song-hit-sub">${esc(t.artistName)} · ${year}</div>
+    </div>
+    <button class="song-play-btn" id="play-${i}" onclick="togglePreview(${i})"
+            ${hasPreview ? '' : 'disabled'} title="${hasPreview ? 'Escuchar preview (30s)' : 'Preview no disponible'}">
+      ${SVG_PLAY}
+    </button>
+    <div class="song-player-ctrl d-none" id="ctrl-${i}">
+      <div class="song-bar" id="bar-${i}" onclick="seekPreview(${i}, event, this)">
+        <div class="song-bar-fill" id="fill-${i}"></div>
+      </div>
+      <span class="song-time" id="time-${i}">0:00</span>
+    </div>
+    <div class="song-vol-wrap d-none" id="vol-wrap-${i}">
+      <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
+      <input type="range" class="song-vol" id="vol-${i}" min="0" max="100" value="70" oninput="setPreviewVol(this.value)">
+    </div>
+    <div id="add-wrap-${i}">
+      ${already
+        ? `<span class="small" style="color:var(--muted)">✓ En catálogo</span>`
+        : `<button class="btn btn-sm btn-game rounded-pill px-3" style="font-size:.78rem" onclick="showGenrePicker(${i})">+ Añadir</button>`}
+    </div>
+  </div>`;
+}
+
 async function searchSongs() {
   const term = document.getElementById('song-search-input').value.trim();
-  const box  = document.getElementById('song-results');
-  const status = document.getElementById('song-search-status');
-  if (!term) { status.textContent = 'Escribe un título o artista para buscar.'; box.style.display = 'none'; return; }
+  if (!term) {
+    document.getElementById('song-search-status').textContent = 'Escribe un título o artista para buscar.';
+    document.getElementById('song-results').style.display = 'none';
+    return;
+  }
 
   songAudio.pause();
   activePreviewIdx = null;
+  songSearchTerm = term;
+  songSearchOffset = 0;
+  songPreviewUrls = [];
+  songHitsData = [];
+  document.getElementById('song-results').innerHTML = '';
 
-  status.textContent = 'Buscando…';
-  box.style.display = 'none';
+  await loadCatalog(); // refresca allCatalogSongs para saber qué ya está añadido
+  await fetchSongPage();
+}
+
+async function loadMoreSongs() {
+  await fetchSongPage();
+}
+
+async function fetchSongPage() {
+  const box = document.getElementById('song-results');
+  const status = document.getElementById('song-search-status');
+  const moreBtn = document.getElementById('load-more-btn');
+
+  status.textContent = songSearchOffset === 0 ? 'Buscando…' : 'Cargando más…';
+  moreBtn.disabled = true;
 
   try {
-    await loadCatalog(); // refresca allCatalogSongs para saber qué ya está añadido
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&entity=song&limit=15`);
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(songSearchTerm)}&media=music&entity=song&limit=${SONG_PAGE_SIZE}&offset=${songSearchOffset}`);
     const data = await res.json();
     const hits = data.results || [];
 
     if (!hits.length) {
-      status.textContent = 'Sin resultados.';
+      if (songSearchOffset === 0) status.textContent = 'Sin resultados.';
+      songSearchHasMore = false;
+      moreBtn.classList.add('d-none');
       return;
     }
 
-    songPreviewUrls = hits.map(t => t.previewUrl || null);
-    songHitsData = hits.map(t => ({
+    const baseIndex = songHitsData.length;
+    const newHitsData = hits.map(t => ({
       title:  t.trackName,
       artist: t.artistName,
       year:   t.releaseDate ? new Date(t.releaseDate).getFullYear() : null,
     }));
+    songPreviewUrls = songPreviewUrls.concat(hits.map(t => t.previewUrl || null));
+    songHitsData = songHitsData.concat(newHitsData);
 
-    box.innerHTML = hits.map((t, i) => {
-      const year = songHitsData[i].year ?? '—';
-      const art  = (t.artworkUrl60 || t.artworkUrl100 || '').replace('60x60', '80x80');
-      const hasPreview = !!t.previewUrl;
-      const already = isInCatalog(t.trackName, t.artistName);
-      return `
-      <div class="song-hit" id="hit-${i}">
-        ${art ? `<img src="${art}" alt="">` : ''}
-        <div class="song-hit-info">
-          <div class="song-hit-title">${esc(t.trackName)}</div>
-          <div class="song-hit-sub">${esc(t.artistName)} · ${year}</div>
-        </div>
-        <button class="song-play-btn" id="play-${i}" onclick="togglePreview(${i})"
-                ${hasPreview ? '' : 'disabled'} title="${hasPreview ? 'Escuchar preview (30s)' : 'Preview no disponible'}">
-          ${SVG_PLAY}
-        </button>
-        <div class="song-player-ctrl d-none" id="ctrl-${i}">
-          <div class="song-bar" id="bar-${i}" onclick="seekPreview(${i}, event, this)">
-            <div class="song-bar-fill" id="fill-${i}"></div>
-          </div>
-          <span class="song-time" id="time-${i}">0:00</span>
-        </div>
-        <div class="song-vol-wrap d-none" id="vol-wrap-${i}">
-          <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
-          <input type="range" class="song-vol" id="vol-${i}" min="0" max="100" value="70" oninput="setPreviewVol(this.value)">
-        </div>
-        <div id="add-wrap-${i}">
-          ${already
-            ? `<span class="small" style="color:var(--muted)">✓ En catálogo</span>`
-            : `<button class="btn btn-sm btn-game rounded-pill px-3" style="font-size:.78rem" onclick="showGenrePicker(${i})">+ Añadir</button>`}
-        </div>
-      </div>`;
-    }).join('');
+    box.insertAdjacentHTML('beforeend', hits.map((t, localI) => renderSongHitRow(t, baseIndex + localI, newHitsData[localI])).join(''));
     box.style.display = 'block';
-    status.textContent = `${hits.length} resultados`;
+
+    songSearchOffset += hits.length;
+    songSearchHasMore = hits.length === SONG_PAGE_SIZE;
+    moreBtn.classList.toggle('d-none', !songSearchHasMore);
+    moreBtn.disabled = false;
+    status.textContent = `${songHitsData.length} resultados`;
   } catch {
     status.textContent = 'Error al buscar. Inténtalo de nuevo.';
   }
