@@ -285,10 +285,20 @@ function renderQuestion(state) {
   document.getElementById('q-round').textContent  = state.current_round;
   document.getElementById('q-total').textContent  = state.total_rounds;
   document.getElementById('hard-mode-badge')?.classList.toggle('d-none', !gameSettings.hard_mode);
-  document.getElementById('q-title').textContent  = song.title  || '—';
+
+  const isMeme = state.game_type === 'meme';
+  document.getElementById('q-label').textContent = isMeme
+    ? '😂 Meme de esta ronda — muéstralo a los jugadores'
+    : '🎵 Canción de esta ronda — ponla en el reproductor';
+  const qMemeImg = document.getElementById('q-meme-img');
+  qMemeImg.classList.toggle('d-none', !isMeme);
+  if (isMeme) qMemeImg.src = MEME_IMG_BASE + song.image_url;
+
+  document.getElementById('q-title').textContent  = isMeme ? (song.title || '') : (song.title || '—');
   const hard = !!gameSettings.hard_mode;
   const qArtistEl = document.getElementById('q-artist');
   const qGenreEl  = document.getElementById('q-genre');
+  qArtistEl.classList.toggle('d-none', isMeme);
   qArtistEl.textContent = song.artist || '—';
   qGenreEl.textContent  = song.genre  || '';
   qArtistEl.style.filter = hard ? 'blur(6px)' : '';
@@ -333,7 +343,14 @@ function renderResults(state) {
 
   document.getElementById('r-round').textContent  = state.current_round;
   document.getElementById('r-total').textContent  = state.total_rounds;
-  document.getElementById('r-title').textContent  = song.title  || '—';
+
+  const isMemeR = state.game_type === 'meme';
+  const rMemeImg = document.getElementById('r-meme-img');
+  rMemeImg.classList.toggle('d-none', !isMemeR);
+  if (isMemeR) rMemeImg.src = MEME_IMG_BASE + song.image_url;
+
+  document.getElementById('r-title').textContent  = isMemeR ? (song.title || '') : (song.title || '—');
+  document.getElementById('r-artist').classList.toggle('d-none', isMemeR);
   document.getElementById('r-artist').textContent = song.artist || '—';
   document.getElementById('r-year').textContent   = song.year ? `📅 ${song.year}` : '—';
   document.getElementById('r-genre').textContent  = song.genre || '';
@@ -579,10 +596,19 @@ function selectGenre(btn) {
   btn.classList.add('active');
 }
 
+/** Cambia entre modo Canciones y modo Memes — el modo memes no usa streaming/audio */
+function setGameType(btn, type) {
+  document.querySelectorAll('#game-type-selector .genre-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('game-type').value = type;
+  document.getElementById('section-streaming').classList.toggle('d-none', type === 'meme');
+}
+
 /** Crea una nueva partida con la configuración del formulario */
 async function createGame() {
   const rounds = parseInt(document.getElementById('rounds-input').value, 10);
   const time   = parseInt(document.getElementById('time-input').value,   10);
+  const gameType        = document.getElementById('game-type').value;
   const activeGenreBtn = document.querySelector('#genre-selector .genre-btn.active');
   const genre           = activeGenreBtn ? activeGenreBtn.dataset.genre : 'Todos';
   const showLinks       = document.getElementById('toggle-links').checked     ? '1' : '0';
@@ -619,7 +645,7 @@ async function createGame() {
 
   try {
     const body = new URLSearchParams({
-      total_rounds: rounds, question_time: time, genre,
+      total_rounds: rounds, question_time: time, genre, game_type: gameType,
       show_links: showLinks, embed_youtube: embedYoutube, autoplay, hard_mode: hardMode,
       pin_mode: pinMode, organizer_email: organizerEmail, individual_count: individualCount,
     });

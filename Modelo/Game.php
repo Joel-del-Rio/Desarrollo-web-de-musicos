@@ -30,7 +30,8 @@ class Game {
         int $individualCount = 0,
         string $prize1 = '', string $prize2 = '', string $prize3 = '',
         array $playerEmails = [],
-        int $hardMode = 0
+        int $hardMode = 0,
+        string $gameType = 'song'
     ): array {
         // Generar PIN único de 4 dígitos (no repetir PINs de partidas activas)
         do {
@@ -46,32 +47,37 @@ class Game {
             "INSERT INTO games
              (pin, admin_token, total_rounds, question_time, selected_genre,
               show_links, embed_youtube, autoplay, pin_mode, organizer_email,
-              prize_1, prize_2, prize_3, hard_mode)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+              prize_1, prize_2, prize_3, hard_mode, game_type)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         )->execute([
             $pin, $token, $totalRounds, $questionTime, $genre,
             $showLinks, $embedYoutube, $autoplay, $pinMode,
             $organizerEmail ?: null, $prize1 ?: null, $prize2 ?: null, $prize3 ?: null,
-            $hardMode,
+            $hardMode, $gameType,
         ]);
         $gameId = (int)$this->db->lastInsertId();
 
-        // Seleccionar canciones aleatorias para las rondas (filtradas por género si aplica)
+        // Seleccionar contenido aleatorio para las rondas (filtrado por género si aplica)
+        // Modo memes: tabla memes/game_memes. Modo canciones: tabla songs/game_songs.
+        $contentTable = $gameType === 'meme' ? 'memes' : 'songs';
+        $gameTable    = $gameType === 'meme' ? 'game_memes' : 'game_songs';
+        $itemCol      = $gameType === 'meme' ? 'meme_id' : 'song_id';
+
         if ($genre === 'Todos') {
-            $st = $this->db->prepare("SELECT id FROM songs ORDER BY RAND() LIMIT ?");
+            $st = $this->db->prepare("SELECT id FROM {$contentTable} ORDER BY RAND() LIMIT ?");
             $st->execute([$totalRounds]);
         } else {
-            $st = $this->db->prepare("SELECT id FROM songs WHERE genre=? ORDER BY RAND() LIMIT ?");
+            $st = $this->db->prepare("SELECT id FROM {$contentTable} WHERE genre=? ORDER BY RAND() LIMIT ?");
             $st->execute([$genre, $totalRounds]);
         }
-        $songs = $st->fetchAll(PDO::FETCH_COLUMN);
+        $items = $st->fetchAll(PDO::FETCH_COLUMN);
 
-        // Asignar cada canción a su número de ronda
+        // Asignar cada canción/meme a su número de ronda
         $ins = $this->db->prepare(
-            "INSERT INTO game_songs (game_id, song_id, round_number) VALUES (?,?,?)"
+            "INSERT INTO {$gameTable} (game_id, {$itemCol}, round_number) VALUES (?,?,?)"
         );
-        foreach ($songs as $i => $songId) {
-            $ins->execute([$gameId, $songId, $i + 1]);
+        foreach ($items as $i => $itemId) {
+            $ins->execute([$gameId, $itemId, $i + 1]);
         }
 
         $result = ['id' => $gameId, 'pin' => $pin, 'admin_token' => $token, 'pin_mode' => $pinMode];
@@ -179,54 +185,59 @@ class Game {
      * que no se repitan. Se respeta el género seleccionado si no es 'Todos'.
      */
     public function start(int $gameId): void {
-        // Canciones reservadas para las rondas (no pueden usarse como ancla)
-        $st = $this->db->prepare("SELECT song_id FROM game_songs WHERE game_id=?");
+        $game          = $this->getById($gameId);
+        $gameType      = $game['game_type'] ?? 'song';
+        $selectedGenre = $game['selected_genre'] ?: 'Todos';
+
+        $contentTable  = $gameType === 'meme' ? 'memes' : 'songs';
+        $gameTable     = $gameType === 'meme' ? 'game_memes' : 'game_songs';
+        $timelineTable = $gameType === 'meme' ? 'player_meme_timeline' : 'player_timeline';
+        $itemCol       = $gameType === 'meme' ? 'meme_id' : 'song_id';
+
+        // Contenido reservado para las rondas (no puede usarse como ancla)
+        $st = $this->db->prepare("SELECT {$itemCol} FROM {$gameTable} WHERE game_id=?");
         $st->execute([$gameId]);
         $roundIds = $st->fetchAll(PDO::FETCH_COLUMN);
 
-        // Lista de jugadores que necesitan canción ancla
+        // Lista de jugadores que necesitan elemento ancla
         $st = $this->db->prepare("SELECT id FROM players WHERE game_id=?");
         $st->execute([$gameId]);
         $playerIds = $st->fetchAll(PDO::FETCH_COLUMN);
 
         $insTimeline = $this->db->prepare(
-            "INSERT IGNORE INTO player_timeline (player_id, game_id, song_id) VALUES (?,?,?)"
+            "INSERT IGNORE INTO {$timelineTable} (player_id, game_id, {$itemCol}) VALUES (?,?,?)"
         );
 
-        $stGame = $this->db->prepare("SELECT selected_genre FROM games WHERE id=?");
-        $stGame->execute([$gameId]);
-        $selectedGenre = $stGame->fetchColumn() ?: 'Todos';
-
-        // Placeholder SQL para excluir las canciones de rondas
+        // Placeholder SQL para excluir el contenido de rondas
         $placeholders = $roundIds ? implode(',', array_fill(0, count($roundIds), '?')) : '0';
 
         foreach ($playerIds as $pid) {
             if ($selectedGenre !== 'Todos') {
                 // Intentar ancla del mismo género que no esté en las rondas
                 $st = $this->db->prepare(
-                    "SELECT id FROM songs WHERE genre=? AND id NOT IN ($placeholders) ORDER BY RAND() LIMIT 1"
+                    "SELECT id FROM {$contentTable} WHERE genre=? AND id NOT IN ($placeholders) ORDER BY RAND() LIMIT 1"
                 );
                 $st->execute(array_merge([$selectedGenre], $roundIds));
                 $initial = $st->fetchColumn();
 
-                // Fallback: cualquier canción del género aunque esté en rondas
+                // Fallback: cualquier elemento del género aunque esté en rondas
                 if (!$initial) {
-                    $st = $this->db->prepare("SELECT id FROM songs WHERE genre=? ORDER BY RAND() LIMIT 1");
+                    $st = $this->db->prepare("SELECT id FROM {$contentTable} WHERE genre=? ORDER BY RAND() LIMIT 1");
                     $st->execute([$selectedGenre]);
                     $initial = $st->fetchColumn();
                 }
             } else {
-                // Sin filtro de género: cualquier canción fuera de rondas
+                // Sin filtro de género: cualquier elemento fuera de rondas
                 $st = $this->db->prepare(
-                    "SELECT id FROM songs WHERE id NOT IN ($placeholders) ORDER BY RAND() LIMIT 1"
+                    "SELECT id FROM {$contentTable} WHERE id NOT IN ($placeholders) ORDER BY RAND() LIMIT 1"
                 );
                 $st->execute($roundIds);
                 $initial = $st->fetchColumn();
             }
 
-            // Último fallback: cualquier canción de la BD
+            // Último fallback: cualquier elemento de la tabla
             if (!$initial) {
-                $st = $this->db->prepare("SELECT id FROM songs ORDER BY RAND() LIMIT 1");
+                $st = $this->db->prepare("SELECT id FROM {$contentTable} ORDER BY RAND() LIMIT 1");
                 $st->execute();
                 $initial = $st->fetchColumn();
             }
@@ -252,18 +263,23 @@ class Game {
      * @return string  Nuevo estado: 'question' o 'finished'
      */
     public function nextRound(int $gameId): string {
-        $game        = $this->getById($gameId);
+        $game         = $this->getById($gameId);
+        $gameType     = $game['game_type'] ?? 'song';
         $currentRound = (int)$game['current_round'];
         $next         = $currentRound + 1;
+
+        $answersTable = $gameType === 'meme' ? 'meme_answers' : 'answers';
+        $gameTable    = $gameType === 'meme' ? 'game_memes' : 'game_songs';
+        $itemCol      = $gameType === 'meme' ? 'meme_id' : 'song_id';
 
         // Romper la racha de jugadores que no respondieron en la ronda completada
         $this->db->prepare(
             "UPDATE players SET streak = 0
              WHERE game_id = ?
                AND id NOT IN (
-                 SELECT player_id FROM answers
-                 WHERE game_id = ? AND song_id = (
-                   SELECT song_id FROM game_songs
+                 SELECT player_id FROM {$answersTable}
+                 WHERE game_id = ? AND {$itemCol} = (
+                   SELECT {$itemCol} FROM {$gameTable}
                    WHERE game_id = ? AND round_number = ?
                  )
                )"
@@ -280,16 +296,29 @@ class Game {
         return 'question';
     }
 
-    /** Devuelve los datos de la canción de la ronda actual */
+    /** Devuelve los datos de la canción (o meme) de la ronda actual */
     public function getCurrentSong(int $gameId): ?array {
-        $st = $this->db->prepare(
-            "SELECT s.id, s.title, s.artist, s.year, s.genre,
-                    s.spotify_url, s.youtube_url, gs.round_number
-             FROM game_songs gs
-             JOIN songs s ON gs.song_id = s.id
-             JOIN games  g ON gs.game_id = g.id
-             WHERE gs.game_id=? AND gs.round_number=g.current_round"
-        );
+        $game     = $this->getById($gameId);
+        $gameType = $game['game_type'] ?? 'song';
+
+        if ($gameType === 'meme') {
+            $st = $this->db->prepare(
+                "SELECT m.id, m.image_url, m.title, m.year, m.genre, gm.round_number
+                 FROM game_memes gm
+                 JOIN memes m ON gm.meme_id = m.id
+                 JOIN games  g ON gm.game_id = g.id
+                 WHERE gm.game_id=? AND gm.round_number=g.current_round"
+            );
+        } else {
+            $st = $this->db->prepare(
+                "SELECT s.id, s.title, s.artist, s.year, s.genre,
+                        s.spotify_url, s.youtube_url, gs.round_number
+                 FROM game_songs gs
+                 JOIN songs s ON gs.song_id = s.id
+                 JOIN games  g ON gs.game_id = g.id
+                 WHERE gs.game_id=? AND gs.round_number=g.current_round"
+            );
+        }
         $st->execute([$gameId]);
         return $st->fetch() ?: null;
     }
@@ -336,6 +365,7 @@ class Game {
             'prize_1'       => $game['prize_1'] ?? null,
             'prize_2'       => $game['prize_2'] ?? null,
             'prize_3'       => $game['prize_3'] ?? null,
+            'game_type'     => $game['game_type'] ?? 'song',
         ];
     }
 }

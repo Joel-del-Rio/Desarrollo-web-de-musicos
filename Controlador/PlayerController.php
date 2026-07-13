@@ -150,9 +150,10 @@ class PlayerController {
         // Actualizar timestamp de actividad
         $this->player->ping($playerId);
 
-        $gameId  = (int)$pl['game_id'];
-        $state   = $this->game->getState($gameId);
-        $players = $this->player->getByGame($gameId);
+        $gameId   = (int)$pl['game_id'];
+        $state    = $this->game->getState($gameId);
+        $gameType = $state['game_type'] ?? 'song';
+        $players  = $this->player->getByGame($gameId);
 
         // Calcular posición en el ranking contando jugadores con más puntos
         $rank = 1;
@@ -164,13 +165,13 @@ class PlayerController {
         $state['player_rank']   = $rank;
         $state['total_players'] = count($players);
         $state['has_answered']  = false;
-        $state['timeline']      = $this->player->getTimeline($playerId, $gameId);
+        $state['timeline']      = $this->player->getTimeline($playerId, $gameId, $gameType);
 
         // Datos específicos del estado de pregunta o resultados
         if (in_array($state['status'], ['question', 'results'], true)) {
             $song = $this->game->getCurrentSong($gameId);
             if ($song) {
-                $state['has_answered'] = $this->player->hasAnswered($playerId, $gameId, (int)$song['id']);
+                $state['has_answered'] = $this->player->hasAnswered($playerId, $gameId, (int)$song['id'], $gameType);
 
                 if ($state['status'] === 'question') {
                     // Ocultar el año durante la pregunta para que no haga trampa
@@ -180,7 +181,7 @@ class PlayerController {
                 } else {
                     // En resultados sí se muestra el año y los resultados de la ronda
                     $state['song']         = $song;
-                    $results               = $this->player->getRoundResults($gameId, (int)$song['id']);
+                    $results               = $this->player->getRoundResults($gameId, (int)$song['id'], $gameType);
                     $state['round_results'] = $results;
                     // Buscar el resultado específico de este jugador
                     foreach ($results as $r) {
@@ -211,22 +212,24 @@ class PlayerController {
         $pl = $this->player->getById($playerId);
         if (!$pl) return ['error' => 'Jugador no encontrado'];
 
-        $gameId = (int)$pl['game_id'];
-        $state  = $this->game->getState($gameId);
+        $gameId   = (int)$pl['game_id'];
+        $state    = $this->game->getState($gameId);
+        $gameType = $state['game_type'] ?? 'song';
 
         if ($state['status'] !== 'question') return ['error' => 'No hay ronda activa'];
 
         $song = $this->game->getCurrentSong($gameId);
         if (!$song) return ['error' => 'Sin canción activa'];
 
-        if ($this->player->hasAnswered($playerId, $gameId, (int)$song['id'])) {
+        if ($this->player->hasAnswered($playerId, $gameId, (int)$song['id'], $gameType)) {
             return ['error' => 'Ya has respondido esta ronda'];
         }
 
         return $this->player->submitPositionAnswer(
             $playerId, $gameId, (int)$song['id'],
             $position, (int)$song['year'],
-            (int)$state['time_left'], (int)$state['question_time']
+            (int)$state['time_left'], (int)$state['question_time'],
+            $gameType
         );
     }
 }

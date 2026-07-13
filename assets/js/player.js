@@ -417,8 +417,17 @@ function renderQuestion(state) {
   questionTime = state.question_time || 30;
 
   showScreen('question');
-  document.getElementById('q-title').textContent  = currentSong.title  || '—';
+  const isMeme = state.game_type === 'meme';
+  const memeImg = document.getElementById('q-meme-img');
+  document.getElementById('q-label').textContent = isMeme
+    ? '😂 ¿En qué año se hizo viral? Colócalo en tu línea del tiempo'
+    : '🎵 ¿En qué año salió? Colócala en tu línea del tiempo';
+  memeImg.classList.toggle('d-none', !isMeme);
+  if (isMeme) memeImg.src = MEME_IMG_BASE + currentSong.image_url;
+
+  document.getElementById('q-title').textContent  = isMeme ? (currentSong.title || '') : (currentSong.title || '—');
   const artistEl = document.getElementById('q-artist');
+  artistEl.classList.toggle('d-none', isMeme);
   if (state.hard_mode) {
     artistEl.textContent = '???';
     artistEl.style.opacity = '.35';
@@ -532,6 +541,7 @@ function playerAudioSeek(e, bar) {
 async function renderAudio(state) {
   const section   = document.getElementById('audio-section');
   const linksEl   = document.getElementById('audio-links');
+  if (state.game_type === 'meme') { section.classList.add('d-none'); return; }
   const song      = state.song || {};
   const embedYT   = !!state.embed_youtube;
   const autoplay  = !!state.autoplay;
@@ -661,12 +671,14 @@ function buildTimeline(timeline) {
       const song = timeline[i];
       const card = document.createElement('div');
       card.className = 'timeline-song' + (i === 0 && n === 1 ? ' initial' : '');
-      card.innerHTML = `
-        <div class="ts-year">${song.year}</div>
-        <div class="ts-info">
-          <div class="ts-title">${esc(song.title)}</div>
-          <div class="ts-artist">${esc(song.artist)}</div>
-        </div>`;
+      card.innerHTML = song.image_url
+        ? `<div class="ts-year">${song.year}</div>
+           <img src="${MEME_IMG_BASE}${song.image_url}" alt="Meme" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0">`
+        : `<div class="ts-year">${song.year}</div>
+           <div class="ts-info">
+             <div class="ts-title">${esc(song.title)}</div>
+             <div class="ts-artist">${esc(song.artist)}</div>
+           </div>`;
       area.appendChild(card);
     }
   }
@@ -750,8 +762,14 @@ function renderResults(state) {
   showScreen('results');
   const song   = state.song     || {};
   const myRes  = state.my_result || null;
+  const isMeme = state.game_type === 'meme';
 
-  document.getElementById('r-title').textContent  = song.title  || '—';
+  const rMemeImg = document.getElementById('r-meme-img');
+  rMemeImg.classList.toggle('d-none', !isMeme);
+  if (isMeme) rMemeImg.src = MEME_IMG_BASE + song.image_url;
+
+  document.getElementById('r-title').textContent  = isMeme ? (song.title || '') : (song.title || '—');
+  document.getElementById('r-artist').classList.toggle('d-none', isMeme);
   document.getElementById('r-artist').textContent = song.artist || '—';
   document.getElementById('r-year').textContent   = song.year   || '—';
   document.getElementById('r-genre').textContent  = song.genre  || '';
@@ -867,12 +885,14 @@ function renderMiniTimeline(id, timeline) {
   timeline.forEach((s, i) => {
     const card = document.createElement('div');
     card.className = 'timeline-song mb-1' + (i === 0 ? ' initial' : '');
-    card.innerHTML = `
-      <div class="ts-year">${s.year}</div>
-      <div class="ts-info">
-        <div class="ts-title">${esc(s.title)}</div>
-        <div class="ts-artist">${esc(s.artist)}</div>
-      </div>`;
+    card.innerHTML = s.image_url
+      ? `<div class="ts-year">${s.year}</div>
+         <img src="${MEME_IMG_BASE}${s.image_url}" alt="Meme" style="width:36px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0">`
+      : `<div class="ts-year">${s.year}</div>
+         <div class="ts-info">
+           <div class="ts-title">${esc(s.title)}</div>
+           <div class="ts-artist">${esc(s.artist)}</div>
+         </div>`;
     el.appendChild(card);
   });
 }

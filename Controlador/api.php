@@ -206,6 +206,26 @@ try {
             echo json_encode((new GenreController())->rename());
             break;
 
+        // ── Memes (modo de juego alternativo) ──────────
+
+        case 'get_memes':
+            // Lista completa de memes (panel de gestión)
+            require_once __DIR__ . '/MemeController.php';
+            echo json_encode((new MemeController())->getMemes());
+            break;
+
+        case 'add_meme':
+            // Sube una imagen nueva al catálogo de memes
+            require_once __DIR__ . '/MemeController.php';
+            echo json_encode((new MemeController())->addMeme());
+            break;
+
+        case 'delete_meme':
+            // Elimina un meme del catálogo
+            require_once __DIR__ . '/MemeController.php';
+            echo json_encode((new MemeController())->deleteMeme());
+            break;
+
         // ── Jugador ────────────────────────────────────
 
         case 'join_game':

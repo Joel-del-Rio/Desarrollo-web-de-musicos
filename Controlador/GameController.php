@@ -28,9 +28,11 @@ class GameController {
         $rounds       = max(5,  min(20, (int)($_POST['total_rounds']   ?? 10)));
         $questionTime = max(20, min(60, (int)($_POST['question_time'] ?? 30)));
         $genre        = in_array($_POST['genre'] ?? '', Genres::allWithTodos(), true) ? $_POST['genre'] : 'Todos';
-        $showLinks    = ($_POST['show_links']    ?? '0') === '1' ? 1 : 0;
-        $embedYoutube = ($_POST['embed_youtube'] ?? '0') === '1' ? 1 : 0;
-        $autoplay     = ($_POST['autoplay']      ?? '0') === '1' ? 1 : 0;
+        $gameType     = ($_POST['game_type'] ?? 'song') === 'meme' ? 'meme' : 'song';
+        // El modo memes no tiene audio ni links de streaming — se fuerzan a 0 al margen de lo enviado
+        $showLinks    = $gameType === 'meme' ? 0 : (($_POST['show_links']    ?? '0') === '1' ? 1 : 0);
+        $embedYoutube = $gameType === 'meme' ? 0 : (($_POST['embed_youtube'] ?? '0') === '1' ? 1 : 0);
+        $autoplay     = $gameType === 'meme' ? 0 : (($_POST['autoplay']      ?? '0') === '1' ? 1 : 0);
         $hardMode     = ($_POST['hard_mode']     ?? '0') === '1' ? 1 : 0;
         $pinMode      = ($_POST['pin_mode'] ?? 'shared') === 'individual' ? 'individual' : 'shared';
         $email        = filter_var(trim($_POST['organizer_email'] ?? ''), FILTER_VALIDATE_EMAIL) ?: '';
@@ -47,7 +49,8 @@ class GameController {
             $pinMode, $email, $pinMode === 'individual' ? $indivCount : 0,
             '', '', '',
             $playerEmails,
-            $hardMode
+            $hardMode,
+            $gameType
         );
 
         // Enviar emails de confirmación si la partida se creó correctamente
@@ -78,8 +81,9 @@ class GameController {
         $gameId = (int)($_GET['game_id'] ?? 0);
         if (!$gameId) return ['error' => 'Falta game_id'];
 
-        $state   = $this->game->getState($gameId);
-        $players = $this->player->getByGame($gameId);
+        $state    = $this->game->getState($gameId);
+        $gameType = $state['game_type'] ?? 'song';
+        $players  = $this->player->getByGame($gameId);
 
         $state['players']      = $players;
         $state['player_count'] = count($players);
@@ -89,9 +93,9 @@ class GameController {
             $song = $this->game->getCurrentSong($gameId);
             if ($song) {
                 $state['song']         = $song; // Admin ve el año siempre
-                $state['answer_count'] = $this->player->getAnswerCount($gameId, (int)$song['id']);
+                $state['answer_count'] = $this->player->getAnswerCount($gameId, (int)$song['id'], $gameType);
                 if ($state['status'] === 'results') {
-                    $state['round_results'] = $this->player->getRoundResults($gameId, (int)$song['id']);
+                    $state['round_results'] = $this->player->getRoundResults($gameId, (int)$song['id'], $gameType);
                 }
             }
         }

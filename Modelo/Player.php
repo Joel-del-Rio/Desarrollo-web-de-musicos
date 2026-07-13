@@ -155,26 +155,38 @@ class Player {
      * Devuelve las canciones ya colocadas en la línea del tiempo del jugador,
      * ordenadas cronológicamente por año para mostrarlas en la UI.
      */
-    public function getTimeline(int $playerId, int $gameId): array {
-        $st = $this->db->prepare(
-            "SELECT s.id, s.title, s.artist, s.year, s.genre
-             FROM player_timeline pt
-             JOIN songs s ON pt.song_id = s.id
-             WHERE pt.player_id=? AND pt.game_id=?
-             ORDER BY s.year ASC, s.title ASC"
-        );
+    public function getTimeline(int $playerId, int $gameId, string $gameType = 'song'): array {
+        if ($gameType === 'meme') {
+            $st = $this->db->prepare(
+                "SELECT m.id, m.image_url, m.title, m.year, m.genre
+                 FROM player_meme_timeline pt
+                 JOIN memes m ON pt.meme_id = m.id
+                 WHERE pt.player_id=? AND pt.game_id=?
+                 ORDER BY m.year ASC, m.id ASC"
+            );
+        } else {
+            $st = $this->db->prepare(
+                "SELECT s.id, s.title, s.artist, s.year, s.genre
+                 FROM player_timeline pt
+                 JOIN songs s ON pt.song_id = s.id
+                 WHERE pt.player_id=? AND pt.game_id=?
+                 ORDER BY s.year ASC, s.title ASC"
+            );
+        }
         $st->execute([$playerId, $gameId]);
         return $st->fetchAll();
     }
 
     // ── Respuestas ────────────────────────────────────
 
-    /** Comprueba si el jugador ya respondió la canción de esta ronda */
-    public function hasAnswered(int $playerId, int $gameId, int $songId): bool {
+    /** Comprueba si el jugador ya respondió la canción (o meme) de esta ronda */
+    public function hasAnswered(int $playerId, int $gameId, int $itemId, string $gameType = 'song'): bool {
+        $table = $gameType === 'meme' ? 'meme_answers' : 'answers';
+        $col   = $gameType === 'meme' ? 'meme_id' : 'song_id';
         $st = $this->db->prepare(
-            "SELECT 1 FROM answers WHERE player_id=? AND game_id=? AND song_id=?"
+            "SELECT 1 FROM {$table} WHERE player_id=? AND game_id=? AND {$col}=?"
         );
-        $st->execute([$playerId, $gameId, $songId]);
+        $st->execute([$playerId, $gameId, $itemId]);
         return (bool)$st->fetch();
     }
 
@@ -193,13 +205,14 @@ class Player {
      * @return array  correct, points, streak, multiplier
      */
     public function submitPositionAnswer(
-        int $playerId, int $gameId, int $songId,
-        int $position, int $songYear,
-        int $timeLeft, int $questionTime
+        int $playerId, int $gameId, int $itemId,
+        int $position, int $itemYear,
+        int $timeLeft, int $questionTime,
+        string $gameType = 'song'
     ): array {
-        $timeline  = $this->getTimeline($playerId, $gameId);
+        $timeline  = $this->getTimeline($playerId, $gameId, $gameType);
         $years     = array_column($timeline, 'year');
-        $isCorrect = $this->isPositionCorrect($years, $position, $songYear);
+        $isCorrect = $this->isPositionCorrect($years, $position, $itemYear);
 
         // Leer racha actual del jugador
         $stStreak = $this->db->prepare("SELECT streak FROM players WHERE id=?");
@@ -218,23 +231,27 @@ class Player {
             $points = (int)round($base * $multiplier);
         }
 
+        $answersTable  = $gameType === 'meme' ? 'meme_answers' : 'answers';
+        $itemCol       = $gameType === 'meme' ? 'meme_id' : 'song_id';
+        $timelineTable = $gameType === 'meme' ? 'player_meme_timeline' : 'player_timeline';
+
         // Guardar respuesta (INSERT IGNORE evita duplicados si el jugador reenvía)
         $st = $this->db->prepare(
-            "INSERT IGNORE INTO answers
-             (game_id, player_id, song_id, position_guess, is_correct, points_earned)
+            "INSERT IGNORE INTO {$answersTable}
+             (game_id, player_id, {$itemCol}, position_guess, is_correct, points_earned)
              VALUES (?,?,?,?,?,?)"
         );
-        $st->execute([$gameId, $playerId, $songId, $position, $isCorrect ? 1 : 0, $points]);
+        $st->execute([$gameId, $playerId, $itemId, $position, $isCorrect ? 1 : 0, $points]);
 
         if ($this->db->lastInsertId() > 0) {
             // Actualizar racha en BD siempre que la respuesta sea nueva (no duplicado)
             $this->db->prepare("UPDATE players SET streak=? WHERE id=?")->execute([$newStreak, $playerId]);
 
             if ($isCorrect) {
-                // Añadir la canción acertada a la línea del tiempo del jugador
+                // Añadir la canción/meme acertado a la línea del tiempo del jugador
                 $this->db->prepare(
-                    "INSERT IGNORE INTO player_timeline (player_id, game_id, song_id) VALUES (?,?,?)"
-                )->execute([$playerId, $gameId, $songId]);
+                    "INSERT IGNORE INTO {$timelineTable} (player_id, game_id, {$itemCol}) VALUES (?,?,?)"
+                )->execute([$playerId, $gameId, $itemId]);
 
                 // Sumar puntos a la puntuación de la partida
                 $this->db->prepare("UPDATE players SET score=score+? WHERE id=?")->execute([$points, $playerId]);
@@ -266,24 +283,28 @@ class Player {
         ];
     }
 
-    /** Cuenta cuántos jugadores han respondido ya la canción actual */
-    public function getAnswerCount(int $gameId, int $songId): int {
-        $st = $this->db->prepare("SELECT COUNT(*) FROM answers WHERE game_id=? AND song_id=?");
-        $st->execute([$gameId, $songId]);
+    /** Cuenta cuántos jugadores han respondido ya la canción (o meme) actual */
+    public function getAnswerCount(int $gameId, int $itemId, string $gameType = 'song'): int {
+        $table = $gameType === 'meme' ? 'meme_answers' : 'answers';
+        $col   = $gameType === 'meme' ? 'meme_id' : 'song_id';
+        $st = $this->db->prepare("SELECT COUNT(*) FROM {$table} WHERE game_id=? AND {$col}=?");
+        $st->execute([$gameId, $itemId]);
         return (int)$st->fetchColumn();
     }
 
     /** Devuelve los resultados de todos los jugadores para la ronda actual */
-    public function getRoundResults(int $gameId, int $songId): array {
+    public function getRoundResults(int $gameId, int $itemId, string $gameType = 'song'): array {
+        $table = $gameType === 'meme' ? 'meme_answers' : 'answers';
+        $col   = $gameType === 'meme' ? 'meme_id' : 'song_id';
         $st = $this->db->prepare(
             "SELECT p.name, p.avatar_color, p.avatar, p.hair, p.glasses, p.hat, p.headphones, p.facial_hair,
                     p.glasses_pos, p.hat_pos, p.facial_hair_pos, a.position_guess, a.is_correct, a.points_earned
-             FROM answers a
+             FROM {$table} a
              JOIN players p ON a.player_id = p.id
-             WHERE a.game_id=? AND a.song_id=?
+             WHERE a.game_id=? AND a.{$col}=?
              ORDER BY a.points_earned DESC, a.answered_at ASC"
         );
-        $st->execute([$gameId, $songId]);
+        $st->execute([$gameId, $itemId]);
         return $st->fetchAll();
     }
 

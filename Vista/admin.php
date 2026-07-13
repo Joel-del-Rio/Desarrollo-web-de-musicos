@@ -38,6 +38,18 @@ $genres = Genres::allWithTodos(); ?>
     <div class="card p-4">
       <h5 class="fw-bold mb-4">Configurar partida</h5>
 
+      <!-- Modo de juego -->
+      <div class="mb-4">
+        <label class="form-label text-secondary small fw-semibold text-uppercase">Modo de juego</label>
+        <div class="d-flex gap-2 mt-2" id="game-type-selector">
+          <button type="button" class="btn btn-sm rounded-pill genre-btn active"
+                  onclick="setGameType(this,'song')" data-type="song">🎵 Canciones</button>
+          <button type="button" class="btn btn-sm rounded-pill genre-btn"
+                  onclick="setGameType(this,'meme')" data-type="meme">😂 Memes</button>
+        </div>
+        <input type="hidden" id="game-type" value="song">
+      </div>
+
       <div class="mb-4">
         <label class="form-label text-secondary small fw-semibold text-uppercase">Número de rondas</label>
         <div class="text-center fw-black mb-1" style="font-size:3rem;color:var(--accent)" id="rounds-display">10</div>
@@ -276,7 +288,8 @@ $genres = Genres::allWithTodos(); ?>
 
       <!-- Canción del turno — el dinamizador la pone físicamente -->
       <div class="round-song-card">
-        <div class="rsc-label">🎵 Canción de esta ronda — ponla en el reproductor</div>
+        <div class="rsc-label" id="q-label">🎵 Canción de esta ronda — ponla en el reproductor</div>
+        <img id="q-meme-img" class="d-none" style="max-width:100%;max-height:280px;border-radius:12px;margin:.5rem 0" alt="Meme">
         <div class="rsc-title"  id="q-title">—</div>
         <div class="rsc-artist" id="q-artist">—</div>
         <div class="rsc-year year-hidden" id="q-year">—</div>
@@ -347,6 +360,7 @@ $genres = Genres::allWithTodos(); ?>
       <!-- Reveal -->
       <div class="round-song-card">
         <div class="rsc-label">✅ Respuesta correcta</div>
+        <img id="r-meme-img" class="d-none" style="max-width:100%;max-height:280px;border-radius:12px;margin:.5rem 0" alt="Meme">
         <div class="rsc-title"  id="r-title">—</div>
         <div class="rsc-artist" id="r-artist">—</div>
         <div class="rsc-year year-revealed" id="r-year">—</div>
@@ -417,7 +431,8 @@ $genres = Genres::allWithTodos(); ?>
   const API = '<?= BASE_URL ?>/Controlador/api.php';
   const GK  = 'hitstoric_gid';
   const TK  = 'hitstoric_tok';
+  const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=53"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=54"></script>
 </body>
 </html>

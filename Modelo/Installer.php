@@ -198,8 +198,70 @@ class Installer {
             $currentVersion = 18;
         }
 
+        // v19: modo de juego "memes" — tablas paralelas a songs/game_songs/player_timeline/answers
+        if ($currentVersion === 18) {
+            try { $pdo->exec("ALTER TABLE games ADD COLUMN game_type ENUM('song','meme') DEFAULT 'song'"); } catch (\Exception $e) {}
+            try {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS memes (
+                        id        INT AUTO_INCREMENT PRIMARY KEY,
+                        image_url VARCHAR(255) NOT NULL,
+                        title     VARCHAR(200) NULL,
+                        year      INT NOT NULL,
+                        genre     VARCHAR(100)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ");
+            } catch (\Exception $e) {}
+            try {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS game_memes (
+                        id           INT AUTO_INCREMENT PRIMARY KEY,
+                        game_id      INT NOT NULL,
+                        meme_id      INT NOT NULL,
+                        round_number INT NOT NULL,
+                        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+                        FOREIGN KEY (meme_id) REFERENCES memes(id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ");
+            } catch (\Exception $e) {}
+            try {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS player_meme_timeline (
+                        id        INT AUTO_INCREMENT PRIMARY KEY,
+                        player_id INT NOT NULL,
+                        game_id   INT NOT NULL,
+                        meme_id   INT NOT NULL,
+                        UNIQUE KEY unique_entry (player_id, game_id, meme_id),
+                        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+                        FOREIGN KEY (game_id)   REFERENCES games(id)   ON DELETE CASCADE,
+                        FOREIGN KEY (meme_id)   REFERENCES memes(id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ");
+            } catch (\Exception $e) {}
+            try {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS meme_answers (
+                        id             INT AUTO_INCREMENT PRIMARY KEY,
+                        game_id        INT NOT NULL,
+                        player_id      INT NOT NULL,
+                        meme_id        INT NOT NULL,
+                        position_guess INT NOT NULL DEFAULT 0,
+                        is_correct     TINYINT(1) DEFAULT 0,
+                        points_earned  INT DEFAULT 0,
+                        answered_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE KEY unique_answer (game_id, player_id, meme_id),
+                        FOREIGN KEY (game_id)   REFERENCES games(id),
+                        FOREIGN KEY (player_id) REFERENCES players(id),
+                        FOREIGN KEY (meme_id)   REFERENCES memes(id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ");
+            } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=19");
+            $currentVersion = 19;
+        }
+
         // Esquema actualizado: verificar integridad y salir
-        if ($currentVersion >= 18) {
+        if ($currentVersion >= 19) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
@@ -247,6 +309,7 @@ class Installer {
                 organizer_email     VARCHAR(255) NULL,
                 question_started_at TIMESTAMP NULL,
                 created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                game_type           ENUM('song','meme') DEFAULT 'song',
                 INDEX idx_pin (pin)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
@@ -387,6 +450,55 @@ class Installer {
         foreach (GENRES as $g) {
             if ($g !== 'Todos') $insGenre->execute([$g]);
         }
+
+        // Modo de juego "memes" — tablas paralelas a songs/game_songs/player_timeline/answers
+        $pdo->exec("
+            CREATE TABLE memes (
+                id        INT AUTO_INCREMENT PRIMARY KEY,
+                image_url VARCHAR(255) NOT NULL,
+                title     VARCHAR(200) NULL,
+                year      INT NOT NULL,
+                genre     VARCHAR(100)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+        $pdo->exec("
+            CREATE TABLE game_memes (
+                id           INT AUTO_INCREMENT PRIMARY KEY,
+                game_id      INT NOT NULL,
+                meme_id      INT NOT NULL,
+                round_number INT NOT NULL,
+                FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+                FOREIGN KEY (meme_id) REFERENCES memes(id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+        $pdo->exec("
+            CREATE TABLE player_meme_timeline (
+                id        INT AUTO_INCREMENT PRIMARY KEY,
+                player_id INT NOT NULL,
+                game_id   INT NOT NULL,
+                meme_id   INT NOT NULL,
+                UNIQUE KEY unique_entry (player_id, game_id, meme_id),
+                FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+                FOREIGN KEY (game_id)   REFERENCES games(id)   ON DELETE CASCADE,
+                FOREIGN KEY (meme_id)   REFERENCES memes(id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+        $pdo->exec("
+            CREATE TABLE meme_answers (
+                id             INT AUTO_INCREMENT PRIMARY KEY,
+                game_id        INT NOT NULL,
+                player_id      INT NOT NULL,
+                meme_id        INT NOT NULL,
+                position_guess INT NOT NULL DEFAULT 0,
+                is_correct     TINYINT(1) DEFAULT 0,
+                points_earned  INT DEFAULT 0,
+                answered_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_answer (game_id, player_id, meme_id),
+                FOREIGN KEY (game_id)   REFERENCES games(id),
+                FOREIGN KEY (player_id) REFERENCES players(id),
+                FOREIGN KEY (meme_id)   REFERENCES memes(id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
 
         $pdo->exec("CREATE TABLE schema_version (version INT DEFAULT 0)");
         $pdo->exec("INSERT INTO schema_version (version) VALUES (12)");

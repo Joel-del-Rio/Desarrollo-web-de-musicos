@@ -118,7 +118,8 @@ require_once __DIR__ . '/../config.php'; ?>
   <div class="new-song-card">
     <div class="d-flex align-items-start justify-content-between gap-2">
       <div style="flex:1;min-width:0">
-        <div class="ns-label">🎵 ¿En qué año salió? Colócala en tu línea del tiempo</div>
+        <div class="ns-label" id="q-label">🎵 ¿En qué año salió? Colócala en tu línea del tiempo</div>
+        <img id="q-meme-img" class="d-none" style="max-width:100%;max-height:200px;border-radius:10px;margin:.4rem 0" alt="Meme">
         <div class="ns-title"  id="q-title">—</div>
         <div class="ns-artist" id="q-artist">—</div>
       </div>
@@ -203,6 +204,7 @@ require_once __DIR__ . '/../config.php'; ?>
 
     <!-- Reveal canción -->
     <div class="card w-100 p-3">
+      <img id="r-meme-img" class="d-none" style="max-width:100%;max-height:220px;border-radius:10px;margin:0 auto .5rem;display:block" alt="Meme">
       <div class="fw-bold fs-5" id="r-title">—</div>
       <div class="text-secondary"    id="r-artist">—</div>
       <div class="fw-black mt-1" style="font-size:2.5rem;color:var(--accent)" id="r-year">—</div>
@@ -244,7 +246,8 @@ require_once __DIR__ . '/../config.php'; ?>
   const API = '<?= BASE_URL ?>/Controlador/api.php';
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
+  const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=79"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=80"></script>
 </body>
 </html>

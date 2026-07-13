@@ -102,6 +102,7 @@ require_once __DIR__ . '/../config.php'; ?>
       display: flex; align-items: center; gap: .75rem;
       padding: .55rem .9rem; border-bottom: 1px solid rgba(255,255,255,.06);
     }
+    .catalog-row img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
     .catalog-row:last-child { border-bottom: none; }
     .catalog-row-info { flex: 1; min-width: 0; }
     .catalog-row-title { font-weight: 600; font-size: .86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -189,6 +190,9 @@ require_once __DIR__ . '/../config.php'; ?>
       </li>
       <li class="nav-item">
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-canciones" type="button" onclick="loadCatalog();loadGenres()">Canciones</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-memes" type="button" onclick="loadMemeCatalog();loadGenres()">Memes</button>
       </li>
     </ul>
 
@@ -308,6 +312,50 @@ require_once __DIR__ . '/../config.php'; ?>
         </div>
       </div>
     </div>
+
+    <!-- ══ PESTAÑA: MEMES ══ -->
+    <div class="tab-pane fade" id="tab-memes">
+
+      <h6 class="text-secondary text-uppercase fw-semibold mb-3" style="letter-spacing:.08em">Subir meme al catálogo</h6>
+
+      <div class="card p-3 mb-3">
+        <form id="meme-upload-form" onsubmit="event.preventDefault();uploadMeme();">
+          <div class="d-flex gap-2 flex-wrap align-items-end">
+            <div style="flex:1;min-width:200px">
+              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Imagen</label>
+              <input type="file" id="meme-image-input" class="form-control form-control-sm" accept="image/png,image/jpeg,image/gif,image/webp" required>
+            </div>
+            <div style="min-width:120px">
+              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Año</label>
+              <input type="number" id="meme-year-input" class="search-bar" min="1900" max="2100" placeholder="Año" required>
+            </div>
+            <div style="min-width:170px">
+              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Género</label>
+              <select id="meme-genre-select" class="form-select form-select-sm" required></select>
+            </div>
+            <div style="flex:1;min-width:180px">
+              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Título (opcional)</label>
+              <input type="text" id="meme-title-input" class="search-bar" placeholder="Descripción…">
+            </div>
+            <button type="submit" class="btn btn-game rounded-pill fw-bold px-4">Subir meme</button>
+          </div>
+        </form>
+        <div id="meme-upload-status" class="small mt-2" style="color:var(--muted)"></div>
+      </div>
+
+      <div class="d-flex align-items-center justify-content-between mb-3 mt-5 gap-2 flex-wrap">
+        <h6 class="text-secondary text-uppercase fw-semibold mb-0" style="letter-spacing:.08em">Catálogo de memes</h6>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <input type="search" id="meme-catalog-search" class="search-bar" style="max-width:240px" placeholder="Buscar título o género…" oninput="filterMemeCatalog()">
+          <span class="small" id="meme-catalog-count" style="color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <div id="meme-catalog-list" class="card p-0" style="overflow:hidden">
+        <div class="text-center py-4 text-secondary">Cargando…</div>
+      </div>
+
+    </div>
     </div>
 
   </div>
@@ -331,9 +379,11 @@ require_once __DIR__ . '/../config.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const API = '<?= BASE_URL ?>/Controlador/api.php';
+const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
 let allGames = [];
 let detailModal;
 let allCatalogSongs = [];
+let allMemeCatalog = [];
 let songHitsData = [];
 let SONG_GENRES = [];    // nombres (para el selector de la búsqueda)
 let allGenres = [];      // {id, name} (para el panel de gestión)
@@ -879,6 +929,9 @@ async function loadGenres() {
   allGenres = r.genres;
   SONG_GENRES = allGenres.map(g => g.name);
   renderGenreList();
+
+  const memeSel = document.getElementById('meme-genre-select');
+  if (memeSel) memeSel.innerHTML = SONG_GENRES.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
 }
 
 function renderGenreList() {
@@ -942,6 +995,117 @@ async function addGenre() {
     await loadGenres();
   } else {
     alert(r.error || 'Error al añadir el género');
+  }
+}
+
+/* ── Catálogo de memes ── */
+
+async function uploadMeme() {
+  const fileInput = document.getElementById('meme-image-input');
+  const year      = document.getElementById('meme-year-input').value;
+  const genre     = document.getElementById('meme-genre-select').value;
+  const title     = document.getElementById('meme-title-input').value.trim();
+  const status    = document.getElementById('meme-upload-status');
+
+  if (!fileInput.files.length) { status.textContent = 'Selecciona una imagen.'; return; }
+  if (!year) { status.textContent = 'Indica el año.'; return; }
+
+  status.textContent = 'Subiendo…';
+
+  const body = new FormData();
+  body.append('image', fileInput.files[0]);
+  body.append('year', year);
+  body.append('genre', genre);
+  body.append('title', title);
+
+  const r = await fetch(`${API}?action=add_meme`, { method: 'POST', body })
+    .then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
+
+  if (r.success) {
+    status.textContent = '✓ Meme añadido al catálogo';
+    document.getElementById('meme-upload-form').reset();
+    loadMemeCatalog();
+  } else {
+    status.textContent = r.error || 'Error al subir el meme';
+  }
+}
+
+async function loadMemeCatalog() {
+  const box = document.getElementById('meme-catalog-list');
+  const r = await fetch(`${API}?action=get_memes`).then(r => r.json()).catch(() => null);
+  if (!Array.isArray(r)) {
+    box.innerHTML = '<div class="text-center py-4 text-secondary">Error al cargar el catálogo</div>';
+    return;
+  }
+  allMemeCatalog = r;
+  renderMemeCatalog(allMemeCatalog, false);
+}
+
+function filterMemeCatalog() {
+  const q = document.getElementById('meme-catalog-search').value.toLowerCase();
+  const filtered = allMemeCatalog.filter(m =>
+    (m.title || '').toLowerCase().includes(q) ||
+    (m.genre || '').toLowerCase().includes(q)
+  );
+  renderMemeCatalog(filtered, !!q);
+}
+
+function renderMemeCatalog(memes, expand) {
+  document.getElementById('meme-catalog-count').textContent = `${memes.length} memes`;
+  const box = document.getElementById('meme-catalog-list');
+  if (!memes.length) {
+    box.innerHTML = '<div class="text-center py-4 text-secondary">Sin memes</div>';
+    return;
+  }
+
+  const byGenre = {};
+  memes.forEach(m => { (byGenre[m.genre || 'Sin género'] ??= []).push(m); });
+  const genreNames = Object.keys(byGenre).sort();
+
+  box.innerHTML = genreNames.map((genre, idx) => {
+    const list = byGenre[genre];
+    const panelId = `meme-genre-panel-${idx}`;
+    return `
+    <div class="genre-group">
+      <button class="genre-group-header w-100 border-0 bg-transparent text-start${expand ? '' : ' collapsed'}" type="button"
+              data-bs-toggle="collapse" data-bs-target="#${panelId}" aria-expanded="${expand ? 'true' : 'false'}">
+        <span>${esc(genre)}<span class="genre-group-count">${list.length}</span></span>
+        <span class="chevron">▾</span>
+      </button>
+      <div class="collapse${expand ? ' show' : ''}" id="${panelId}">
+        ${list.map(m => `
+          <div class="catalog-row" id="meme-row-${m.id}">
+            <img src="${MEME_IMG_BASE}${m.image_url}" alt="Meme">
+            <div class="catalog-row-info">
+              <div class="catalog-row-title">${esc(m.title || '(sin título)')}</div>
+              <div class="catalog-row-sub">${m.year}</div>
+            </div>
+            <button class="catalog-del-btn" onclick="deleteCatalogMeme(${m.id})" title="Eliminar del catálogo">✕</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function deleteCatalogMeme(id) {
+  if (!confirm('¿Eliminar este meme del catálogo? Esta acción no se puede deshacer.')) return;
+
+  const row = document.getElementById(`meme-row-${id}`);
+  const btn = row?.querySelector('.catalog-del-btn');
+  if (btn) btn.disabled = true;
+
+  const r = await fetch(`${API}?action=delete_meme`, {
+    method: 'POST',
+    body: new URLSearchParams({ id }),
+  }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
+
+  if (r.success) {
+    allMemeCatalog = allMemeCatalog.filter(m => m.id !== id);
+    filterMemeCatalog();
+  } else {
+    if (btn) btn.disabled = false;
+    alert(r.error || 'Error al eliminar el meme');
   }
 }
 
