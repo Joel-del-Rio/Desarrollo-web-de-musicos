@@ -15,6 +15,7 @@ require_once __DIR__ . '/../config.php'; ?>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=7">
   <style>
+    html { scroll-behavior: smooth; }
     .stat-card {
       background: var(--card);
       border: 1.5px solid rgba(255,255,255,.08);
@@ -113,6 +114,27 @@ require_once __DIR__ . '/../config.php'; ?>
     }
     .catalog-del-btn:hover { background: rgba(220,53,69,.15); border-color: rgba(220,53,69,.5); color: #dc3545; }
     .catalog-del-btn:disabled { opacity: .4; cursor: default; }
+
+    .genre-group:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,.08); }
+    .genre-group-header {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%; padding: .7rem 1rem; cursor: pointer;
+      color: #fff; font-weight: 700; font-size: .82rem;
+      text-transform: uppercase; letter-spacing: .05em;
+    }
+    .genre-group-header:hover { background: rgba(255,255,255,.03); }
+    .genre-group-count { color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: .5rem; }
+    .genre-group-header .chevron { transition: transform .2s; flex-shrink: 0; }
+    .genre-group-header.collapsed .chevron { transform: rotate(-90deg); }
+
+    /* ── Navegación rápida entre secciones ── */
+    .song-section-nav a {
+      display: block; padding: .45rem .8rem; border-radius: 8px;
+      color: var(--muted); font-size: .85rem; font-weight: 600;
+      text-decoration: none; transition: all .15s; white-space: nowrap;
+    }
+    .song-section-nav a:hover { background: rgba(255,255,255,.06); color: #fff; }
+    .song-section-nav a.active { background: rgba(233,69,96,.15); color: var(--accent); }
   </style>
 </head>
 <body>
@@ -220,55 +242,71 @@ require_once __DIR__ . '/../config.php'; ?>
     </div>
     <!-- ══ PESTAÑA: CANCIONES ══ -->
     <div class="tab-pane fade" id="tab-canciones">
+      <div class="d-flex gap-4 align-items-start">
 
-      <h6 class="text-secondary text-uppercase fw-semibold mb-3" style="letter-spacing:.08em">Añadir canción al catálogo</h6>
+        <!-- Navegación rápida entre secciones -->
+        <div class="d-none d-md-block song-section-nav" style="position:sticky; top:1rem; min-width:170px">
+          <a href="#section-add" data-target="section-add">Añadir canción</a>
+          <a href="#section-catalog" data-target="section-catalog">Catálogo actual</a>
+          <a href="#section-genres" data-target="section-genres">Gestionar géneros</a>
+        </div>
 
-      <div class="card p-3 mb-3">
-        <div class="d-flex gap-2 flex-wrap align-items-end">
-          <div style="flex:1;min-width:220px">
-            <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Buscar canción</label>
-            <input type="search" id="song-search-input" class="search-bar" placeholder="Título o artista…"
-                   onkeydown="if(event.key==='Enter'){event.preventDefault();searchSongs();}">
+        <div style="flex:1; min-width:0">
+
+          <div id="section-add">
+            <h6 class="text-secondary text-uppercase fw-semibold mb-3" style="letter-spacing:.08em">Añadir canción al catálogo</h6>
+
+            <div class="card p-3 mb-3">
+              <div class="d-flex gap-2 flex-wrap align-items-end">
+                <div style="flex:1;min-width:220px">
+                  <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Buscar canción</label>
+                  <input type="search" id="song-search-input" class="search-bar" placeholder="Título o artista…"
+                         onkeydown="if(event.key==='Enter'){event.preventDefault();searchSongs();}">
+                </div>
+                <button class="btn btn-game rounded-pill fw-bold px-4" onclick="searchSongs()">Buscar</button>
+              </div>
+            </div>
+
+            <div id="song-results" class="card p-0" style="overflow:hidden;display:none"></div>
+            <div id="song-search-status" class="text-secondary small mt-2"></div>
+            <div id="song-pages" class="d-flex gap-2 justify-content-center mt-3 flex-wrap"></div>
           </div>
-          <button class="btn btn-game rounded-pill fw-bold px-4" onclick="searchSongs()">Buscar</button>
-        </div>
-      </div>
 
-      <div id="song-results" class="card p-0" style="overflow:hidden;display:none"></div>
-      <div id="song-search-status" class="text-secondary small mt-2"></div>
-      <div id="song-pages" class="d-flex gap-2 justify-content-center mt-3 flex-wrap"></div>
+          <div id="section-catalog" class="mt-5">
+            <div class="d-flex align-items-center justify-content-between mb-3 gap-2 flex-wrap">
+              <h6 class="text-secondary text-uppercase fw-semibold mb-0" style="letter-spacing:.08em">Catálogo actual</h6>
+              <div class="d-flex gap-2 align-items-center flex-wrap">
+                <input type="search" id="catalog-search" class="search-bar" style="max-width:240px" placeholder="Buscar título, artista o género…" oninput="filterCatalog()">
+                <span class="small" id="catalog-count" style="color:var(--muted)"></span>
+              </div>
+            </div>
 
-      <!-- Catálogo actual -->
-      <div class="d-flex align-items-center justify-content-between mb-3 mt-5 gap-2 flex-wrap">
-        <h6 class="text-secondary text-uppercase fw-semibold mb-0" style="letter-spacing:.08em">Catálogo actual</h6>
-        <div class="d-flex gap-2 align-items-center flex-wrap">
-          <input type="search" id="catalog-search" class="search-bar" style="max-width:240px" placeholder="Buscar título, artista o género…" oninput="filterCatalog()">
-          <span class="small" id="catalog-count" style="color:var(--muted)"></span>
-        </div>
-      </div>
-
-      <div id="catalog-list" class="card p-0" style="overflow:hidden">
-        <div class="text-center py-4 text-secondary">Cargando…</div>
-      </div>
-
-      <!-- Gestionar géneros -->
-      <h6 class="text-secondary text-uppercase fw-semibold mb-3 mt-5" style="letter-spacing:.08em">Gestionar géneros</h6>
-
-      <div class="card p-3 mb-3">
-        <div class="d-flex gap-2 flex-wrap align-items-end">
-          <div style="flex:1;min-width:220px">
-            <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Nuevo género</label>
-            <input type="text" id="new-genre-input" class="search-bar" placeholder="Nombre del género…"
-                   onkeydown="if(event.key==='Enter'){event.preventDefault();addGenre();}">
+            <div id="catalog-list" class="card p-0" style="overflow:hidden">
+              <div class="text-center py-4 text-secondary">Cargando…</div>
+            </div>
           </div>
-          <button class="btn btn-game rounded-pill fw-bold px-4" onclick="addGenre()">Añadir género</button>
+
+          <div id="section-genres" class="mt-5">
+            <h6 class="text-secondary text-uppercase fw-semibold mb-3" style="letter-spacing:.08em">Gestionar géneros</h6>
+
+            <div class="card p-3 mb-3">
+              <div class="d-flex gap-2 flex-wrap align-items-end">
+                <div style="flex:1;min-width:220px">
+                  <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Nuevo género</label>
+                  <input type="text" id="new-genre-input" class="search-bar" placeholder="Nombre del género…"
+                         onkeydown="if(event.key==='Enter'){event.preventDefault();addGenre();}">
+                </div>
+                <button class="btn btn-game rounded-pill fw-bold px-4" onclick="addGenre()">Añadir género</button>
+              </div>
+            </div>
+
+            <div id="genre-list" class="card p-0" style="overflow:hidden">
+              <div class="text-center py-4 text-secondary">Cargando…</div>
+            </div>
+          </div>
+
         </div>
       </div>
-
-      <div id="genre-list" class="card p-0" style="overflow:hidden">
-        <div class="text-center py-4 text-secondary">Cargando…</div>
-      </div>
-
     </div>
     </div>
 
@@ -304,7 +342,23 @@ document.addEventListener('DOMContentLoaded', () => {
   detailModal = new bootstrap.Modal(document.getElementById('gameDetailModal'));
   // Si ya hemos autenticado en esta sesión, saltamos el login
   if (sessionStorage.getItem('sa_auth') === '1') showPanel();
+  initSongSectionNav();
 });
+
+/* Resalta el enlace de la sección visible en la navegación rápida de la pestaña Canciones */
+function initSongSectionNav() {
+  const links = document.querySelectorAll('.song-section-nav a');
+  if (!links.length) return;
+  const setActive = id => links.forEach(a => a.classList.toggle('active', a.dataset.target === id));
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+  ['section-add', 'section-catalog', 'section-genres'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
+  setActive('section-add');
+}
 
 async function saLogin() {
   const email = document.getElementById('sa-email').value.trim();
@@ -748,29 +802,49 @@ async function loadCatalog() {
 
 function filterCatalog() {
   const q = document.getElementById('catalog-search').value.toLowerCase();
-  renderCatalog(allCatalogSongs.filter(s =>
+  const filtered = allCatalogSongs.filter(s =>
     s.title.toLowerCase().includes(q) ||
     s.artist.toLowerCase().includes(q) ||
     (s.genre || '').toLowerCase().includes(q)
-  ));
+  );
+  renderCatalog(filtered, !!q); // con texto de búsqueda, despliega los grupos que coinciden
 }
 
-function renderCatalog(songs) {
+function renderCatalog(songs, expand) {
   document.getElementById('catalog-count').textContent = `${songs.length} canciones`;
   const box = document.getElementById('catalog-list');
   if (!songs.length) {
     box.innerHTML = '<div class="text-center py-4 text-secondary">Sin canciones</div>';
     return;
   }
-  box.innerHTML = songs.map(s => `
-    <div class="catalog-row" id="catalog-row-${s.id}">
-      <div class="catalog-row-info">
-        <div class="catalog-row-title">${esc(s.title)}</div>
-        <div class="catalog-row-sub">${esc(s.artist)} · ${s.year} · ${esc(s.genre || '—')}</div>
+
+  const byGenre = {};
+  songs.forEach(s => { (byGenre[s.genre || 'Sin género'] ??= []).push(s); });
+  const genreNames = Object.keys(byGenre).sort();
+
+  box.innerHTML = genreNames.map((genre, idx) => {
+    const list = byGenre[genre];
+    const panelId = `genre-panel-${idx}`;
+    return `
+    <div class="genre-group">
+      <button class="genre-group-header w-100 border-0 bg-transparent text-start${expand ? '' : ' collapsed'}" type="button"
+              data-bs-toggle="collapse" data-bs-target="#${panelId}" aria-expanded="${expand ? 'true' : 'false'}">
+        <span>${esc(genre)}<span class="genre-group-count">${list.length}</span></span>
+        <span class="chevron">▾</span>
+      </button>
+      <div class="collapse${expand ? ' show' : ''}" id="${panelId}">
+        ${list.map(s => `
+          <div class="catalog-row" id="catalog-row-${s.id}">
+            <div class="catalog-row-info">
+              <div class="catalog-row-title">${esc(s.title)}</div>
+              <div class="catalog-row-sub">${esc(s.artist)} · ${s.year}</div>
+            </div>
+            <button class="catalog-del-btn" onclick="deleteCatalogSong(${s.id})" title="Eliminar del catálogo">✕</button>
+          </div>
+        `).join('')}
       </div>
-      <button class="catalog-del-btn" onclick="deleteCatalogSong(${s.id})" title="Eliminar del catálogo">✕</button>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 async function deleteCatalogSong(id) {
