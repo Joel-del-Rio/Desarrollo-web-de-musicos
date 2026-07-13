@@ -178,8 +178,28 @@ class Installer {
             $currentVersion = 17;
         }
 
+        // v18: tabla de géneros editable desde el panel superadmin
+        // (antes vivían hardcodeados en la constante GENRES de config.php)
+        if ($currentVersion === 17) {
+            try {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS genres (
+                        id   INT AUTO_INCREMENT PRIMARY KEY,
+                        name VARCHAR(100) NOT NULL,
+                        UNIQUE KEY unique_name (name)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ");
+                $ins = $pdo->prepare("INSERT IGNORE INTO genres (name) VALUES (?)");
+                foreach (GENRES as $g) {
+                    if ($g !== 'Todos') $ins->execute([$g]);
+                }
+            } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=18");
+            $currentVersion = 18;
+        }
+
         // Esquema actualizado: verificar integridad y salir
-        if ($currentVersion >= 17) {
+        if ($currentVersion >= 18) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
@@ -354,6 +374,19 @@ class Installer {
                 created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
+
+        // Catálogo de géneros musicales (editable desde el panel superadmin)
+        $pdo->exec("
+            CREATE TABLE genres (
+                id   INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                UNIQUE KEY unique_name (name)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+        $insGenre = $pdo->prepare("INSERT IGNORE INTO genres (name) VALUES (?)");
+        foreach (GENRES as $g) {
+            if ($g !== 'Todos') $insGenre->execute([$g]);
+        }
 
         $pdo->exec("CREATE TABLE schema_version (version INT DEFAULT 0)");
         $pdo->exec("INSERT INTO schema_version (version) VALUES (12)");

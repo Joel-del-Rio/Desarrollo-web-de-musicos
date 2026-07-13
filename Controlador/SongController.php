@@ -6,6 +6,7 @@
  * de streaming (Spotify/YouTube) desde el panel de gestión.
  */
 require_once __DIR__ . '/../Modelo/Database.php';
+require_once __DIR__ . '/../Modelo/Genres.php';
 
 class SongController {
     private PDO $db;
@@ -59,7 +60,7 @@ class SongController {
 
         if (!$title || !$artist) return ['error' => 'Título y artista son obligatorios'];
         if ($year < 1900 || $year > 2100) return ['error' => 'Año inválido'];
-        if (!in_array($genre, GENRES, true) || $genre === 'Todos') return ['error' => 'Género inválido'];
+        if (!in_array($genre, Genres::all(), true)) return ['error' => 'Género inválido'];
 
         $dup = $this->db->prepare("SELECT id FROM songs WHERE title=? AND artist=?");
         $dup->execute([$title, $artist]);

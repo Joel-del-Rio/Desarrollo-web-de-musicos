@@ -8,6 +8,7 @@
  */
 require_once __DIR__ . '/../Modelo/Game.php';
 require_once __DIR__ . '/../Modelo/Player.php';
+require_once __DIR__ . '/../Modelo/Genres.php';
 
 class GameController {
     private Game   $game;
@@ -26,7 +27,7 @@ class GameController {
         // Validar y sanitizar parámetros (con rangos mínimos/máximos)
         $rounds       = max(5,  min(20, (int)($_POST['total_rounds']   ?? 10)));
         $questionTime = max(20, min(60, (int)($_POST['question_time'] ?? 30)));
-        $genre        = in_array($_POST['genre'] ?? '', GENRES, true) ? $_POST['genre'] : 'Todos';
+        $genre        = in_array($_POST['genre'] ?? '', Genres::allWithTodos(), true) ? $_POST['genre'] : 'Todos';
         $showLinks    = ($_POST['show_links']    ?? '0') === '1' ? 1 : 0;
         $embedYoutube = ($_POST['embed_youtube'] ?? '0') === '1' ? 1 : 0;
         $autoplay     = ($_POST['autoplay']      ?? '0') === '1' ? 1 : 0;

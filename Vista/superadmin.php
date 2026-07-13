@@ -166,7 +166,7 @@ require_once __DIR__ . '/../config.php'; ?>
         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-partidas" type="button">Partidas</button>
       </li>
       <li class="nav-item">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-canciones" type="button" onclick="loadCatalog()">Canciones</button>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-canciones" type="button" onclick="loadCatalog();loadGenres()">Canciones</button>
       </li>
     </ul>
 
@@ -251,6 +251,24 @@ require_once __DIR__ . '/../config.php'; ?>
         <div class="text-center py-4 text-secondary">Cargando…</div>
       </div>
 
+      <!-- Gestionar géneros -->
+      <h6 class="text-secondary text-uppercase fw-semibold mb-3 mt-5" style="letter-spacing:.08em">Gestionar géneros</h6>
+
+      <div class="card p-3 mb-3">
+        <div class="d-flex gap-2 flex-wrap align-items-end">
+          <div style="flex:1;min-width:220px">
+            <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Nuevo género</label>
+            <input type="text" id="new-genre-input" class="search-bar" placeholder="Nombre del género…"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();addGenre();}">
+          </div>
+          <button class="btn btn-game rounded-pill fw-bold px-4" onclick="addGenre()">Añadir género</button>
+        </div>
+      </div>
+
+      <div id="genre-list" class="card p-0" style="overflow:hidden">
+        <div class="text-center py-4 text-secondary">Cargando…</div>
+      </div>
+
     </div>
     </div>
 
@@ -275,11 +293,12 @@ require_once __DIR__ . '/../config.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const API = '<?= BASE_URL ?>/Controlador/api.php';
-const SONG_GENRES = <?= json_encode(array_values(array_filter(GENRES, fn($g) => $g !== 'Todos'))) ?>;
 let allGames = [];
 let detailModal;
 let allCatalogSongs = [];
 let songHitsData = [];
+let SONG_GENRES = [];    // nombres (para el selector de la búsqueda)
+let allGenres = [];      // {id, name} (para el panel de gestión)
 
 document.addEventListener('DOMContentLoaded', () => {
   detailModal = new bootstrap.Modal(document.getElementById('gameDetailModal'));
@@ -602,7 +621,10 @@ async function searchSongs() {
   document.getElementById('song-pages').innerHTML = '';
 
   try {
-    await loadCatalog(); // refresca allCatalogSongs para saber qué ya está añadido
+    await Promise.all([
+      loadCatalog(), // refresca allCatalogSongs para saber qué ya está añadido
+      loadGenres(),  // refresca SONG_GENRES por si se añadió/renombró alguno
+    ]);
 
     const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&entity=song&limit=${SONG_FETCH_LIMIT}`);
     const data = await res.json();
@@ -769,6 +791,83 @@ async function deleteCatalogSong(id) {
   } else {
     if (btn) btn.disabled = false;
     alert(r.error || 'Error al eliminar la canción');
+  }
+}
+
+/* ── Gestión de géneros ── */
+
+async function loadGenres() {
+  const r = await fetch(`${API}?action=list_genres`).then(r => r.json()).catch(() => null);
+  if (!r?.success) {
+    document.getElementById('genre-list').innerHTML = '<div class="text-center py-4 text-secondary">Error al cargar los géneros</div>';
+    return;
+  }
+  allGenres = r.genres;
+  SONG_GENRES = allGenres.map(g => g.name);
+  renderGenreList();
+}
+
+function renderGenreList() {
+  const box = document.getElementById('genre-list');
+  if (!allGenres.length) {
+    box.innerHTML = '<div class="text-center py-4 text-secondary">Sin géneros</div>';
+    return;
+  }
+  box.innerHTML = allGenres.map(g => `
+    <div class="catalog-row" id="genre-row-${g.id}">
+      <div class="catalog-row-info">
+        <div class="catalog-row-title">${esc(g.name)}</div>
+      </div>
+      <button class="catalog-del-btn" onclick="editGenre(${g.id})" title="Renombrar">✎</button>
+    </div>
+  `).join('');
+}
+
+function editGenre(id) {
+  const genre = allGenres.find(g => g.id === id);
+  if (!genre) return;
+  const row = document.getElementById(`genre-row-${id}`);
+  row.innerHTML = `
+    <input type="text" class="search-bar" id="genre-edit-input-${id}" value="${esc(genre.name)}" style="flex:1"
+           onkeydown="if(event.key==='Enter'){event.preventDefault();saveGenre(${id});}">
+    <button class="btn btn-sm btn-game rounded-pill px-3" style="font-size:.78rem" onclick="saveGenre(${id})">Guardar</button>
+  `;
+  document.getElementById(`genre-edit-input-${id}`).focus();
+}
+
+async function saveGenre(id) {
+  const input = document.getElementById(`genre-edit-input-${id}`);
+  const name = input.value.trim();
+  if (!name) { alert('El nombre no puede estar vacío'); return; }
+
+  const r = await fetch(`${API}?action=rename_genre`, {
+    method: 'POST',
+    body: new URLSearchParams({ id, name }),
+  }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
+
+  if (r.success) {
+    await loadGenres();
+    await loadCatalog(); // refleja el nuevo nombre en las canciones ya asignadas a ese género
+  } else {
+    alert(r.error || 'Error al renombrar el género');
+  }
+}
+
+async function addGenre() {
+  const input = document.getElementById('new-genre-input');
+  const name = input.value.trim();
+  if (!name) { alert('Escribe un nombre para el género'); return; }
+
+  const r = await fetch(`${API}?action=add_genre`, {
+    method: 'POST',
+    body: new URLSearchParams({ name }),
+  }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
+
+  if (r.success) {
+    input.value = '';
+    await loadGenres();
+  } else {
+    alert(r.error || 'Error al añadir el género');
   }
 }
 

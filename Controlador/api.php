@@ -186,6 +186,26 @@ try {
             echo json_encode((new SongController())->deleteSong());
             break;
 
+        // ── Géneros ────────────────────────────────────
+
+        case 'list_genres':
+            // Lista de géneros con id (panel superadmin)
+            require_once __DIR__ . '/GenreController.php';
+            echo json_encode((new GenreController())->list());
+            break;
+
+        case 'add_genre':
+            // Añade un género nuevo al catálogo
+            require_once __DIR__ . '/GenreController.php';
+            echo json_encode((new GenreController())->add());
+            break;
+
+        case 'rename_genre':
+            // Renombra un género existente (actualiza canciones y partidas en cascada)
+            require_once __DIR__ . '/GenreController.php';
+            echo json_encode((new GenreController())->rename());
+            break;
+
         // ── Jugador ────────────────────────────────────
 
         case 'join_game':

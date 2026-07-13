@@ -12,7 +12,9 @@
  *   GK  = clave localStorage para el ID de la partida
  *   TK  = clave localStorage para el token de admin
  */
-require_once __DIR__ . '/../config.php'; ?>
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../Modelo/Genres.php';
+$genres = Genres::allWithTodos(); ?>
 <!DOCTYPE html>
 <html lang="es" data-bs-theme="dark">
 <head>
@@ -55,7 +57,7 @@ require_once __DIR__ . '/../config.php'; ?>
       <div class="mb-4">
         <label class="form-label text-secondary small fw-semibold text-uppercase">Género musical</label>
         <div class="d-flex flex-wrap gap-2 mt-2" id="genre-selector">
-          <?php foreach (GENRES as $g):
+          <?php foreach ($genres as $g):
             $active = $g === 'Todos' ? ' active' : '';
           ?>
           <button type="button"
