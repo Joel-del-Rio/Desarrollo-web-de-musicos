@@ -260,8 +260,16 @@ class Installer {
             $currentVersion = 19;
         }
 
+        // v20: carátula de la canción (capturada del buscador de iTunes al añadirla),
+        // para mostrarla en resultados de partida y en el catálogo
+        if ($currentVersion === 19) {
+            try { $pdo->exec("ALTER TABLE songs ADD COLUMN artwork_url VARCHAR(500) NULL"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=20");
+            $currentVersion = 20;
+        }
+
         // Esquema actualizado: verificar integridad y salir
-        if ($currentVersion >= 19) {
+        if ($currentVersion >= 20) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
@@ -323,7 +331,8 @@ class Installer {
                 year         INT NOT NULL,
                 genre        VARCHAR(100),
                 spotify_url  VARCHAR(500) NULL,
-                youtube_url  VARCHAR(500) NULL
+                youtube_url  VARCHAR(500) NULL,
+                artwork_url  VARCHAR(500) NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
 

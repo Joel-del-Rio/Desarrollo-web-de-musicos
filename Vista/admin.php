@@ -361,6 +361,7 @@ $genres = Genres::allWithTodos(); ?>
       <div class="round-song-card">
         <div class="rsc-label">✅ Respuesta correcta</div>
         <img id="r-meme-img" class="d-none" style="max-width:100%;max-height:280px;border-radius:12px;margin:.5rem 0" alt="Meme">
+        <img id="r-song-img" class="d-none" style="width:110px;height:110px;object-fit:cover;border-radius:12px;margin:.5rem 0" alt="Carátula">
         <div class="rsc-title"  id="r-title">—</div>
         <div class="rsc-artist" id="r-artist">—</div>
         <div class="rsc-year year-revealed" id="r-year">—</div>
@@ -433,6 +434,6 @@ $genres = Genres::allWithTodos(); ?>
   const TK  = 'hitstoric_tok';
   const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=54"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=55"></script>
 </body>
 </html>

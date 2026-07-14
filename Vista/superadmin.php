@@ -810,13 +810,13 @@ function showGenrePicker(i) {
 async function addSongFromHit(i, genre) {
   if (!genre) return;
   const wrap = document.getElementById(`add-wrap-${i}`);
-  const { title, artist, year } = songHitsData[i];
+  const { title, artist, year, art } = songHitsData[i];
 
   wrap.innerHTML = `<span class="small text-secondary">Añadiendo…</span>`;
 
   const r = await fetch(`${API}?action=add_song`, {
     method: 'POST',
-    body: new URLSearchParams({ title, artist, year, genre }),
+    body: new URLSearchParams({ title, artist, year, genre, artwork_url: art || '' }),
   }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
 
   if (r.success) {

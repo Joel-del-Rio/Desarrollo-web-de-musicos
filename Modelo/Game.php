@@ -312,7 +312,7 @@ class Game {
         } else {
             $st = $this->db->prepare(
                 "SELECT s.id, s.title, s.artist, s.year, s.genre,
-                        s.spotify_url, s.youtube_url, gs.round_number
+                        s.spotify_url, s.youtube_url, s.artwork_url, gs.round_number
                  FROM game_songs gs
                  JOIN songs s ON gs.song_id = s.id
                  JOIN games  g ON gs.game_id = g.id

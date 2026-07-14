@@ -20,7 +20,8 @@ class SongController {
         $st = $this->db->query(
             "SELECT id, title, artist, year, genre,
                     COALESCE(spotify_url,'') AS spotify_url,
-                    COALESCE(youtube_url,'') AS youtube_url
+                    COALESCE(youtube_url,'') AS youtube_url,
+                    COALESCE(artwork_url,'') AS artwork_url
              FROM songs ORDER BY genre, year, title"
         );
         return $st->fetchAll(PDO::FETCH_ASSOC);
@@ -53,22 +54,24 @@ class SongController {
      * Queda disponible de inmediato para cualquier partida que se cree a partir de ahora.
      */
     public function addSong(): array {
-        $title  = trim($_POST['title']  ?? '');
-        $artist = trim($_POST['artist'] ?? '');
-        $year   = (int)($_POST['year']  ?? 0);
-        $genre  = trim($_POST['genre']  ?? '');
+        $title      = trim($_POST['title']       ?? '');
+        $artist     = trim($_POST['artist']      ?? '');
+        $year       = (int)($_POST['year']       ?? 0);
+        $genre      = trim($_POST['genre']       ?? '');
+        $artworkUrl = trim($_POST['artwork_url'] ?? '');
 
         if (!$title || !$artist) return ['error' => 'Título y artista son obligatorios'];
         if ($year < 1900 || $year > 2100) return ['error' => 'Año inválido'];
         if (!in_array($genre, Genres::all(), true)) return ['error' => 'Género inválido'];
+        if ($artworkUrl && !filter_var($artworkUrl, FILTER_VALIDATE_URL)) $artworkUrl = '';
 
         $dup = $this->db->prepare("SELECT id FROM songs WHERE title=? AND artist=?");
         $dup->execute([$title, $artist]);
         if ($dup->fetchColumn()) return ['error' => 'Esa canción ya está en el catálogo'];
 
         $this->db->prepare(
-            "INSERT INTO songs (title, artist, year, genre) VALUES (?,?,?,?)"
-        )->execute([$title, $artist, $year, $genre]);
+            "INSERT INTO songs (title, artist, year, genre, artwork_url) VALUES (?,?,?,?,?)"
+        )->execute([$title, $artist, $year, $genre, $artworkUrl ?: null]);
 
         return ['success' => true, 'id' => (int)$this->db->lastInsertId()];
     }

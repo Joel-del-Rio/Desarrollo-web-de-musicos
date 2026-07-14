@@ -349,6 +349,12 @@ function renderResults(state) {
   rMemeImg.classList.toggle('d-none', !isMemeR);
   if (isMemeR) rMemeImg.src = MEME_IMG_BASE + song.image_url;
 
+  // Carátula de la canción — solo se muestra aquí (resultados), nunca durante la pregunta
+  const rSongImg = document.getElementById('r-song-img');
+  const hasArt = !isMemeR && !!song.artwork_url;
+  rSongImg.classList.toggle('d-none', !hasArt);
+  if (hasArt) rSongImg.src = song.artwork_url;
+
   document.getElementById('r-title').textContent  = isMemeR ? (song.title || '') : (song.title || '—');
   document.getElementById('r-artist').classList.toggle('d-none', isMemeR);
   document.getElementById('r-artist').textContent = song.artist || '—';

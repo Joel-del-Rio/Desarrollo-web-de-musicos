@@ -205,6 +205,7 @@ require_once __DIR__ . '/../config.php'; ?>
     <!-- Reveal canción -->
     <div class="card w-100 p-3">
       <img id="r-meme-img" class="d-none" style="max-width:100%;max-height:220px;border-radius:10px;margin:0 auto .5rem;display:block" alt="Meme">
+      <img id="r-song-img" class="d-none" style="width:96px;height:96px;object-fit:cover;border-radius:10px;margin:0 auto .5rem;display:block" alt="Carátula">
       <div class="fw-bold fs-5" id="r-title">—</div>
       <div class="text-secondary"    id="r-artist">—</div>
       <div class="fw-black mt-1" style="font-size:2.5rem;color:var(--accent)" id="r-year">—</div>
@@ -248,6 +249,6 @@ require_once __DIR__ . '/../config.php'; ?>
   const GK  = 'hitstoric_gid_p';
   const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=80"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=81"></script>
 </body>
 </html>

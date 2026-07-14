@@ -768,6 +768,12 @@ function renderResults(state) {
   rMemeImg.classList.toggle('d-none', !isMeme);
   if (isMeme) rMemeImg.src = MEME_IMG_BASE + song.image_url;
 
+  // Carátula de la canción — solo se muestra aquí (resultados), nunca durante la pregunta
+  const rSongImg = document.getElementById('r-song-img');
+  const hasArt = !isMeme && !!song.artwork_url;
+  rSongImg.classList.toggle('d-none', !hasArt);
+  if (hasArt) rSongImg.src = song.artwork_url;
+
   document.getElementById('r-title').textContent  = isMeme ? (song.title || '') : (song.title || '—');
   document.getElementById('r-artist').classList.toggle('d-none', isMeme);
   document.getElementById('r-artist').textContent = song.artist || '—';

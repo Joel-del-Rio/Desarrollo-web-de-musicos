@@ -139,8 +139,13 @@ function renderSongs(songs) {
       html += `
       <tr>
         <td>
-          <div class="fw-semibold small">${esc(s.title)}</div>
-          <div style="font-size:.75rem;color:var(--muted)">${esc(s.artist)}</div>
+          <div class="d-flex align-items-center gap-2">
+            ${s.artwork_url ? `<img src="${esc(s.artwork_url)}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0">` : ''}
+            <div>
+              <div class="fw-semibold small">${esc(s.title)}</div>
+              <div style="font-size:.75rem;color:var(--muted)">${esc(s.artist)}</div>
+            </div>
+          </div>
         </td>
         <td class="small">${s.year}</td>
         <td>
