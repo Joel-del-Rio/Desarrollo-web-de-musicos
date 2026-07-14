@@ -249,6 +249,6 @@ require_once __DIR__ . '/../config.php'; ?>
   const GK  = 'hitstoric_gid_p';
   const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=81"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=82"></script>
 </body>
 </html>

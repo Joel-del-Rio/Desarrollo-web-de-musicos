@@ -351,9 +351,15 @@ function renderResults(state) {
 
   // Carátula de la canción — solo se muestra aquí (resultados), nunca durante la pregunta
   const rSongImg = document.getElementById('r-song-img');
-  const hasArt = !isMemeR && !!song.artwork_url;
-  rSongImg.classList.toggle('d-none', !hasArt);
-  if (hasArt) rSongImg.src = song.artwork_url;
+  if (!isMemeR && song.artwork_url) {
+    rSongImg.classList.remove('d-none');
+    rSongImg.src = song.artwork_url;
+  } else if (!isMemeR && song.id) {
+    rSongImg.classList.add('d-none');
+    resolveSongArtwork(song, rSongImg);
+  } else {
+    rSongImg.classList.add('d-none');
+  }
 
   document.getElementById('r-title').textContent  = isMemeR ? (song.title || '') : (song.title || '—');
   document.getElementById('r-artist').classList.toggle('d-none', isMemeR);
@@ -790,6 +796,28 @@ async function fetchItunesPreview(title, artist) {
     return data.previewUrl ?? null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Backfill progresivo de carátula para canciones antiguas sin artwork_url guardado:
+ * la busca en iTunes al vuelo, la muestra si aparece, y la persiste en BD para que
+ * la próxima vez ya venga incluida (evita repetir la búsqueda en cada partida).
+ */
+async function resolveSongArtwork(song, imgEl) {
+  try {
+    const q = encodeURIComponent(song.title + ' ' + (song.artist || ''));
+    const r = await fetch(`${API}?action=itunes_preview&term=${q}`, { cache: 'no-store' });
+    const d = await r.json();
+    if (!d.artworkUrl) return;
+    imgEl.src = d.artworkUrl;
+    imgEl.classList.remove('d-none');
+    fetch(`${API}?action=save_song_artwork`, {
+      method: 'POST',
+      body: new URLSearchParams({ song_id: song.id, artwork_url: d.artworkUrl }),
+    }).catch(() => {});
+  } catch {
+    // Sin conexión o sin resultado: se queda sin carátula, no es crítico
   }
 }
 

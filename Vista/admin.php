@@ -434,6 +434,6 @@ $genres = Genres::allWithTodos(); ?>
   const TK  = 'hitstoric_tok';
   const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=55"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=56"></script>
 </body>
 </html>

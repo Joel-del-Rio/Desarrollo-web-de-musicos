@@ -146,18 +146,22 @@ try {
 
         case 'itunes_preview':
             $term = trim($_GET['term'] ?? '');
-            if (!$term) { echo json_encode(['previewUrl' => null]); break; }
+            if (!$term) { echo json_encode(['previewUrl' => null, 'artworkUrl' => null]); break; }
             $url  = 'https://itunes.apple.com/search?media=music&entity=song&limit=5&term=' . urlencode($term);
             $ctx  = stream_context_create(['http' => ['timeout' => 6, 'ignore_errors' => true,
                         'header' => 'User-Agent: Hitstoric/1.0']]);
             $raw  = @file_get_contents($url, false, $ctx);
-            if ($raw === false) { echo json_encode(['previewUrl' => null]); break; }
+            if ($raw === false) { echo json_encode(['previewUrl' => null, 'artworkUrl' => null]); break; }
             $data = json_decode($raw, true);
             $hit  = null;
+            $art  = null;
             foreach (($data['results'] ?? []) as $t) {
+                if (!$art && !empty($t['artworkUrl100'] ?? $t['artworkUrl60'] ?? null)) {
+                    $art = $t['artworkUrl100'] ?? $t['artworkUrl60'];
+                }
                 if (!empty($t['previewUrl'])) { $hit = $t['previewUrl']; break; }
             }
-            echo json_encode(['previewUrl' => $hit]);
+            echo json_encode(['previewUrl' => $hit, 'artworkUrl' => $art]);
             break;
 
         // ── Canciones ──────────────────────────────────
@@ -184,6 +188,12 @@ try {
             // Elimina una canción del catálogo (panel superadmin)
             require_once __DIR__ . '/SongController.php';
             echo json_encode((new SongController())->deleteSong());
+            break;
+
+        case 'save_song_artwork':
+            // Backfill progresivo: guarda la carátula encontrada en vivo para una canción antigua
+            require_once __DIR__ . '/SongController.php';
+            echo json_encode((new SongController())->saveArtwork());
             break;
 
         // ── Géneros ────────────────────────────────────

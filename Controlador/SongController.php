@@ -96,4 +96,23 @@ class SongController {
 
         return ['success' => true];
     }
+
+    /**
+     * Backfill progresivo de carátula: cuando una canción antigua no tenía artwork_url
+     * guardado, el frontend la busca en iTunes al mostrarla y la guarda aquí para no
+     * tener que volver a buscarla la próxima vez. Solo rellena si sigue vacía (no pisa
+     * una carátula ya guardada por si hay condición de carrera entre pestañas).
+     */
+    public function saveArtwork(): array {
+        $id  = (int)($_POST['song_id']     ?? 0);
+        $url = trim($_POST['artwork_url']  ?? '');
+        if (!$id)  return ['error' => 'ID de canción inválido'];
+        if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) return ['error' => 'URL inválida'];
+
+        $this->db->prepare(
+            "UPDATE songs SET artwork_url=? WHERE id=? AND artwork_url IS NULL"
+        )->execute([$url, $id]);
+
+        return ['success' => true];
+    }
 }
