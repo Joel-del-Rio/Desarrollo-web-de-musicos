@@ -285,6 +285,13 @@ require_once __DIR__ . '/../config.php'; ?>
               </div>
             </div>
 
+            <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+              <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" style="font-size:.78rem" onclick="backfillArtwork()" id="backfill-btn">
+                🖼️ Buscar carátulas faltantes
+              </button>
+              <span class="small" id="backfill-status" style="color:var(--muted)"></span>
+            </div>
+
             <div id="catalog-list" class="card p-0" style="overflow:hidden">
               <div class="text-center py-4 text-secondary">Cargando…</div>
             </div>
@@ -885,6 +892,7 @@ function renderCatalog(songs, expand) {
       <div class="collapse${expand ? ' show' : ''}" id="${panelId}">
         ${list.map(s => `
           <div class="catalog-row" id="catalog-row-${s.id}">
+            ${s.artwork_url ? `<img src="${esc(s.artwork_url)}" alt="">` : ''}
             <div class="catalog-row-info">
               <div class="catalog-row-title">${esc(s.title)}</div>
               <div class="catalog-row-sub">${esc(s.artist)} · ${s.year}</div>
@@ -916,6 +924,45 @@ async function deleteCatalogSong(id) {
     if (btn) btn.disabled = false;
     alert(r.error || 'Error al eliminar la canción');
   }
+}
+
+/**
+ * Busca en iTunes la carátula de cada canción del catálogo que aún no la tiene
+ * guardada, y la persiste. Secuencial con una pequeña pausa entre peticiones
+ * para no saturar la API de iTunes. Pensado para rellenar de golpe canciones
+ * antiguas en vez de esperar a que se jueguen una a una.
+ */
+async function backfillArtwork() {
+  const pending = allCatalogSongs.filter(s => !s.artwork_url);
+  const btn    = document.getElementById('backfill-btn');
+  const status = document.getElementById('backfill-status');
+
+  if (!pending.length) { status.textContent = 'Todas las canciones ya tienen carátula.'; return; }
+
+  btn.disabled = true;
+  let done = 0, found = 0;
+
+  for (const song of pending) {
+    status.textContent = `Buscando… ${done + 1}/${pending.length} (${found} encontradas)`;
+    try {
+      const q = encodeURIComponent(song.title + ' ' + song.artist);
+      const r = await fetch(`${API}?action=itunes_preview&term=${q}`, { cache: 'no-store' }).then(r => r.json());
+      if (r.artworkUrl) {
+        await fetch(`${API}?action=save_song_artwork`, {
+          method: 'POST',
+          body: new URLSearchParams({ song_id: song.id, artwork_url: r.artworkUrl }),
+        });
+        song.artwork_url = r.artworkUrl;
+        found++;
+      }
+    } catch { /* seguir con la siguiente aunque falle una */ }
+    done++;
+    await new Promise(res => setTimeout(res, 250)); // pausa entre peticiones
+  }
+
+  status.textContent = `Listo: ${found} carátulas encontradas de ${pending.length} canciones sin carátula.`;
+  btn.disabled = false;
+  filterCatalog();
 }
 
 /* ── Gestión de géneros ── */
