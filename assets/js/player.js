@@ -400,7 +400,34 @@ function renderLobby(state) {
     };
     av.innerHTML = avatarLayers(lobbyCustom, 150);
   }
+
+  // Votación de género — solo si la partida la tiene activada
+  const voteBox = document.getElementById('lobby-genre-vote');
+  if (voteBox) {
+    voteBox.classList.toggle('d-none', !state.genre_vote_enabled);
+    if (state.genre_vote_enabled) {
+      document.querySelectorAll('#lobby-genre-options .genre-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.genre === p.genre_vote);
+      });
+      document.getElementById('lobby-genre-vote-status').textContent =
+        p.genre_vote ? `Has votado: ${p.genre_vote}` : 'Aún no has votado';
+    }
+  }
+
   startPolling(1500);
+}
+
+/** Envía el voto de género del jugador (partidas con votación en la sala de espera) */
+async function voteGenre(genre) {
+  if (!playerId) return;
+  await fetch(`${API}?action=vote_genre`, {
+    method: 'POST',
+    body: new URLSearchParams({ player_id: playerId, genre }),
+  }).catch(() => {});
+  document.querySelectorAll('#lobby-genre-options .genre-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.genre === genre);
+  });
+  document.getElementById('lobby-genre-vote-status').textContent = `Has votado: ${genre}`;
 }
 
 /** Actualiza solo el contador de jugadores en el lobby sin re-renderizar toda la pantalla */

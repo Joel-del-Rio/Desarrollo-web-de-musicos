@@ -11,7 +11,9 @@
  *   PK  = clave localStorage para el ID del jugador
  *   GK  = clave localStorage para el ID de la partida
  */
-require_once __DIR__ . '/../config.php'; ?>
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../Modelo/Genres.php';
+$genres = Genres::allWithTodos(); ?>
 <!DOCTYPE html>
 <html lang="es" data-bs-theme="dark">
 <head>
@@ -108,6 +110,19 @@ require_once __DIR__ . '/../config.php'; ?>
       ⚡ Acierta rápido para ganar más puntos.
     </div>
   </div>
+
+  <!-- Votación de género (solo en partidas con votación activada) -->
+  <div id="lobby-genre-vote" class="card p-3 d-none" style="max-width:340px;width:100%">
+    <div class="text-secondary small text-uppercase fw-semibold mb-2 text-center">🗳️ Vota el género a jugar</div>
+    <div class="d-flex flex-wrap justify-content-center gap-2" id="lobby-genre-options">
+      <?php foreach ($genres as $g): ?>
+      <button type="button" class="btn btn-sm rounded-pill genre-btn" onclick="voteGenre('<?= htmlspecialchars($g, ENT_QUOTES) ?>')"
+              data-genre="<?= htmlspecialchars($g) ?>"><?= htmlspecialchars($g) ?></button>
+      <?php endforeach; ?>
+    </div>
+    <div class="text-center small mt-2" id="lobby-genre-vote-status" style="color:var(--muted)"></div>
+  </div>
+
   <button class="btn btn-outline-secondary btn-sm rounded-pill px-4" onclick="goToJoin()">‹ Salir</button>
 </div>
 
@@ -249,6 +264,6 @@ require_once __DIR__ . '/../config.php'; ?>
   const GK  = 'hitstoric_gid_p';
   const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=82"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=83"></script>
 </body>
 </html>

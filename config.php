@@ -28,10 +28,10 @@ define('TELEGRAM_BOT_TOKEN', '8942003671:AAH0ce6MXF_kcZXLDp9LHXsFC8u7xiCOqOA');
 define('TELEGRAM_CHAT_ID', '-5176880150');
 define('TELEGRAM_INTERVAL_MINUTES', 60); // cada cuánto se anuncia una partida nueva
 define('TELEGRAM_WAIT_SECONDS', 180);    // espera en la sala antes de arrancar (3 min)
-define('TELEGRAM_REVEAL_SECONDS', 15);   // pausa mostrando el resultado antes de la siguiente ronda
+define('TELEGRAM_REVEAL_SECONDS', 4);    // pausa entre canción y canción antes de la siguiente ronda
 define('TELEGRAM_ROUNDS', 10);
 define('TELEGRAM_QUESTION_TIME', 30);
-define('TELEGRAM_GENRE', 'Todos');
+// El género ya no es fijo: los jugadores lo votan en la sala de espera (genreVote en Game::create()).
 
 // ── Correo saliente ───────────────────────────────────
 // Usa PHP mail() del servidor — no requiere credenciales SMTP externas.

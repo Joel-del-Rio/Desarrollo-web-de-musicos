@@ -103,6 +103,30 @@ class PlayerController {
         return ['success' => true, 'avatar' => $avatar];
     }
 
+    /** Vota un género para la partida — solo si la partida tiene la votación activada y sigue en espera */
+    public function voteGenre(): array {
+        $playerId = (int)($_POST['player_id'] ?? 0);
+        $genre    = trim($_POST['genre'] ?? '');
+        if (!$playerId) return ['error' => 'Falta player_id'];
+
+        require_once __DIR__ . '/../Modelo/Genres.php';
+        if (!in_array($genre, Genres::allWithTodos(), true)) return ['error' => 'Género inválido'];
+
+        $pl = $this->player->getById($playerId);
+        if (!$pl) return ['error' => 'Jugador no encontrado'];
+
+        $game = $this->game->getById((int)$pl['game_id']);
+        if (!$game || $game['status'] !== 'waiting') {
+            return ['error' => 'Solo puedes votar en la sala de espera'];
+        }
+        if (empty($game['genre_vote_enabled'])) {
+            return ['error' => 'Esta partida no usa votación de género'];
+        }
+
+        $this->player->setGenreVote($playerId, $genre);
+        return ['success' => true, 'genre' => $genre];
+    }
+
     /** Cambia los complementos (pelo, gafas, sombrero, auriculares, vello facial) y sus posiciones — solo en la sala de espera */
     public function updateCustomization(): array {
         $playerId   = (int)($_POST['player_id'] ?? 0);

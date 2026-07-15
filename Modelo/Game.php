@@ -31,7 +31,8 @@ class Game {
         string $prize1 = '', string $prize2 = '', string $prize3 = '',
         array $playerEmails = [],
         int $hardMode = 0,
-        string $gameType = 'song'
+        string $gameType = 'song',
+        bool $genreVote = false
     ): array {
         // Generar PIN único de 4 dígitos (no repetir PINs de partidas activas)
         do {
@@ -47,18 +48,39 @@ class Game {
             "INSERT INTO games
              (pin, admin_token, total_rounds, question_time, selected_genre,
               show_links, embed_youtube, autoplay, pin_mode, organizer_email,
-              prize_1, prize_2, prize_3, hard_mode, game_type)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+              prize_1, prize_2, prize_3, hard_mode, game_type, genre_vote_enabled)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         )->execute([
             $pin, $token, $totalRounds, $questionTime, $genre,
             $showLinks, $embedYoutube, $autoplay, $pinMode,
             $organizerEmail ?: null, $prize1 ?: null, $prize2 ?: null, $prize3 ?: null,
-            $hardMode, $gameType,
+            $hardMode, $gameType, $genreVote ? 1 : 0,
         ]);
         $gameId = (int)$this->db->lastInsertId();
 
-        // Seleccionar contenido aleatorio para las rondas (filtrado por género si aplica)
-        // Modo memes: tabla memes/game_memes. Modo canciones: tabla songs/game_songs.
+        // Con votación de género, el contenido de las rondas se asigna en start()
+        // una vez se sepa qué género ganó la votación de los jugadores.
+        if (!$genreVote) {
+            $this->assignRoundContent($gameId, $genre, $gameType, $totalRounds);
+        }
+
+        $result = ['id' => $gameId, 'pin' => $pin, 'admin_token' => $token, 'pin_mode' => $pinMode];
+
+        // En modo individual, generar un PIN único por jugador
+        if ($pinMode === 'individual' && $individualCount > 0) {
+            $result['individual_pins'] = $this->generateIndividualPins($gameId, $individualCount, $playerEmails);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Selecciona contenido aleatorio para las rondas (filtrado por género si aplica)
+     * y lo asigna a game_songs/game_memes. Se llama desde create() en el flujo normal,
+     * o desde start() cuando la partida usa votación de género (el género no se conoce
+     * hasta que se cierra la votación al arrancar).
+     */
+    private function assignRoundContent(int $gameId, string $genre, string $gameType, int $totalRounds): void {
         $contentTable = $gameType === 'meme' ? 'memes' : 'songs';
         $gameTable    = $gameType === 'meme' ? 'game_memes' : 'game_songs';
         $itemCol      = $gameType === 'meme' ? 'meme_id' : 'song_id';
@@ -72,22 +94,31 @@ class Game {
         }
         $items = $st->fetchAll(PDO::FETCH_COLUMN);
 
-        // Asignar cada canción/meme a su número de ronda
         $ins = $this->db->prepare(
             "INSERT INTO {$gameTable} (game_id, {$itemCol}, round_number) VALUES (?,?,?)"
         );
         foreach ($items as $i => $itemId) {
             $ins->execute([$gameId, $itemId, $i + 1]);
         }
+    }
 
-        $result = ['id' => $gameId, 'pin' => $pin, 'admin_token' => $token, 'pin_mode' => $pinMode];
+    /**
+     * Cuenta los votos de género de los jugadores de la partida y devuelve el
+     * más votado (empate → uno al azar entre los empatados). 'Todos' si nadie votó.
+     */
+    private function tallyGenreVote(int $gameId): string {
+        $st = $this->db->prepare(
+            "SELECT genre_vote, COUNT(*) c FROM players
+             WHERE game_id=? AND genre_vote IS NOT NULL
+             GROUP BY genre_vote ORDER BY c DESC"
+        );
+        $st->execute([$gameId]);
+        $rows = $st->fetchAll();
+        if (!$rows) return 'Todos';
 
-        // En modo individual, generar un PIN único por jugador
-        if ($pinMode === 'individual' && $individualCount > 0) {
-            $result['individual_pins'] = $this->generateIndividualPins($gameId, $individualCount, $playerEmails);
-        }
-
-        return $result;
+        $top  = (int)$rows[0]['c'];
+        $tied = array_values(array_filter($rows, fn($r) => (int)$r['c'] === $top));
+        return $tied[array_rand($tied)]['genre_vote'];
     }
 
     /**
@@ -188,6 +219,14 @@ class Game {
         $game          = $this->getById($gameId);
         $gameType      = $game['game_type'] ?? 'song';
         $selectedGenre = $game['selected_genre'] ?: 'Todos';
+
+        // Con votación de género: cerrar la votación ahora y asignar recién el
+        // contenido de las rondas (en create() se dejó sin asignar a propósito)
+        if (!empty($game['genre_vote_enabled'])) {
+            $selectedGenre = $this->tallyGenreVote($gameId);
+            $this->db->prepare("UPDATE games SET selected_genre=? WHERE id=?")->execute([$selectedGenre, $gameId]);
+            $this->assignRoundContent($gameId, $selectedGenre, $gameType, (int)$game['total_rounds']);
+        }
 
         $contentTable  = $gameType === 'meme' ? 'memes' : 'songs';
         $gameTable     = $gameType === 'meme' ? 'game_memes' : 'game_songs';
@@ -366,6 +405,8 @@ class Game {
             'prize_2'       => $game['prize_2'] ?? null,
             'prize_3'       => $game['prize_3'] ?? null,
             'game_type'     => $game['game_type'] ?? 'song',
+            'genre_vote_enabled' => (int)($game['genre_vote_enabled'] ?? 0),
+            'selected_genre'     => $game['selected_genre'] ?? 'Todos',
         ];
     }
 }

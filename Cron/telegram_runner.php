@@ -4,13 +4,14 @@
  *
  * Pensado para ejecutarse por cron cada minuto. En cada ejecución:
  *  1. Si toca (según TELEGRAM_INTERVAL_MINUTES) y no hay ninguna partida en curso,
- *     crea una partida nueva y anuncia el PIN en el chat de Telegram.
+ *     crea una partida nueva (con votación de género) y anuncia el PIN en Telegram.
  *  2. Si hay una partida en la sala de espera y ya pasaron TELEGRAM_WAIT_SECONDS,
- *     la arranca (o la cancela si no se unió nadie).
+ *     la arranca (cierra la votación y elige el género más votado), o la cancela
+ *     si no se unió nadie.
  *  3. Si hay una partida en pregunta y se acabó el tiempo, revela el resultado
- *     y lo anuncia.
+ *     (sin anunciarlo — el resumen completo se manda solo al final).
  *  4. Si hay una partida en resultados y ya pasó TELEGRAM_REVEAL_SECONDS, avanza
- *     de ronda (o cierra la partida y anuncia el podio si era la última).
+ *     de ronda (o cierra la partida y anuncia el resumen + podio si era la última).
  *
  * No hace sleep en ningún punto — cada tick del cron hace como mucho un paso,
  * así que una ejecución nunca tarda más de una fracción de segundo y no hay
@@ -59,8 +60,9 @@ if (!$active) {
     }
 
     $result = $game->create(
-        TELEGRAM_ROUNDS, TELEGRAM_QUESTION_TIME, TELEGRAM_GENRE,
-        0, 0, 0, 'shared', '', 0, '', '', '', [], 0, 'song'
+        TELEGRAM_ROUNDS, TELEGRAM_QUESTION_TIME, 'Todos',
+        1, 1, 1, 'shared', '', 0, '', '', '', [], 0, 'song',
+        true // genreVote: el género se decide por votación de los jugadores al arrancar
     );
     $gameId = (int)$result['id'];
 
@@ -75,6 +77,7 @@ if (!$active) {
         "🎮 *¡Nueva partida de Hitstoric!*\n" .
         "PIN: `{$result['pin']}`\n" .
         "Únete aquí: {$joinUrl}\n" .
+        "🗳️ Al entrar podéis votar el género — gana el más votado.\n" .
         "⏳ Empieza en {$waitMin} minutos, ¡daos prisa!"
     );
     log_line("Partida #$gameId creada, PIN {$result['pin']}, anunciada en Telegram.");
@@ -105,11 +108,16 @@ switch ($phase) {
         }
 
         $game->start($gameId);
+        $winningGenre = $game->getById($gameId)['selected_genre'] ?? 'Todos';
         $db->prepare(
             "UPDATE telegram_runs SET phase='question', phase_changed_at=UTC_TIMESTAMP() WHERE game_id=?"
         )->execute([$gameId]);
-        $bot->sendMessage("🚀 ¡Empieza la partida con " . count($players) . " jugador(es)! Ronda 1 de " . TELEGRAM_ROUNDS . ".");
-        log_line("Partida #$gameId arrancada con " . count($players) . " jugadores.");
+        $bot->sendMessage(
+            "🚀 ¡Empieza la partida con " . count($players) . " jugador(es)!\n" .
+            "🎼 Género ganador: *{$winningGenre}*\n" .
+            "Ronda 1 de " . TELEGRAM_ROUNDS . "."
+        );
+        log_line("Partida #$gameId arrancada con " . count($players) . " jugadores, género '$winningGenre'.");
         break;
 
     case 'question':
@@ -119,20 +127,13 @@ switch ($phase) {
             break;
         }
 
-        // El tiempo se acabó: revelar resultados si el propio getState() no lo hizo ya
+        // El tiempo se acabó: revelar resultados si el propio getState() no lo hizo ya.
+        // No se anuncia nada aquí — el resumen completo se manda al terminar la partida.
         if ($state['status'] === 'question') $game->showResults($gameId);
-        $song = $game->getCurrentSong($gameId);
 
         $db->prepare(
             "UPDATE telegram_runs SET phase='results', phase_changed_at=UTC_TIMESTAMP() WHERE game_id=?"
         )->execute([$gameId]);
-
-        if ($song) {
-            $bot->sendMessage(
-                "✅ *{$song['title']}* — {$song['artist']} ({$song['year']})\n" .
-                "Ronda {$state['current_round']} de {$state['total_rounds']} completada."
-            );
-        }
         log_line("Partida #$gameId: ronda {$state['current_round']} revelada.");
         break;
 
@@ -145,15 +146,28 @@ switch ($phase) {
         $newStatus = $game->nextRound($gameId);
 
         if ($newStatus === 'finished') {
+            $songs = $db->prepare(
+                "SELECT s.title, s.artist, s.year
+                 FROM game_songs gs JOIN songs s ON s.id = gs.song_id
+                 WHERE gs.game_id = ? ORDER BY gs.round_number ASC"
+            );
+            $songs->execute([$gameId]);
+
+            $lines = ['🏁 *¡Partida terminada! Resumen:*', ''];
+            foreach ($songs->fetchAll() as $i => $s) {
+                $lines[] = ($i + 1) . ". {$s['title']} — {$s['artist']} ({$s['year']})";
+            }
+
             $leaderboard = $player->getByGame($gameId);
-            $lines = ['🏆 *¡Partida terminada!*'];
+            $lines[] = '';
+            $lines[] = '🏆 *Podio:*';
             foreach (array_slice($leaderboard, 0, 5) as $i => $p) {
                 $medal = ['🥇', '🥈', '🥉'][$i] ?? ($i + 1) . '.';
                 $lines[] = "{$medal} {$p['name']} — {$p['score']} pts";
             }
             $bot->sendMessage(implode("\n", $lines));
             $db->prepare("UPDATE telegram_runs SET phase='finished' WHERE game_id=?")->execute([$gameId]);
-            log_line("Partida #$gameId finalizada y podio anunciado.");
+            log_line("Partida #$gameId finalizada y resumen anunciado.");
         } else {
             $db->prepare(
                 "UPDATE telegram_runs SET phase='question', phase_changed_at=UTC_TIMESTAMP() WHERE game_id=?"

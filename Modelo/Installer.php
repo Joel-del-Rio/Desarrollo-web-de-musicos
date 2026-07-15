@@ -286,8 +286,16 @@ class Installer {
             $currentVersion = 21;
         }
 
+        // v22: votación de género en la sala de espera (partidas del bot de Telegram)
+        if ($currentVersion === 21) {
+            try { $pdo->exec("ALTER TABLE games ADD COLUMN genre_vote_enabled TINYINT(1) DEFAULT 0"); } catch (\Exception $e) {}
+            try { $pdo->exec("ALTER TABLE players ADD COLUMN genre_vote VARCHAR(100) NULL"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=22");
+            $currentVersion = 22;
+        }
+
         // Esquema actualizado: verificar integridad y salir
-        if ($currentVersion >= 21) {
+        if ($currentVersion >= 22) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
@@ -336,6 +344,7 @@ class Installer {
                 question_started_at TIMESTAMP NULL,
                 created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 game_type           ENUM('song','meme') DEFAULT 'song',
+                genre_vote_enabled  TINYINT(1) DEFAULT 0,
                 INDEX idx_pin (pin)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
@@ -371,6 +380,7 @@ class Installer {
                 glasses_pos     VARCHAR(16) DEFAULT '',
                 hat_pos         VARCHAR(16) DEFAULT '',
                 facial_hair_pos VARCHAR(16) DEFAULT '',
+                genre_vote   VARCHAR(100) NULL,
                 email        VARCHAR(255) NULL,
                 streak       INT DEFAULT 0,
                 last_seen    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

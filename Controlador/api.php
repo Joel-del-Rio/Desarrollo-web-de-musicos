@@ -256,6 +256,12 @@ try {
             echo json_encode((new PlayerController())->updateAvatar());
             break;
 
+        case 'vote_genre':
+            // Vota un género para la partida (partidas con votación activada, en sala de espera)
+            require_once __DIR__ . '/PlayerController.php';
+            echo json_encode((new PlayerController())->voteGenre());
+            break;
+
         case 'update_customization':
             // Cambia pelo/gafas/sombrero/auriculares del jugador (solo en la sala de espera)
             require_once __DIR__ . '/PlayerController.php';
