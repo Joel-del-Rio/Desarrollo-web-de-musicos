@@ -268,8 +268,26 @@ class Installer {
             $currentVersion = 20;
         }
 
+        // v21: control de partidas automáticas del bot de Telegram (Cron/telegram_runner.php)
+        if ($currentVersion === 20) {
+            try {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS telegram_runs (
+                        id               INT AUTO_INCREMENT PRIMARY KEY,
+                        game_id          INT NOT NULL,
+                        phase            ENUM('waiting','question','results','finished') DEFAULT 'waiting',
+                        phase_changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ");
+            } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=21");
+            $currentVersion = 21;
+        }
+
         // Esquema actualizado: verificar integridad y salir
-        if ($currentVersion >= 20) {
+        if ($currentVersion >= 21) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
@@ -506,6 +524,18 @@ class Installer {
                 FOREIGN KEY (game_id)   REFERENCES games(id),
                 FOREIGN KEY (player_id) REFERENCES players(id),
                 FOREIGN KEY (meme_id)   REFERENCES memes(id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        // Control de partidas automáticas del bot de Telegram
+        $pdo->exec("
+            CREATE TABLE telegram_runs (
+                id               INT AUTO_INCREMENT PRIMARY KEY,
+                game_id          INT NOT NULL,
+                phase            ENUM('waiting','question','results','finished') DEFAULT 'waiting',
+                phase_changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
 

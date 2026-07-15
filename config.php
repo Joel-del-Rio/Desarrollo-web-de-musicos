@@ -20,6 +20,19 @@ if (PHP_OS_FAMILY === 'Windows') {
     define('DB_NAME', 'dbe7oc67cjh788');
 }
 
+// ── Bot de Telegram (partidas automáticas) ────────────
+// Crea un bot con @BotFather en Telegram, añádelo al grupo/canal y pon aquí
+// el token y el chat_id. Mientras TELEGRAM_ENABLED sea false, el cron no hace nada.
+define('TELEGRAM_ENABLED', false);
+define('TELEGRAM_BOT_TOKEN', '');
+define('TELEGRAM_CHAT_ID', '');
+define('TELEGRAM_INTERVAL_MINUTES', 30); // cada cuánto se anuncia una partida nueva
+define('TELEGRAM_WAIT_SECONDS', 180);    // espera en la sala antes de arrancar (3 min)
+define('TELEGRAM_REVEAL_SECONDS', 15);   // pausa mostrando el resultado antes de la siguiente ronda
+define('TELEGRAM_ROUNDS', 10);
+define('TELEGRAM_QUESTION_TIME', 30);
+define('TELEGRAM_GENRE', 'Todos');
+
 // ── Correo saliente ───────────────────────────────────
 // Usa PHP mail() del servidor — no requiere credenciales SMTP externas.
 // En local (Windows) el envío está desactivado para no depender de configuración extra.
@@ -45,9 +58,16 @@ const GENRES = [
 // ── URL base dinámica ─────────────────────────────────
 // Calcula automáticamente la URL raíz del proyecto, tanto en XAMPP
 // (donde puede estar en una subcarpeta) como en SiteGround (raíz del dominio).
-$scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host     = $_SERVER['HTTP_HOST'] ?? 'localhost';
-$docRoot  = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
-$projRoot = rtrim(str_replace('\\', '/', __DIR__), '/');
-$basePath = str_replace($docRoot, '', $projRoot);
-define('BASE_URL', $scheme . '://' . $host . $basePath);
+// Por CLI (cron) no hay $_SERVER['HTTP_HOST']/DOCUMENT_ROOT, así que se fija a mano.
+if (PHP_SAPI === 'cli') {
+    define('BASE_URL', PHP_OS_FAMILY === 'Windows'
+        ? 'http://localhost/Practicas/Web%20Musicos'
+        : 'https://hitstoric.nite.black');
+} else {
+    $scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host     = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $docRoot  = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
+    $projRoot = rtrim(str_replace('\\', '/', __DIR__), '/');
+    $basePath = str_replace($docRoot, '', $projRoot);
+    define('BASE_URL', $scheme . '://' . $host . $basePath);
+}
