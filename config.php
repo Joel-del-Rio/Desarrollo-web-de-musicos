@@ -26,7 +26,7 @@ if (PHP_OS_FAMILY === 'Windows') {
 define('TELEGRAM_ENABLED', true);
 define('TELEGRAM_BOT_TOKEN', '8942003671:AAH0ce6MXF_kcZXLDp9LHXsFC8u7xiCOqOA');
 define('TELEGRAM_CHAT_ID', '-5176880150');
-define('TELEGRAM_INTERVAL_MINUTES', 60); // cada cuánto se anuncia una partida nueva
+define('TELEGRAM_INTERVAL_MINUTES', 60); // en horas completas alineadas a :00 — 60 = cada hora en punto, 120 = cada 2h, etc.
 define('TELEGRAM_WAIT_SECONDS', 180);    // espera en la sala antes de arrancar (3 min)
 define('TELEGRAM_REVEAL_SECONDS', 4);    // pausa entre canción y canción antes de la siguiente ronda
 define('TELEGRAM_ROUNDS', 10);

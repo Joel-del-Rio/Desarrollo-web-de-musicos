@@ -3,8 +3,9 @@
  * telegram_runner.php — Partidas automáticas anunciadas por Telegram
  *
  * Pensado para ejecutarse por cron cada minuto. En cada ejecución:
- *  1. Si toca (según TELEGRAM_INTERVAL_MINUTES) y no hay ninguna partida en curso,
- *     crea una partida nueva (con votación de género) y anuncia el PIN en Telegram.
+ *  1. Si es una hora en punto (según TELEGRAM_INTERVAL_MINUTES, hora española) y no
+ *     hay ninguna partida en curso, crea una partida nueva (con votación de género)
+ *     y anuncia el PIN en Telegram.
  *  2. Si hay una partida en la sala de espera y ya pasaron TELEGRAM_WAIT_SECONDS,
  *     la arranca (cierra la votación y elige el género más votado), o la cancela
  *     si no se unió nadie.
@@ -29,6 +30,10 @@ require_once __DIR__ . '/../Modelo/TelegramBot.php';
 if (PHP_SAPI !== 'cli') { http_response_code(403); exit('Solo por CLI'); }
 if (!TELEGRAM_ENABLED) exit("Telegram deshabilitado (TELEGRAM_ENABLED=false)\n");
 
+// Fija la zona horaria explícitamente para que "en punto" sea la hora española
+// sin depender del default del hosting (que suele venir en UTC)
+date_default_timezone_set('Europe/Madrid');
+
 // Evita que dos ejecuciones se solapen si una tarda más de lo normal
 $lockFile = sys_get_temp_dir() . '/hitstoric_telegram_runner.lock';
 $lock = fopen($lockFile, 'c');
@@ -49,12 +54,14 @@ $active = $db->query(
 )->fetch();
 
 if (!$active) {
-    // No hay ninguna en curso: ¿toca crear una nueva?
-    $lastCreatedAt = $db->query("SELECT MAX(created_at) FROM telegram_runs")->fetchColumn();
-    $secondsSinceLast = $lastCreatedAt ? (time() - strtotime($lastCreatedAt . ' UTC')) : PHP_INT_MAX;
+    // No hay ninguna en curso: ¿es la hora en punto que toca?
+    // TELEGRAM_INTERVAL_MINUTES se interpreta en horas completas (60 = cada hora,
+    // 120 = cada 2 horas en las horas pares, etc.), siempre alineado a :00.
+    $hoursInterval = max(1, (int)round(TELEGRAM_INTERVAL_MINUTES / 60));
+    $isHourMark    = (int)date('i') === 0 && (int)date('H') % $hoursInterval === 0;
 
-    if ($secondsSinceLast < TELEGRAM_INTERVAL_MINUTES * 60) {
-        log_line("Aún no toca crear partida (faltan " . (TELEGRAM_INTERVAL_MINUTES * 60 - $secondsSinceLast) . "s).");
+    if (!$isHourMark) {
+        log_line('No es la hora en punto que toca (ahora ' . date('H:i') . ').');
         flock($lock, LOCK_UN);
         exit;
     }
