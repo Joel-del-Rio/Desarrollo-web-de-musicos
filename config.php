@@ -23,10 +23,10 @@ if (PHP_OS_FAMILY === 'Windows') {
 // ── Bot de Telegram (partidas automáticas) ────────────
 // Crea un bot con @BotFather en Telegram, añádelo al grupo/canal y pon aquí
 // el token y el chat_id. Mientras TELEGRAM_ENABLED sea false, el cron no hace nada.
-define('TELEGRAM_ENABLED', false);
-define('TELEGRAM_BOT_TOKEN', '');
-define('TELEGRAM_CHAT_ID', '');
-define('TELEGRAM_INTERVAL_MINUTES', 30); // cada cuánto se anuncia una partida nueva
+define('TELEGRAM_ENABLED', true);
+define('TELEGRAM_BOT_TOKEN', '8942003671:AAH0ce6MXF_kcZXLDp9LHXsFC8u7xiCOqOA');
+define('TELEGRAM_CHAT_ID', '-5176880150');
+define('TELEGRAM_INTERVAL_MINUTES', 60); // cada cuánto se anuncia una partida nueva
 define('TELEGRAM_WAIT_SECONDS', 180);    // espera en la sala antes de arrancar (3 min)
 define('TELEGRAM_REVEAL_SECONDS', 15);   // pausa mostrando el resultado antes de la siguiente ronda
 define('TELEGRAM_ROUNDS', 10);
