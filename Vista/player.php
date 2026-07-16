@@ -12,9 +12,7 @@
  *   GK  = clave localStorage para el ID de la partida
  */
 require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/../Modelo/Genres.php';
-require_once __DIR__ . '/../Modelo/Reaction.php';
-$genres = Genres::allWithTodos(); ?>
+require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
 <!DOCTYPE html>
 <html lang="es" data-bs-theme="dark">
 <head>
@@ -105,6 +103,19 @@ $genres = Genres::allWithTodos(); ?>
       15%  { transform: translateY(-40px) scale(1); opacity: 1; }
       100% { transform: translateY(-320px) scale(1); opacity: 0; }
     }
+
+    /* ── Navegador de servidores (partidas públicas) ── */
+    .server-row {
+      display: flex; align-items: center; gap: .75rem;
+      padding: .65rem .9rem; border-radius: 12px;
+      background: var(--card);
+      border: 1.5px solid rgba(255,255,255,.08);
+      margin-bottom: .5rem;
+      cursor: pointer; transition: border-color .15s;
+    }
+    .server-row:hover { border-color: var(--accent); }
+    .server-row-pin { font-weight: 900; font-size: 1.3rem; letter-spacing: .08em; color: var(--accent); }
+    .server-row-info { flex: 1; min-width: 0; font-size: .78rem; color: var(--muted); }
   </style>
 </head>
 <body>
@@ -151,10 +162,31 @@ $genres = Genres::allWithTodos(); ?>
       <div id="join-error" class="alert alert-danger mt-3 py-2 small d-none text-center"></div>
     </div>
 
-    <div class="text-center mt-3">
+    <div class="text-center mt-3 d-flex flex-column gap-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-4" onclick="openServerBrowser()">
+        🌐 Ver partidas públicas
+      </button>
       <a href="<?= BASE_URL ?>/Vista/index.php" class="btn btn-outline-secondary btn-sm rounded-pill px-4">‹ Volver al inicio</a>
     </div>
 
+  </div>
+</div>
+
+<!-- ══ NAVEGADOR DE SERVIDORES (partidas públicas) ══ -->
+<div class="modal fade" id="serverBrowserModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content" style="background:var(--bg)">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-black">🌐 Partidas públicas</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill mb-3" onclick="loadPublicGames()">↻ Actualizar</button>
+        <div id="server-list">
+          <div class="text-center py-4 text-secondary">Cargando…</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -182,18 +214,6 @@ $genres = Genres::allWithTodos(); ?>
       📅 Colócalas en orden cronológico.<br>
       ⚡ Acierta rápido para ganar más puntos.
     </div>
-  </div>
-
-  <!-- Votación de género (solo en partidas con votación activada) -->
-  <div id="lobby-genre-vote" class="card p-3 d-none" style="max-width:340px;width:100%">
-    <div class="text-secondary small text-uppercase fw-semibold mb-2 text-center">🗳️ Vota el género a jugar</div>
-    <div class="d-flex flex-wrap justify-content-center gap-2" id="lobby-genre-options">
-      <?php foreach ($genres as $g): ?>
-      <button type="button" class="btn btn-sm rounded-pill genre-btn" onclick="voteGenre('<?= htmlspecialchars($g, ENT_QUOTES) ?>')"
-              data-genre="<?= htmlspecialchars($g) ?>"><?= htmlspecialchars($g) ?></button>
-      <?php endforeach; ?>
-    </div>
-    <div class="text-center small mt-2" id="lobby-genre-vote-status" style="color:var(--muted)"></div>
   </div>
 
   <button class="btn btn-outline-secondary btn-sm rounded-pill px-4" onclick="goToJoin()">‹ Salir</button>
@@ -348,6 +368,6 @@ $genres = Genres::allWithTodos(); ?>
   const GK  = 'hitstoric_gid_p';
   const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=85"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=86"></script>
 </body>
 </html>

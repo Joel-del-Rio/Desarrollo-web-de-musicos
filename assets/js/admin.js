@@ -488,6 +488,15 @@ function updateGridLayout() {
 }
 
 /* ── Formulario de configuración de la partida ───────────────── */
+function setVisibility(btn, visibility) {
+  document.querySelectorAll('#visibility-selector .genre-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const isPublic = visibility === 'public';
+  document.getElementById('is-public').value = isPublic ? '1' : '0';
+  document.getElementById('visibility-desc-private').classList.toggle('d-none', isPublic);
+  document.getElementById('visibility-desc-public').classList.toggle('d-none', !isPublic);
+}
+
 function setPinMode(btn, mode) {
   document.querySelectorAll('#pin-mode-selector .genre-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -621,6 +630,7 @@ async function createGame() {
   const rounds = parseInt(document.getElementById('rounds-input').value, 10);
   const time   = parseInt(document.getElementById('time-input').value,   10);
   const gameType        = document.getElementById('game-type').value;
+  const isPublic        = document.getElementById('is-public').value;
   const activeGenreBtn = document.querySelector('#genre-selector .genre-btn.active');
   const genre           = activeGenreBtn ? activeGenreBtn.dataset.genre : 'Todos';
   const showLinks       = document.getElementById('toggle-links').checked     ? '1' : '0';
@@ -657,7 +667,7 @@ async function createGame() {
 
   try {
     const body = new URLSearchParams({
-      total_rounds: rounds, question_time: time, genre, game_type: gameType,
+      total_rounds: rounds, question_time: time, genre, game_type: gameType, is_public: isPublic,
       show_links: showLinks, embed_youtube: embedYoutube, autoplay, hard_mode: hardMode,
       pin_mode: pinMode, organizer_email: organizerEmail, individual_count: individualCount,
     });

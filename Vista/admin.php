@@ -135,6 +135,27 @@ $genres = Genres::allWithTodos(); ?>
         </div>
       </div>
 
+      <!-- Visibilidad -->
+      <div class="mb-4">
+        <label class="form-label text-secondary small fw-semibold text-uppercase">Visibilidad</label>
+        <div class="d-flex gap-2 mt-2" id="visibility-selector">
+          <button type="button" class="btn btn-sm rounded-pill genre-btn active"
+                  onclick="setVisibility(this,'private')" data-visibility="private">🔒 Privada</button>
+          <button type="button" class="btn btn-sm rounded-pill genre-btn"
+                  onclick="setVisibility(this,'public')" data-visibility="public">🌐 Pública</button>
+        </div>
+        <div id="visibility-desc-private" class="mt-3 p-3 rounded-3" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+          <div class="small" style="color:var(--muted);line-height:1.7">Solo se une quien tenga el PIN. No se anuncia en ningún sitio.</div>
+        </div>
+        <div id="visibility-desc-public" class="mt-3 p-3 rounded-3 d-none" style="background:rgba(233,69,96,.06);border:1px solid rgba(233,69,96,.2)">
+          <div class="small" style="color:var(--muted);line-height:1.7">
+            El PIN y el enlace se anuncian en el grupo de Telegram, y la partida aparece en el navegador de
+            servidores públicos dentro de la app del jugador mientras esté en sala de espera.
+          </div>
+        </div>
+        <input type="hidden" id="is-public" value="0">
+      </div>
+
       <!-- Modo PIN -->
       <div class="mb-4">
         <label class="form-label text-secondary small fw-semibold text-uppercase">Modo de acceso</label>
@@ -434,6 +455,6 @@ $genres = Genres::allWithTodos(); ?>
   const TK  = 'hitstoric_tok';
   const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=56"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=57"></script>
 </body>
 </html>

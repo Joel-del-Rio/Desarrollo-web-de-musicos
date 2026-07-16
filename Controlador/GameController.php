@@ -37,6 +37,7 @@ class GameController {
         $pinMode      = ($_POST['pin_mode'] ?? 'shared') === 'individual' ? 'individual' : 'shared';
         $email        = filter_var(trim($_POST['organizer_email'] ?? ''), FILTER_VALIDATE_EMAIL) ?: '';
         $indivCount   = max(2, min(30, (int)($_POST['individual_count'] ?? 2)));
+        $isPublic     = ($_POST['is_public'] ?? '0') === '1';
 
         // Emails de los jugadores (modo individual) — se validan uno a uno
         $playerEmails = array_values(array_map(
@@ -50,7 +51,8 @@ class GameController {
             '', '', '',
             $playerEmails,
             $hardMode,
-            $gameType
+            $gameType,
+            $isPublic
         );
 
         // Enviar emails de confirmación si la partida se creó correctamente
@@ -68,9 +70,26 @@ class GameController {
                     if ($pEmail) EmailService::sendPlayerPin($pEmail, $pin, BASE_URL, $idx + 1);
                 }
             }
+
+            // Partida pública: anunciar el PIN y el enlace de unión en Telegram
+            if ($isPublic && defined('TELEGRAM_ENABLED') && TELEGRAM_ENABLED) {
+                require_once __DIR__ . '/../Modelo/TelegramBot.php';
+                $bot     = new TelegramBot(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID);
+                $joinUrl = BASE_URL . '/player?pin=' . $result['pin'];
+                $bot->sendMessage(
+                    "🎮 *¡Nueva partida pública de Hitstoric!*\n" .
+                    "PIN: `{$result['pin']}`\n" .
+                    "Únete aquí: {$joinUrl}"
+                );
+            }
         }
 
         return $result;
+    }
+
+    /** Lista las partidas públicas abiertas para el navegador de servidores del jugador */
+    public function listPublicGames(): array {
+        return ['success' => true, 'games' => $this->game->listPublic()];
     }
 
     /**

@@ -32,6 +32,12 @@ try {
             echo json_encode((new GameController())->createGame());
             break;
 
+        case 'list_public_games':
+            // Lista las partidas públicas abiertas (navegador de servidores del jugador)
+            require_once __DIR__ . '/GameController.php';
+            echo json_encode((new GameController())->listPublicGames());
+            break;
+
         case 'game_state':
             // Estado de la partida para el polling del admin (cada 1s durante pregunta)
             require_once __DIR__ . '/GameController.php';
@@ -254,12 +260,6 @@ try {
             // Cambia el avatar del jugador (solo permitido en la sala de espera)
             require_once __DIR__ . '/PlayerController.php';
             echo json_encode((new PlayerController())->updateAvatar());
-            break;
-
-        case 'vote_genre':
-            // Vota un género para la partida (partidas con votación activada, en sala de espera)
-            require_once __DIR__ . '/PlayerController.php';
-            echo json_encode((new PlayerController())->voteGenre());
             break;
 
         case 'update_customization':

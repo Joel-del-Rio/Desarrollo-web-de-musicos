@@ -32,7 +32,7 @@ class Game {
         array $playerEmails = [],
         int $hardMode = 0,
         string $gameType = 'song',
-        bool $genreVote = false
+        bool $isPublic = false
     ): array {
         // Generar PIN único de 4 dígitos (no repetir PINs de partidas activas)
         do {
@@ -48,21 +48,17 @@ class Game {
             "INSERT INTO games
              (pin, admin_token, total_rounds, question_time, selected_genre,
               show_links, embed_youtube, autoplay, pin_mode, organizer_email,
-              prize_1, prize_2, prize_3, hard_mode, game_type, genre_vote_enabled)
+              prize_1, prize_2, prize_3, hard_mode, game_type, is_public)
              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         )->execute([
             $pin, $token, $totalRounds, $questionTime, $genre,
             $showLinks, $embedYoutube, $autoplay, $pinMode,
             $organizerEmail ?: null, $prize1 ?: null, $prize2 ?: null, $prize3 ?: null,
-            $hardMode, $gameType, $genreVote ? 1 : 0,
+            $hardMode, $gameType, $isPublic ? 1 : 0,
         ]);
         $gameId = (int)$this->db->lastInsertId();
 
-        // Con votación de género, el contenido de las rondas se asigna en start()
-        // una vez se sepa qué género ganó la votación de los jugadores.
-        if (!$genreVote) {
-            $this->assignRoundContent($gameId, $genre, $gameType, $totalRounds);
-        }
+        $this->assignRoundContent($gameId, $genre, $gameType, $totalRounds);
 
         $result = ['id' => $gameId, 'pin' => $pin, 'admin_token' => $token, 'pin_mode' => $pinMode];
 
@@ -76,9 +72,7 @@ class Game {
 
     /**
      * Selecciona contenido aleatorio para las rondas (filtrado por género si aplica)
-     * y lo asigna a game_songs/game_memes. Se llama desde create() en el flujo normal,
-     * o desde start() cuando la partida usa votación de género (el género no se conoce
-     * hasta que se cierra la votación al arrancar).
+     * y lo asigna a game_songs/game_memes.
      */
     private function assignRoundContent(int $gameId, string $genre, string $gameType, int $totalRounds): void {
         $contentTable = $gameType === 'meme' ? 'memes' : 'songs';
@@ -100,25 +94,6 @@ class Game {
         foreach ($items as $i => $itemId) {
             $ins->execute([$gameId, $itemId, $i + 1]);
         }
-    }
-
-    /**
-     * Cuenta los votos de género de los jugadores de la partida y devuelve el
-     * más votado (empate → uno al azar entre los empatados). 'Todos' si nadie votó.
-     */
-    private function tallyGenreVote(int $gameId): string {
-        $st = $this->db->prepare(
-            "SELECT genre_vote, COUNT(*) c FROM players
-             WHERE game_id=? AND genre_vote IS NOT NULL
-             GROUP BY genre_vote ORDER BY c DESC"
-        );
-        $st->execute([$gameId]);
-        $rows = $st->fetchAll();
-        if (!$rows) return 'Todos';
-
-        $top  = (int)$rows[0]['c'];
-        $tied = array_values(array_filter($rows, fn($r) => (int)$r['c'] === $top));
-        return $tied[array_rand($tied)]['genre_vote'];
     }
 
     /**
@@ -219,14 +194,6 @@ class Game {
         $game          = $this->getById($gameId);
         $gameType      = $game['game_type'] ?? 'song';
         $selectedGenre = $game['selected_genre'] ?: 'Todos';
-
-        // Con votación de género: cerrar la votación ahora y asignar recién el
-        // contenido de las rondas (en create() se dejó sin asignar a propósito)
-        if (!empty($game['genre_vote_enabled'])) {
-            $selectedGenre = $this->tallyGenreVote($gameId);
-            $this->db->prepare("UPDATE games SET selected_genre=? WHERE id=?")->execute([$selectedGenre, $gameId]);
-            $this->assignRoundContent($gameId, $selectedGenre, $gameType, (int)$game['total_rounds']);
-        }
 
         $contentTable  = $gameType === 'meme' ? 'memes' : 'songs';
         $gameTable     = $gameType === 'meme' ? 'game_memes' : 'game_songs';
@@ -405,8 +372,26 @@ class Game {
             'prize_2'       => $game['prize_2'] ?? null,
             'prize_3'       => $game['prize_3'] ?? null,
             'game_type'     => $game['game_type'] ?? 'song',
-            'genre_vote_enabled' => (int)($game['genre_vote_enabled'] ?? 0),
-            'selected_genre'     => $game['selected_genre'] ?? 'Todos',
+            'selected_genre' => $game['selected_genre'] ?? 'Todos',
+            'is_public'      => (int)($game['is_public'] ?? 0),
         ];
+    }
+
+    /**
+     * Lista las partidas públicas abiertas (en sala de espera) para el
+     * navegador de servidores del jugador.
+     */
+    public function listPublic(): array {
+        $st = $this->db->query(
+            "SELECT g.id, g.pin, g.selected_genre, g.game_type, g.total_rounds,
+                    g.organizer_email, COUNT(p.id) AS player_count
+             FROM games g
+             LEFT JOIN players p ON p.game_id = g.id
+             WHERE g.is_public = 1 AND g.status = 'waiting'
+             GROUP BY g.id
+             ORDER BY g.created_at DESC
+             LIMIT 50"
+        );
+        return $st->fetchAll(PDO::FETCH_ASSOC);
     }
 }

@@ -20,18 +20,14 @@ if (PHP_OS_FAMILY === 'Windows') {
     define('DB_NAME', 'dbe7oc67cjh788');
 }
 
-// ── Bot de Telegram (partidas automáticas) ────────────
+// ── Bot de Telegram (anuncio de partidas públicas) ────
 // Crea un bot con @BotFather en Telegram, añádelo al grupo/canal y pon aquí
-// el token y el chat_id. Mientras TELEGRAM_ENABLED sea false, el cron no hace nada.
+// el token y el chat_id. Mientras TELEGRAM_ENABLED sea false, no se anuncia nada.
+// Cuando el dinamizador marca una partida como pública, se manda el PIN + enlace
+// aquí automáticamente (GameController::createGame).
 define('TELEGRAM_ENABLED', true);
 define('TELEGRAM_BOT_TOKEN', '8942003671:AAH0ce6MXF_kcZXLDp9LHXsFC8u7xiCOqOA');
 define('TELEGRAM_CHAT_ID', '-1003833086131'); // el grupo se convirtió en supergrupo y cambió de id
-define('TELEGRAM_INTERVAL_MINUTES', 60); // en horas completas alineadas a :00 — 60 = cada hora en punto, 120 = cada 2h, etc.
-define('TELEGRAM_WAIT_SECONDS', 180);    // espera en la sala antes de arrancar (3 min)
-define('TELEGRAM_REVEAL_SECONDS', 4);    // pausa entre canción y canción antes de la siguiente ronda
-define('TELEGRAM_ROUNDS', 10);
-define('TELEGRAM_QUESTION_TIME', 30);
-// El género ya no es fijo: los jugadores lo votan en la sala de espera (genreVote en Game::create()).
 
 // ── Correo saliente ───────────────────────────────────
 // Usa PHP mail() del servidor — no requiere credenciales SMTP externas.

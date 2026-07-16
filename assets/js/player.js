@@ -16,6 +16,7 @@ let selectedPos  = null;        // Posición seleccionada en el timeline (índic
 let currentSong  = null;        // Canción de la ronda actual
 let questionTime = 30;          // Duración de la pregunta en segundos
 let lastReactionId = 0;         // Id de la última reacción ya mostrada (evita repetirlas)
+let serverBrowserModal = null;  // Instancia del modal de partidas públicas
 
 /* ── Selección de avatar y complementos ───────────────────────── */
 // Mismas listas y orden que las constantes de Player.php en el backend
@@ -176,7 +177,49 @@ let pPreviewLoading   = false;
   document.getElementById('name-input')?.addEventListener('keydown', e => { if(e.key==='Enter') joinGame(); });
   renderJoinCustomizer();
   initPlayerAudio();
+  const modalEl = document.getElementById('serverBrowserModal');
+  if (modalEl && window.bootstrap) serverBrowserModal = new bootstrap.Modal(modalEl);
 })();
+
+/* ── Navegador de servidores (partidas públicas) ─────────────── */
+
+function openServerBrowser() {
+  serverBrowserModal?.show();
+  loadPublicGames();
+}
+
+async function loadPublicGames() {
+  const box = document.getElementById('server-list');
+  box.innerHTML = '<div class="text-center py-4 text-secondary">Cargando…</div>';
+
+  const data = await fetch(`${API}?action=list_public_games`).then(r => r.json()).catch(() => null);
+  const games = data?.games || [];
+
+  if (!games.length) {
+    box.innerHTML = '<div class="text-center py-4 text-secondary">No hay partidas públicas abiertas ahora mismo.</div>';
+    return;
+  }
+
+  box.innerHTML = games.map(g => {
+    const kind = g.game_type === 'meme' ? '😂 Memes' : '🎵 Canciones';
+    return `
+    <div class="server-row" onclick="joinServer('${g.pin}')">
+      <div class="server-row-pin">${esc(g.pin)}</div>
+      <div class="server-row-info">
+        ${kind} · ${esc(g.selected_genre || 'Todos')}<br>
+        ${g.player_count} jugador(es) · ${g.total_rounds} rondas
+      </div>
+      <div class="text-secondary">›</div>
+    </div>`;
+  }).join('');
+}
+
+function joinServer(pin) {
+  serverBrowserModal?.hide();
+  const pinInput = document.getElementById('pin-input');
+  if (pinInput) pinInput.value = pin;
+  document.getElementById('name-input')?.focus();
+}
 
 /* ── Personalizador de avatar en la pantalla de unirse ────────── */
 function renderJoinCustomizer() {
@@ -453,33 +496,7 @@ function renderLobby(state) {
     av.innerHTML = avatarLayers(lobbyCustom, 150);
   }
 
-  // Votación de género — solo si la partida la tiene activada
-  const voteBox = document.getElementById('lobby-genre-vote');
-  if (voteBox) {
-    voteBox.classList.toggle('d-none', !state.genre_vote_enabled);
-    if (state.genre_vote_enabled) {
-      document.querySelectorAll('#lobby-genre-options .genre-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.genre === p.genre_vote);
-      });
-      document.getElementById('lobby-genre-vote-status').textContent =
-        p.genre_vote ? `Has votado: ${p.genre_vote}` : 'Aún no has votado';
-    }
-  }
-
   startPolling(1500);
-}
-
-/** Envía el voto de género del jugador (partidas con votación en la sala de espera) */
-async function voteGenre(genre) {
-  if (!playerId) return;
-  await fetch(`${API}?action=vote_genre`, {
-    method: 'POST',
-    body: new URLSearchParams({ player_id: playerId, genre }),
-  }).catch(() => {});
-  document.querySelectorAll('#lobby-genre-options .genre-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.genre === genre);
-  });
-  document.getElementById('lobby-genre-vote-status').textContent = `Has votado: ${genre}`;
 }
 
 /** Actualiza solo el contador de jugadores en el lobby sin re-renderizar toda la pantalla */

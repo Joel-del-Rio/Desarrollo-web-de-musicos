@@ -314,8 +314,16 @@ class Installer {
             $currentVersion = 23;
         }
 
+        // v24: partidas públicas — el dinamizador elige si su partida sale en el
+        // navegador de servidores del jugador y se anuncia por Telegram
+        if ($currentVersion === 23) {
+            try { $pdo->exec("ALTER TABLE games ADD COLUMN is_public TINYINT(1) DEFAULT 0"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=24");
+            $currentVersion = 24;
+        }
+
         // Esquema actualizado: verificar integridad y salir
-        if ($currentVersion >= 23) {
+        if ($currentVersion >= 24) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
@@ -365,6 +373,7 @@ class Installer {
                 created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 game_type           ENUM('song','meme') DEFAULT 'song',
                 genre_vote_enabled  TINYINT(1) DEFAULT 0,
+                is_public           TINYINT(1) DEFAULT 0,
                 INDEX idx_pin (pin)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");

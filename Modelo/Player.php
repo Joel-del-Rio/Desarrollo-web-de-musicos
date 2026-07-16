@@ -123,11 +123,6 @@ class Player {
         return true;
     }
 
-    /** Guarda el voto de género del jugador para partidas con votación en la sala de espera */
-    public function setGenreVote(int $playerId, string $genre): void {
-        $this->db->prepare("UPDATE players SET genre_vote=? WHERE id=?")->execute([$genre, $playerId]);
-    }
-
     /** Cambia los complementos de personalización y sus posiciones arrastrables */
     public function updateCustomization(
         int $playerId, string $hair, string $glasses, string $hat, string $headphones, string $facialHair,
