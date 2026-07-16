@@ -6,17 +6,16 @@
  *  1. Si es una hora en punto (según TELEGRAM_INTERVAL_MINUTES, hora española) y no
  *     hay ninguna partida en curso, crea una partida nueva (con votación de género)
  *     y anuncia el PIN en Telegram.
- *  2. Si hay una partida en la sala de espera y ya pasaron TELEGRAM_WAIT_SECONDS,
- *     la arranca (cierra la votación y elige el género más votado), o la cancela
- *     si no se unió nadie.
- *  3. Si hay una partida en pregunta y se acabó el tiempo, revela el resultado
- *     (sin anunciarlo — el resumen completo se manda solo al final).
- *  4. Si hay una partida en resultados y ya pasó TELEGRAM_REVEAL_SECONDS, avanza
- *     de ronda (o cierra la partida y anuncia el resumen + podio si era la última).
+ *  2. Mientras haya una partida en curso, comprueba cada pocos segundos (no solo una
+ *     vez) si toca arrancarla, revelar resultados o avanzar de ronda, durante un
+ *     margen de ~50s dentro de la misma ejecución. Así TELEGRAM_REVEAL_SECONDS y
+ *     TELEGRAM_WAIT_SECONDS se cumplen con precisión de segundos en vez de quedar
+ *     atados a la granularidad de 1 minuto del cron.
  *
- * No hace sleep en ningún punto — cada tick del cron hace como mucho un paso,
- * así que una ejecución nunca tarda más de una fracción de segundo y no hay
- * riesgo de que el hosting mate el proceso por timeout.
+ * El bucle está acotado a ~50s (deja margen antes de que el cron dispare el
+ * siguiente minuto) y con sleep corto, así que nunca hay riesgo de que el
+ * hosting mate el proceso por timeout ni de que se solape con la siguiente
+ * ejecución (además del flock de más abajo).
  *
  * Cron sugerido (cada minuto):
  *   * * * * * php /ruta/al/proyecto/Cron/telegram_runner.php >> /ruta/al/proyecto/Cron/telegram_runner.log 2>&1
@@ -41,6 +40,100 @@ if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) exit("Ya hay otra ejecución en 
 
 function log_line(string $msg): void {
     echo '[' . date('Y-m-d H:i:s') . "] $msg\n";
+}
+
+/** Procesa un paso de la partida activa (arrancar / revelar / avanzar ronda). */
+function process_active_game(PDO $db, Game $game, Player $player, TelegramBot $bot, array $active): void {
+    $gameId    = (int)$active['game_id'];
+    $phase     = $active['phase'];
+    $changedAt = strtotime($active['phase_changed_at'] . ' UTC');
+    $elapsed   = time() - $changedAt;
+
+    switch ($phase) {
+
+        case 'waiting':
+            if ($elapsed < TELEGRAM_WAIT_SECONDS) {
+                log_line("Partida #$gameId en espera (" . (TELEGRAM_WAIT_SECONDS - $elapsed) . "s restantes).");
+                return;
+            }
+
+            $players = $player->getByGame($gameId);
+            if (count($players) === 0) {
+                $db->prepare("UPDATE telegram_runs SET phase='finished' WHERE game_id=?")->execute([$gameId]);
+                $bot->sendMessage("😴 Nadie se unió a tiempo, cancelo la partida.");
+                log_line("Partida #$gameId cancelada: sin jugadores.");
+                return;
+            }
+
+            $game->start($gameId);
+            $winningGenre = $game->getById($gameId)['selected_genre'] ?? 'Todos';
+            $db->prepare(
+                "UPDATE telegram_runs SET phase='question', phase_changed_at=UTC_TIMESTAMP() WHERE game_id=?"
+            )->execute([$gameId]);
+            $bot->sendMessage(
+                "🚀 ¡Empieza la partida con " . count($players) . " jugador(es)!\n" .
+                "🎼 Género ganador: *{$winningGenre}*\n" .
+                "Ronda 1 de " . TELEGRAM_ROUNDS . "."
+            );
+            log_line("Partida #$gameId arrancada con " . count($players) . " jugadores, género '$winningGenre'.");
+            return;
+
+        case 'question':
+            $state = $game->getState($gameId);
+            if ($state['status'] === 'question' && $state['time_left'] > 0) {
+                log_line("Partida #$gameId en pregunta (" . $state['time_left'] . "s restantes).");
+                return;
+            }
+
+            // El tiempo se acabó: revelar resultados si el propio getState() no lo hizo ya.
+            // No se anuncia nada aquí — el resumen completo se manda al terminar la partida.
+            if ($state['status'] === 'question') $game->showResults($gameId);
+
+            $db->prepare(
+                "UPDATE telegram_runs SET phase='results', phase_changed_at=UTC_TIMESTAMP() WHERE game_id=?"
+            )->execute([$gameId]);
+            log_line("Partida #$gameId: ronda {$state['current_round']} revelada.");
+            return;
+
+        case 'results':
+            if ($elapsed < TELEGRAM_REVEAL_SECONDS) {
+                log_line("Partida #$gameId mostrando resultados (" . (TELEGRAM_REVEAL_SECONDS - $elapsed) . "s restantes).");
+                return;
+            }
+
+            $newStatus = $game->nextRound($gameId);
+
+            if ($newStatus === 'finished') {
+                $songs = $db->prepare(
+                    "SELECT s.title, s.artist, s.year
+                     FROM game_songs gs JOIN songs s ON s.id = gs.song_id
+                     WHERE gs.game_id = ? ORDER BY gs.round_number ASC"
+                );
+                $songs->execute([$gameId]);
+
+                $lines = ['🏁 *¡Partida terminada! Resumen:*', ''];
+                foreach ($songs->fetchAll() as $i => $s) {
+                    $lines[] = ($i + 1) . ". {$s['title']} — {$s['artist']} ({$s['year']})";
+                }
+
+                $leaderboard = $player->getByGame($gameId);
+                $lines[] = '';
+                $lines[] = '🏆 *Podio:*';
+                foreach (array_slice($leaderboard, 0, 5) as $i => $p) {
+                    $medal = ['🥇', '🥈', '🥉'][$i] ?? ($i + 1) . '.';
+                    $lines[] = "{$medal} {$p['name']} — {$p['score']} pts";
+                }
+                $bot->sendMessage(implode("\n", $lines));
+                $db->prepare("UPDATE telegram_runs SET phase='finished' WHERE game_id=?")->execute([$gameId]);
+                log_line("Partida #$gameId finalizada y resumen anunciado.");
+            } else {
+                $db->prepare(
+                    "UPDATE telegram_runs SET phase='question', phase_changed_at=UTC_TIMESTAMP() WHERE game_id=?"
+                )->execute([$gameId]);
+                log_line("Partida #$gameId: siguiente ronda.");
+            }
+            return;
+    }
 }
 
 $db     = Database::getInstance()->pdo();
@@ -92,96 +185,19 @@ if (!$active) {
     exit;
 }
 
-// ── Hay una partida en curso: procesar según su fase ──
-$gameId    = (int)$active['game_id'];
-$phase     = $active['phase'];
-$changedAt = strtotime($active['phase_changed_at'] . ' UTC');
-$elapsed   = time() - $changedAt;
+// ── Hay una partida en curso: reprocesar cada pocos segundos durante ~50s ──
+// para que las transiciones no queden atadas a la granularidad de 1 min del cron.
+$deadline = time() + 50;
+while (true) {
+    process_active_game($db, $game, $player, $bot, $active);
 
-switch ($phase) {
+    if (time() >= $deadline) break;
+    sleep(2);
 
-    case 'waiting':
-        if ($elapsed < TELEGRAM_WAIT_SECONDS) {
-            log_line("Partida #$gameId en espera (" . (TELEGRAM_WAIT_SECONDS - $elapsed) . "s restantes).");
-            break;
-        }
-
-        $players = $player->getByGame($gameId);
-        if (count($players) === 0) {
-            $db->prepare("UPDATE telegram_runs SET phase='finished' WHERE game_id=?")->execute([$gameId]);
-            $bot->sendMessage("😴 Nadie se unió a tiempo, cancelo la partida.");
-            log_line("Partida #$gameId cancelada: sin jugadores.");
-            break;
-        }
-
-        $game->start($gameId);
-        $winningGenre = $game->getById($gameId)['selected_genre'] ?? 'Todos';
-        $db->prepare(
-            "UPDATE telegram_runs SET phase='question', phase_changed_at=UTC_TIMESTAMP() WHERE game_id=?"
-        )->execute([$gameId]);
-        $bot->sendMessage(
-            "🚀 ¡Empieza la partida con " . count($players) . " jugador(es)!\n" .
-            "🎼 Género ganador: *{$winningGenre}*\n" .
-            "Ronda 1 de " . TELEGRAM_ROUNDS . "."
-        );
-        log_line("Partida #$gameId arrancada con " . count($players) . " jugadores, género '$winningGenre'.");
-        break;
-
-    case 'question':
-        $state = $game->getState($gameId);
-        if ($state['status'] === 'question' && $state['time_left'] > 0) {
-            log_line("Partida #$gameId en pregunta (" . $state['time_left'] . "s restantes).");
-            break;
-        }
-
-        // El tiempo se acabó: revelar resultados si el propio getState() no lo hizo ya.
-        // No se anuncia nada aquí — el resumen completo se manda al terminar la partida.
-        if ($state['status'] === 'question') $game->showResults($gameId);
-
-        $db->prepare(
-            "UPDATE telegram_runs SET phase='results', phase_changed_at=UTC_TIMESTAMP() WHERE game_id=?"
-        )->execute([$gameId]);
-        log_line("Partida #$gameId: ronda {$state['current_round']} revelada.");
-        break;
-
-    case 'results':
-        if ($elapsed < TELEGRAM_REVEAL_SECONDS) {
-            log_line("Partida #$gameId mostrando resultados (" . (TELEGRAM_REVEAL_SECONDS - $elapsed) . "s restantes).");
-            break;
-        }
-
-        $newStatus = $game->nextRound($gameId);
-
-        if ($newStatus === 'finished') {
-            $songs = $db->prepare(
-                "SELECT s.title, s.artist, s.year
-                 FROM game_songs gs JOIN songs s ON s.id = gs.song_id
-                 WHERE gs.game_id = ? ORDER BY gs.round_number ASC"
-            );
-            $songs->execute([$gameId]);
-
-            $lines = ['🏁 *¡Partida terminada! Resumen:*', ''];
-            foreach ($songs->fetchAll() as $i => $s) {
-                $lines[] = ($i + 1) . ". {$s['title']} — {$s['artist']} ({$s['year']})";
-            }
-
-            $leaderboard = $player->getByGame($gameId);
-            $lines[] = '';
-            $lines[] = '🏆 *Podio:*';
-            foreach (array_slice($leaderboard, 0, 5) as $i => $p) {
-                $medal = ['🥇', '🥈', '🥉'][$i] ?? ($i + 1) . '.';
-                $lines[] = "{$medal} {$p['name']} — {$p['score']} pts";
-            }
-            $bot->sendMessage(implode("\n", $lines));
-            $db->prepare("UPDATE telegram_runs SET phase='finished' WHERE game_id=?")->execute([$gameId]);
-            log_line("Partida #$gameId finalizada y resumen anunciado.");
-        } else {
-            $db->prepare(
-                "UPDATE telegram_runs SET phase='question', phase_changed_at=UTC_TIMESTAMP() WHERE game_id=?"
-            )->execute([$gameId]);
-            log_line("Partida #$gameId: siguiente ronda.");
-        }
-        break;
+    $active = $db->query(
+        "SELECT * FROM telegram_runs WHERE phase != 'finished' ORDER BY id DESC LIMIT 1"
+    )->fetch();
+    if (!$active) break; // la partida terminó o se canceló: nada más que hacer en este tick
 }
 
 flock($lock, LOCK_UN);
