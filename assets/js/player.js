@@ -334,13 +334,26 @@ function toggleReactionBar() {
 }
 
 /** El jugador pulsa un botón de reacción: se envía, aparece también en su propia pantalla, y se cierra el desplegable */
+const REACTION_COOLDOWN_MS = 5000;
+let reactionCooldownUntil = 0;
+
 async function sendReaction(emoji) {
-  if (!playerId) return;
+  if (!playerId || Date.now() < reactionCooldownUntil) return;
+
+  reactionCooldownUntil = Date.now() + REACTION_COOLDOWN_MS;
+  setReactionButtonsDisabled(true);
+  setTimeout(() => setReactionButtonsDisabled(false), REACTION_COOLDOWN_MS);
+
   document.getElementById('reaction-fab')?.classList.remove('open');
   fetch(`${API}?action=send_reaction`, {
     method: 'POST',
     body: new URLSearchParams({ player_id: playerId, emoji }),
   }).catch(() => {});
+}
+
+function setReactionButtonsDisabled(disabled) {
+  document.querySelectorAll('.reaction-btn').forEach(b => b.disabled = disabled);
+  document.getElementById('reaction-toggle')?.classList.toggle('cooldown', disabled);
 }
 
 /** Pinta como "emoji volador" cada reacción nueva que llega en el polling */

@@ -14,19 +14,33 @@ class Reaction {
     // Lista fija de reacciones permitidas — igual en el frontend para pintar los botones
     public const EMOJIS = ['👍', '❤️', '😂', '😮', '🔥', '👏'];
 
+    // Tiempo mínimo entre dos reacciones del mismo jugador (evita spam)
+    private const COOLDOWN_SECONDS = 5;
+
     public function __construct() {
         $this->db = Database::getInstance()->pdo();
     }
 
-    /** Registra una reacción de un jugador. Devuelve el id insertado. */
-    public function send(int $gameId, int $playerId, string $emoji): ?int {
-        if (!in_array($emoji, self::EMOJIS, true)) return null;
+    /**
+     * Registra una reacción de un jugador, respetando el cooldown entre envíos.
+     * Se valida también en el servidor (no solo en el frontend) para que no se
+     * pueda saltar llamando directamente a la API.
+     */
+    public function send(int $gameId, int $playerId, string $emoji): array {
+        if (!in_array($emoji, self::EMOJIS, true)) return ['error' => 'Reacción no válida'];
+
+        $st = $this->db->prepare("SELECT created_at FROM reactions WHERE player_id=? ORDER BY id DESC LIMIT 1");
+        $st->execute([$playerId]);
+        $lastAt = $st->fetchColumn();
+        if ($lastAt && (time() - strtotime($lastAt . ' UTC')) < self::COOLDOWN_SECONDS) {
+            return ['error' => 'Espera unos segundos antes de reaccionar otra vez'];
+        }
 
         $this->db->prepare(
             "INSERT INTO reactions (game_id, player_id, emoji) VALUES (?,?,?)"
         )->execute([$gameId, $playerId, $emoji]);
 
-        return (int)$this->db->lastInsertId();
+        return ['success' => true, 'id' => (int)$this->db->lastInsertId()];
     }
 
     /**

@@ -76,6 +76,8 @@ $genres = Genres::allWithTodos(); ?>
       cursor: pointer; transition: transform .1s, background .15s;
     }
     .reaction-btn:active { transform: scale(1.25); background: rgba(233,69,96,.3); }
+    .reaction-btn:disabled { opacity: .3; cursor: default; }
+    #reaction-toggle.cooldown { opacity: .5; }
 
     #reactions-overlay {
       position: fixed; inset: 0;

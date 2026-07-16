@@ -273,9 +273,6 @@ class PlayerController {
         $pl = $this->player->getById($playerId);
         if (!$pl) return ['error' => 'Jugador no encontrado'];
 
-        $id = $this->reaction->send((int)$pl['game_id'], $playerId, $emoji);
-        if ($id === null) return ['error' => 'Reacción no válida'];
-
-        return ['success' => true, 'id' => $id];
+        return $this->reaction->send((int)$pl['game_id'], $playerId, $emoji);
     }
 }
