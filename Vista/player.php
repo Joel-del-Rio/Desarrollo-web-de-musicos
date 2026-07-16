@@ -34,18 +34,40 @@ $genres = Genres::allWithTodos(); ?>
       -webkit-overflow-scrolling: touch;
     }
 
-    /* ── Reacciones tipo Kahoot ── */
-    #reaction-bar {
+    /* ── Reacciones tipo Kahoot (botón flotante desplegable) ── */
+    #reaction-fab {
       position: fixed;
-      left: 50%; bottom: 12px; transform: translateX(-50%);
-      display: flex; gap: 6px;
+      right: 12px; top: 50%; transform: translateY(-50%);
+      z-index: 1050;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    #reaction-toggle {
+      width: 46px; height: 46px; border-radius: 50%;
+      background: rgba(20,20,30,.75);
+      backdrop-filter: blur(6px);
+      border: 1.5px solid rgba(255,255,255,.15);
+      font-size: 1.4rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: transform .15s, background .15s;
+    }
+    #reaction-toggle:active { transform: scale(.92); }
+    #reaction-bar {
+      display: flex; flex-direction: column; gap: 6px;
       background: rgba(20,20,30,.75);
       backdrop-filter: blur(6px);
       border: 1.5px solid rgba(255,255,255,.12);
-      border-radius: 50px;
-      padding: 6px 8px;
-      z-index: 1050;
+      border-radius: 24px;
+      padding: 8px;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height .2s ease, opacity .15s ease, padding .2s ease;
     }
+    #reaction-fab.open #reaction-bar {
+      max-height: 320px;
+      opacity: 1;
+    }
+    #reaction-fab.open #reaction-toggle { background: rgba(233,69,96,.4); }
     .reaction-btn {
       width: 40px; height: 40px; border-radius: 50%;
       background: rgba(255,255,255,.06);
@@ -305,12 +327,15 @@ $genres = Genres::allWithTodos(); ?>
   </div>
 </div>
 
-<!-- ══ REACCIONES (barra flotante + emojis que vuelan en pantalla) ══ -->
+<!-- ══ REACCIONES (botón flotante desplegable + emojis que vuelan en pantalla) ══ -->
 <div id="reactions-overlay"></div>
-<div id="reaction-bar" class="d-none">
-  <?php foreach (Reaction::EMOJIS as $e): ?>
-  <button type="button" class="reaction-btn" onclick="sendReaction('<?= htmlspecialchars($e, ENT_QUOTES) ?>')"><?= $e ?></button>
-  <?php endforeach; ?>
+<div id="reaction-fab" class="d-none">
+  <div id="reaction-bar">
+    <?php foreach (Reaction::EMOJIS as $e): ?>
+    <button type="button" class="reaction-btn" onclick="sendReaction('<?= htmlspecialchars($e, ENT_QUOTES) ?>')"><?= $e ?></button>
+    <?php endforeach; ?>
+  </div>
+  <button type="button" id="reaction-toggle" onclick="toggleReactionBar()">😀</button>
 </div>
 
 <!-- DBG:v25 -->
@@ -321,6 +346,6 @@ $genres = Genres::allWithTodos(); ?>
   const GK  = 'hitstoric_gid_p';
   const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=84"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=85"></script>
 </body>
 </html>

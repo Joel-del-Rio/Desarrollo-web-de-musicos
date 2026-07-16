@@ -323,14 +323,20 @@ function handleKicked() {
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`)?.classList.add('active');
-  document.getElementById('reaction-bar')?.classList.toggle('d-none', name === 'join');
+  document.getElementById('reaction-fab')?.classList.toggle('d-none', name === 'join');
 }
 
 /* ── Reacciones tipo Kahoot ───────────────────────────────────── */
 
-/** El jugador pulsa un botón de reacción: se envía y aparece también en su propia pantalla */
+/** Abre/cierra el desplegable de reacciones */
+function toggleReactionBar() {
+  document.getElementById('reaction-fab')?.classList.toggle('open');
+}
+
+/** El jugador pulsa un botón de reacción: se envía, aparece también en su propia pantalla, y se cierra el desplegable */
 async function sendReaction(emoji) {
   if (!playerId) return;
+  document.getElementById('reaction-fab')?.classList.remove('open');
   fetch(`${API}?action=send_reaction`, {
     method: 'POST',
     body: new URLSearchParams({ player_id: playerId, emoji }),
