@@ -7,14 +7,17 @@
  */
 require_once __DIR__ . '/../Modelo/Game.php';
 require_once __DIR__ . '/../Modelo/Player.php';
+require_once __DIR__ . '/../Modelo/Reaction.php';
 
 class PlayerController {
-    private Game   $game;
-    private Player $player;
+    private Game     $game;
+    private Player   $player;
+    private Reaction $reaction;
 
     public function __construct() {
-        $this->game   = new Game();
-        $this->player = new Player();
+        $this->game     = new Game();
+        $this->player   = new Player();
+        $this->reaction = new Reaction();
     }
 
     /**
@@ -191,6 +194,10 @@ class PlayerController {
         $state['has_answered']  = false;
         $state['timeline']      = $this->player->getTimeline($playerId, $gameId, $gameType);
 
+        // Reacciones nuevas desde la última vez que este jugador preguntó
+        $lastReactionId = (int)($_GET['last_reaction_id'] ?? 0);
+        $state['new_reactions'] = $this->reaction->getSince($gameId, $lastReactionId);
+
         // Datos específicos del estado de pregunta o resultados
         if (in_array($state['status'], ['question', 'results'], true)) {
             $song = $this->game->getCurrentSong($gameId);
@@ -255,5 +262,20 @@ class PlayerController {
             (int)$state['time_left'], (int)$state['question_time'],
             $gameType
         );
+    }
+
+    /** Lanza una reacción (emoji) visible para todos los jugadores de la partida */
+    public function sendReaction(): array {
+        $playerId = (int)($_POST['player_id'] ?? 0);
+        $emoji    = trim($_POST['emoji'] ?? '');
+        if (!$playerId) return ['error' => 'Falta player_id'];
+
+        $pl = $this->player->getById($playerId);
+        if (!$pl) return ['error' => 'Jugador no encontrado'];
+
+        $id = $this->reaction->send((int)$pl['game_id'], $playerId, $emoji);
+        if ($id === null) return ['error' => 'Reacción no válida'];
+
+        return ['success' => true, 'id' => $id];
     }
 }

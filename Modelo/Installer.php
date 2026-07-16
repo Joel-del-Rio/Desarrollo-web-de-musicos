@@ -294,8 +294,28 @@ class Installer {
             $currentVersion = 22;
         }
 
+        // v23: reacciones tipo Kahoot — cualquier jugador puede lanzar un emoji
+        // que ven todos los demás jugadores de la misma partida
+        if ($currentVersion === 22) {
+            try {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS reactions (
+                        id         INT AUTO_INCREMENT PRIMARY KEY,
+                        game_id    INT NOT NULL,
+                        player_id  INT NOT NULL,
+                        emoji      VARCHAR(8) NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (game_id)   REFERENCES games(id)   ON DELETE CASCADE,
+                        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ");
+            } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=23");
+            $currentVersion = 23;
+        }
+
         // Esquema actualizado: verificar integridad y salir
-        if ($currentVersion >= 22) {
+        if ($currentVersion >= 23) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
@@ -546,6 +566,19 @@ class Installer {
                 phase_changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        // Reacciones tipo Kahoot (emoji visibles para todos los jugadores de la partida)
+        $pdo->exec("
+            CREATE TABLE reactions (
+                id         INT AUTO_INCREMENT PRIMARY KEY,
+                game_id    INT NOT NULL,
+                player_id  INT NOT NULL,
+                emoji      VARCHAR(8) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (game_id)   REFERENCES games(id)   ON DELETE CASCADE,
+                FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
 

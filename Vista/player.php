@@ -13,6 +13,7 @@
  */
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../Modelo/Genres.php';
+require_once __DIR__ . '/../Modelo/Reaction.php';
 $genres = Genres::allWithTodos(); ?>
 <!DOCTYPE html>
 <html lang="es" data-bs-theme="dark">
@@ -31,6 +32,54 @@ $genres = Genres::allWithTodos(); ?>
       flex: 1;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
+    }
+
+    /* ── Reacciones tipo Kahoot ── */
+    #reaction-bar {
+      position: fixed;
+      left: 50%; bottom: 12px; transform: translateX(-50%);
+      display: flex; gap: 6px;
+      background: rgba(20,20,30,.75);
+      backdrop-filter: blur(6px);
+      border: 1.5px solid rgba(255,255,255,.12);
+      border-radius: 50px;
+      padding: 6px 8px;
+      z-index: 1050;
+    }
+    .reaction-btn {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: rgba(255,255,255,.06);
+      border: none; font-size: 1.3rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: transform .1s, background .15s;
+    }
+    .reaction-btn:active { transform: scale(1.25); background: rgba(233,69,96,.3); }
+
+    #reactions-overlay {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 1040;
+      overflow: hidden;
+    }
+    .flying-reaction {
+      position: absolute;
+      bottom: 70px;
+      font-size: 1.8rem;
+      animation: flyUp 2.2s ease-out forwards;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .flying-reaction .fr-name {
+      display: block;
+      font-size: .6rem;
+      color: rgba(255,255,255,.7);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    @keyframes flyUp {
+      0%   { transform: translateY(0) scale(.6);   opacity: 0; }
+      15%  { transform: translateY(-40px) scale(1); opacity: 1; }
+      100% { transform: translateY(-320px) scale(1); opacity: 0; }
     }
   </style>
 </head>
@@ -256,6 +305,14 @@ $genres = Genres::allWithTodos(); ?>
   </div>
 </div>
 
+<!-- ══ REACCIONES (barra flotante + emojis que vuelan en pantalla) ══ -->
+<div id="reactions-overlay"></div>
+<div id="reaction-bar" class="d-none">
+  <?php foreach (Reaction::EMOJIS as $e): ?>
+  <button type="button" class="reaction-btn" onclick="sendReaction('<?= htmlspecialchars($e, ENT_QUOTES) ?>')"><?= $e ?></button>
+  <?php endforeach; ?>
+</div>
+
 <!-- DBG:v25 -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -264,6 +321,6 @@ $genres = Genres::allWithTodos(); ?>
   const GK  = 'hitstoric_gid_p';
   const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=83"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=84"></script>
 </body>
 </html>

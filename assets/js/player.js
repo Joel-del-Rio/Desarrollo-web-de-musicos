@@ -15,6 +15,7 @@ let lastStatus   = null;        // Último estado procesado (evita re-renders du
 let selectedPos  = null;        // Posición seleccionada en el timeline (índice)
 let currentSong  = null;        // Canción de la ronda actual
 let questionTime = 30;          // Duración de la pregunta en segundos
+let lastReactionId = 0;         // Id de la última reacción ya mostrada (evita repetirlas)
 
 /* ── Selección de avatar y complementos ───────────────────────── */
 // Mismas listas y orden que las constantes de Player.php en el backend
@@ -289,7 +290,7 @@ async function chooseLobbyOption(key, value) {
 /* ── Llamada API ──────────────────────────────────────────────── */
 async function fetchState() {
   try {
-    const r = await fetch(`${API}?action=player_state&player_id=${playerId}&_t=${Date.now()}`, { cache: 'no-store' });
+    const r = await fetch(`${API}?action=player_state&player_id=${playerId}&last_reaction_id=${lastReactionId}&_t=${Date.now()}`, { cache: 'no-store' });
     return r.json();
   } catch { return null; }
 }
@@ -322,11 +323,43 @@ function handleKicked() {
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`)?.classList.add('active');
+  document.getElementById('reaction-bar')?.classList.toggle('d-none', name === 'join');
+}
+
+/* ── Reacciones tipo Kahoot ───────────────────────────────────── */
+
+/** El jugador pulsa un botón de reacción: se envía y aparece también en su propia pantalla */
+async function sendReaction(emoji) {
+  if (!playerId) return;
+  fetch(`${API}?action=send_reaction`, {
+    method: 'POST',
+    body: new URLSearchParams({ player_id: playerId, emoji }),
+  }).catch(() => {});
+}
+
+/** Pinta como "emoji volador" cada reacción nueva que llega en el polling */
+function handleNewReactions(reactions) {
+  if (!reactions || !reactions.length) return;
+  const overlay = document.getElementById('reactions-overlay');
+  reactions.forEach(r => {
+    if (r.id > lastReactionId) lastReactionId = r.id;
+    if (!overlay) return;
+
+    const el = document.createElement('div');
+    el.className = 'flying-reaction';
+    el.style.left = (10 + Math.random() * 80) + '%';
+    el.innerHTML = `${esc(r.emoji)}<span class="fr-name">${esc(r.player_name)}</span>`;
+    overlay.appendChild(el);
+    setTimeout(() => el.remove(), 2300);
+  });
 }
 
 /* ── Dispatcher de estado ─────────────────────────────────────── */
 function applyState(state) {
   const st = state.status;
+
+  // Se comprueba siempre, incluso cuando el resto de la función corta por early-return
+  handleNewReactions(state.new_reactions);
 
   // Si el jugador ya respondió, ir a pantalla de espera
   if (st === 'question' && state.has_answered) {
@@ -980,6 +1013,7 @@ async function joinGame() {
     if (data.error) { showErr(data.error); return; }
 
     playerId = data.player_id;
+    lastReactionId = 0;
     localStorage.setItem(PK, playerId);
     localStorage.setItem(GK, data.game_id);
 
@@ -1003,7 +1037,7 @@ function leaveGame() {
 /** Borra la sesión del jugador del localStorage */
 function clearSession() {
   localStorage.removeItem(PK); localStorage.removeItem(GK);
-  playerId = null; lastStatus = null; selectedPos = null;
+  playerId = null; lastStatus = null; selectedPos = null; lastReactionId = 0;
   stopPolling(); stopCountdown();
 }
 

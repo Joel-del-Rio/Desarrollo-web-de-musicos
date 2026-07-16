@@ -274,6 +274,12 @@ try {
             echo json_encode((new PlayerController())->submitAnswer());
             break;
 
+        case 'send_reaction':
+            // Lanza una reacción (emoji) visible para todos los jugadores de la partida
+            require_once __DIR__ . '/PlayerController.php';
+            echo json_encode((new PlayerController())->sendReaction());
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Acción desconocida: ' . htmlspecialchars($action)]);
