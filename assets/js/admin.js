@@ -622,7 +622,19 @@ function setGameType(btn, type) {
   document.querySelectorAll('#game-type-selector .genre-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('game-type').value = type;
-  document.getElementById('section-streaming').classList.toggle('d-none', type === 'meme');
+  const isMeme = type === 'meme';
+  document.getElementById('section-streaming').classList.toggle('d-none', isMeme);
+  document.getElementById('section-genre').classList.toggle('d-none', isMeme);
+  document.getElementById('section-hard-mode').classList.toggle('d-none', isMeme);
+  if (isMeme) {
+    document.querySelectorAll('#genre-selector .genre-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('#genre-selector .genre-btn[data-genre="Todos"]')?.classList.add('active');
+    const hardToggle = document.getElementById('toggle-hard-mode');
+    if (hardToggle.checked) {
+      hardToggle.checked = false;
+      onHardModeToggle();
+    }
+  }
 }
 
 /** Crea una nueva partida con la configuración del formulario */

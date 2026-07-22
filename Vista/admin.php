@@ -66,7 +66,7 @@ $genres = Genres::allWithTodos(); ?>
         <div class="d-flex justify-content-between text-secondary small"><span>20s</span><span>60s</span></div>
       </div>
 
-      <div class="mb-4">
+      <div class="mb-4" id="section-genre">
         <label class="form-label text-secondary small fw-semibold text-uppercase">Género musical</label>
         <div class="d-flex flex-wrap gap-2 mt-2" id="genre-selector">
           <?php foreach ($genres as $g):
@@ -83,7 +83,7 @@ $genres = Genres::allWithTodos(); ?>
       </div>
 
       <!-- Modo difícil -->
-      <div class="mb-4">
+      <div class="mb-4" id="section-hard-mode">
         <label class="form-label text-secondary small fw-semibold text-uppercase">Dificultad</label>
         <div class="d-flex align-items-center justify-content-between py-2 rounded-3 px-3"
              style="background:rgba(233,69,96,.08);border:1px solid rgba(233,69,96,.25)">
@@ -455,6 +455,6 @@ $genres = Genres::allWithTodos(); ?>
   const TK  = 'hitstoric_tok';
   const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=57"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=58"></script>
 </body>
 </html>
