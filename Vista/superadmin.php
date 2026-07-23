@@ -192,7 +192,7 @@ require_once __DIR__ . '/../config.php'; ?>
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-canciones" type="button" onclick="loadCatalog();loadGenres()">Canciones</button>
       </li>
       <li class="nav-item">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-memes" type="button" onclick="loadMemeCatalog();loadGenres()">Memes</button>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-memes" type="button" onclick="loadMemeCatalog()">Memes</button>
       </li>
     </ul>
 
@@ -336,10 +336,6 @@ require_once __DIR__ . '/../config.php'; ?>
               <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Año</label>
               <input type="number" id="meme-year-input" class="search-bar" min="1900" max="2100" placeholder="Año" required>
             </div>
-            <div style="min-width:170px">
-              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Género</label>
-              <select id="meme-genre-select" class="form-select form-select-sm" required></select>
-            </div>
             <div style="flex:1;min-width:180px">
               <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Título (opcional)</label>
               <input type="text" id="meme-title-input" class="search-bar" placeholder="Descripción…">
@@ -353,7 +349,7 @@ require_once __DIR__ . '/../config.php'; ?>
       <div class="d-flex align-items-center justify-content-between mb-3 mt-5 gap-2 flex-wrap">
         <h6 class="text-secondary text-uppercase fw-semibold mb-0" style="letter-spacing:.08em">Catálogo de memes</h6>
         <div class="d-flex gap-2 align-items-center flex-wrap">
-          <input type="search" id="meme-catalog-search" class="search-bar" style="max-width:240px" placeholder="Buscar título o género…" oninput="filterMemeCatalog()">
+          <input type="search" id="meme-catalog-search" class="search-bar" style="max-width:240px" placeholder="Buscar título…" oninput="filterMemeCatalog()">
           <span class="small" id="meme-catalog-count" style="color:var(--muted)"></span>
         </div>
       </div>
@@ -976,9 +972,6 @@ async function loadGenres() {
   allGenres = r.genres;
   SONG_GENRES = allGenres.map(g => g.name);
   renderGenreList();
-
-  const memeSel = document.getElementById('meme-genre-select');
-  if (memeSel) memeSel.innerHTML = SONG_GENRES.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
 }
 
 function renderGenreList() {
@@ -1050,7 +1043,6 @@ async function addGenre() {
 async function uploadMeme() {
   const fileInput = document.getElementById('meme-image-input');
   const year      = document.getElementById('meme-year-input').value;
-  const genre     = document.getElementById('meme-genre-select').value;
   const title     = document.getElementById('meme-title-input').value.trim();
   const status    = document.getElementById('meme-upload-status');
 
@@ -1062,7 +1054,6 @@ async function uploadMeme() {
   const body = new FormData();
   body.append('image', fileInput.files[0]);
   body.append('year', year);
-  body.append('genre', genre);
   body.append('title', title);
 
   const r = await fetch(`${API}?action=add_meme`, { method: 'POST', body })
@@ -1090,10 +1081,7 @@ async function loadMemeCatalog() {
 
 function filterMemeCatalog() {
   const q = document.getElementById('meme-catalog-search').value.toLowerCase();
-  const filtered = allMemeCatalog.filter(m =>
-    (m.title || '').toLowerCase().includes(q) ||
-    (m.genre || '').toLowerCase().includes(q)
-  );
+  const filtered = allMemeCatalog.filter(m => (m.title || '').toLowerCase().includes(q));
   renderMemeCatalog(filtered, !!q);
 }
 
@@ -1105,18 +1093,21 @@ function renderMemeCatalog(memes, expand) {
     return;
   }
 
-  const byGenre = {};
-  memes.forEach(m => { (byGenre[m.genre || 'Sin género'] ??= []).push(m); });
-  const genreNames = Object.keys(byGenre).sort();
+  const byDecade = {};
+  memes.forEach(m => {
+    const decade = `${Math.floor(m.year / 10) * 10}s`;
+    (byDecade[decade] ??= []).push(m);
+  });
+  const decades = Object.keys(byDecade).sort();
 
-  box.innerHTML = genreNames.map((genre, idx) => {
-    const list = byGenre[genre];
-    const panelId = `meme-genre-panel-${idx}`;
+  box.innerHTML = decades.map((decade, idx) => {
+    const list = byDecade[decade];
+    const panelId = `meme-decade-panel-${idx}`;
     return `
     <div class="genre-group">
       <button class="genre-group-header w-100 border-0 bg-transparent text-start${expand ? '' : ' collapsed'}" type="button"
               data-bs-toggle="collapse" data-bs-target="#${panelId}" aria-expanded="${expand ? 'true' : 'false'}">
-        <span>${esc(genre)}<span class="genre-group-count">${list.length}</span></span>
+        <span>${esc(decade)}<span class="genre-group-count">${list.length}</span></span>
         <span class="chevron">▾</span>
       </button>
       <div class="collapse${expand ? ' show' : ''}" id="${panelId}">

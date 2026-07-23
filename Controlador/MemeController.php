@@ -2,12 +2,11 @@
 /**
  * MemeController.php — Catálogo de memes (modo de juego "memes")
  *
- * Permite subir imágenes de memes con su año y género, listarlas
- * y eliminarlas desde el panel superadmin. Funciona en paralelo
- * al catálogo de canciones (Option A: tablas separadas).
+ * Permite subir imágenes de memes con su año, listarlas y eliminarlas
+ * desde el panel superadmin. Funciona en paralelo al catálogo de
+ * canciones (Option A: tablas separadas). Los memes no tienen género.
  */
 require_once __DIR__ . '/../Modelo/Database.php';
-require_once __DIR__ . '/../Modelo/Genres.php';
 
 class MemeController {
     private PDO $db;
@@ -19,10 +18,10 @@ class MemeController {
         $this->db = Database::getInstance()->pdo();
     }
 
-    /** Lista todos los memes ordenados por género y año */
+    /** Lista todos los memes ordenados por año */
     public function getMemes(): array {
         return $this->db->query(
-            "SELECT id, image_url, title, year, genre FROM memes ORDER BY genre, year, id"
+            "SELECT id, image_url, title, year FROM memes ORDER BY year, id"
         )->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -30,10 +29,8 @@ class MemeController {
     public function addMeme(): array {
         $title = trim($_POST['title'] ?? '');
         $year  = (int)($_POST['year']  ?? 0);
-        $genre = trim($_POST['genre'] ?? '');
 
         if ($year < 1900 || $year > 2100) return ['error' => 'Año inválido'];
-        if (!in_array($genre, Genres::all(), true)) return ['error' => 'Género inválido'];
         if (empty($_FILES['image']['tmp_name'])) return ['error' => 'Debes seleccionar una imagen'];
 
         $file = $_FILES['image'];
@@ -51,8 +48,8 @@ class MemeController {
         }
 
         $this->db->prepare(
-            "INSERT INTO memes (image_url, title, year, genre) VALUES (?,?,?,?)"
-        )->execute([$filename, $title ?: null, $year, $genre]);
+            "INSERT INTO memes (image_url, title, year) VALUES (?,?,?)"
+        )->execute([$filename, $title ?: null, $year]);
 
         return ['success' => true, 'id' => (int)$this->db->lastInsertId(), 'image_url' => $filename];
     }
