@@ -25,15 +25,29 @@ class MemeController {
         )->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /** Sube una imagen nueva y la añade al catálogo de memes */
+    /** Sube una imagen nueva (por archivo o por URL) y la añade al catálogo de memes */
     public function addMeme(): array {
-        $title = trim($_POST['title'] ?? '');
-        $year  = (int)($_POST['year']  ?? 0);
+        $title    = trim($_POST['title'] ?? '');
+        $year     = (int)($_POST['year']  ?? 0);
+        $imageUrl = trim($_POST['image_url'] ?? '');
+        $hasFile  = !empty($_FILES['image']['tmp_name']);
 
         if ($year < 1900 || $year > 2100) return ['error' => 'Año inválido'];
-        if (empty($_FILES['image']['tmp_name'])) return ['error' => 'Debes seleccionar una imagen'];
+        if ($hasFile && $imageUrl)  return ['error' => 'Indica solo una imagen: archivo o URL, no ambos'];
+        if (!$hasFile && !$imageUrl) return ['error' => 'Debes subir una imagen o indicar una URL'];
 
-        $file = $_FILES['image'];
+        $filename = $hasFile ? $this->saveFromUpload($_FILES['image']) : $this->saveFromUrl($imageUrl);
+        if (isset($filename['error'])) return $filename;
+
+        $this->db->prepare(
+            "INSERT INTO memes (image_url, title, year) VALUES (?,?,?)"
+        )->execute([$filename, $title ?: null, $year]);
+
+        return ['success' => true, 'id' => (int)$this->db->lastInsertId(), 'image_url' => $filename];
+    }
+
+    /** Guarda un archivo subido por formulario y devuelve su nombre en disco */
+    private function saveFromUpload(array $file) {
         if (!in_array($file['type'], self::ALLOWED_TYPES, true)) {
             return ['error' => 'Formato no permitido. Usa JPG, PNG, GIF o WebP'];
         }
@@ -46,12 +60,49 @@ class MemeController {
         if (!move_uploaded_file($file['tmp_name'], self::UPLOAD_DIR . $filename)) {
             return ['error' => 'Error al guardar la imagen'];
         }
+        return $filename;
+    }
 
-        $this->db->prepare(
-            "INSERT INTO memes (image_url, title, year) VALUES (?,?,?)"
-        )->execute([$filename, $title ?: null, $year]);
+    /** Descarga una imagen desde una URL externa y la guarda en el servidor */
+    private function saveFromUrl(string $url) {
+        $parts = parse_url($url);
+        if (!$parts || !in_array($parts['scheme'] ?? '', ['http', 'https'], true) || empty($parts['host'])) {
+            return ['error' => 'URL no válida'];
+        }
+        // Evitar SSRF: bloquear IPs privadas/locales resueltas del host
+        $ip = gethostbyname($parts['host']);
+        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return ['error' => 'URL no permitida'];
+        }
 
-        return ['success' => true, 'id' => (int)$this->db->lastInsertId(), 'image_url' => $filename];
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS      => 3,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_RANGE          => '0-3145728', // tope de 3 MB
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; HitstoricBot/1.0)',
+        ]);
+        $data = curl_exec($ch);
+        $type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        $ok   = $data !== false && curl_getinfo($ch, CURLINFO_HTTP_CODE) < 400;
+        curl_close($ch);
+
+        if (!$ok || !$data) return ['error' => 'No se pudo descargar la imagen de esa URL'];
+        if (!in_array($type, self::ALLOWED_TYPES, true)) {
+            return ['error' => 'La URL no apunta a una imagen JPG, PNG, GIF o WebP'];
+        }
+        if (strlen($data) > 3 * 1024 * 1024) {
+            return ['error' => 'La imagen no puede superar 3 MB'];
+        }
+
+        $ext      = strtolower(explode('/', $type)[1]);
+        $filename = uniqid('meme_') . '.' . $ext;
+        if (file_put_contents(self::UPLOAD_DIR . $filename, $data) === false) {
+            return ['error' => 'Error al guardar la imagen'];
+        }
+        return $filename;
     }
 
     /** Elimina un meme del catálogo y borra su imagen del disco */

@@ -326,11 +326,21 @@ require_once __DIR__ . '/../config.php'; ?>
       <h6 class="text-secondary text-uppercase fw-semibold mb-3" style="letter-spacing:.08em">Subir meme al catálogo</h6>
 
       <div class="card p-3 mb-3">
+        <div class="d-flex gap-2 mb-3">
+          <button type="button" class="btn btn-sm rounded-pill genre-btn active"
+                  onclick="setMemeSource(this,'file')" data-source="file">📁 Archivo</button>
+          <button type="button" class="btn btn-sm rounded-pill genre-btn"
+                  onclick="setMemeSource(this,'url')" data-source="url">🔗 URL</button>
+        </div>
         <form id="meme-upload-form" onsubmit="event.preventDefault();uploadMeme();">
           <div class="d-flex gap-2 flex-wrap align-items-end">
-            <div style="flex:1;min-width:200px">
+            <div style="flex:1;min-width:200px" id="meme-source-file">
               <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Imagen</label>
-              <input type="file" id="meme-image-input" class="form-control form-control-sm" accept="image/png,image/jpeg,image/gif,image/webp" required>
+              <input type="file" id="meme-image-input" class="form-control form-control-sm" accept="image/png,image/jpeg,image/gif,image/webp">
+            </div>
+            <div style="flex:1;min-width:220px" id="meme-source-url" class="d-none">
+              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">URL de la imagen</label>
+              <input type="url" id="meme-url-input" class="search-bar w-100" placeholder="https://...">
             </div>
             <div style="min-width:120px">
               <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Año</label>
@@ -1040,19 +1050,35 @@ async function addGenre() {
 
 /* ── Catálogo de memes ── */
 
+let memeSource = 'file';
+
+function setMemeSource(btn, source) {
+  document.querySelectorAll('#tab-memes .card .genre-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  memeSource = source;
+  document.getElementById('meme-source-file').classList.toggle('d-none', source !== 'file');
+  document.getElementById('meme-source-url').classList.toggle('d-none', source !== 'url');
+}
+
 async function uploadMeme() {
   const fileInput = document.getElementById('meme-image-input');
+  const urlInput  = document.getElementById('meme-url-input');
   const year      = document.getElementById('meme-year-input').value;
   const title     = document.getElementById('meme-title-input').value.trim();
   const status    = document.getElementById('meme-upload-status');
 
-  if (!fileInput.files.length) { status.textContent = 'Selecciona una imagen.'; return; }
+  if (memeSource === 'file' && !fileInput.files.length) { status.textContent = 'Selecciona una imagen.'; return; }
+  if (memeSource === 'url' && !urlInput.value.trim())   { status.textContent = 'Indica la URL de la imagen.'; return; }
   if (!year) { status.textContent = 'Indica el año.'; return; }
 
   status.textContent = 'Subiendo…';
 
   const body = new FormData();
-  body.append('image', fileInput.files[0]);
+  if (memeSource === 'file') {
+    body.append('image', fileInput.files[0]);
+  } else {
+    body.append('image_url', urlInput.value.trim());
+  }
   body.append('year', year);
   body.append('title', title);
 
