@@ -519,7 +519,7 @@ function renderQuestion(state) {
     ? '😂 ¿En qué año se hizo viral? Colócalo en tu línea del tiempo'
     : '🎵 ¿En qué año salió? Colócala en tu línea del tiempo';
   memeImg.classList.toggle('d-none', !isMeme);
-  if (isMeme) memeImg.src = MEME_IMG_BASE + currentSong.image_url;
+  if (isMeme) { memeImg.src = MEME_IMG_BASE + currentSong.image_url; memeImg.load(); }
 
   document.getElementById('q-title').textContent  = isMeme ? (currentSong.title || '') : (currentSong.title || '—');
   const artistEl = document.getElementById('q-artist');
@@ -769,7 +769,7 @@ function buildTimeline(timeline) {
       card.className = 'timeline-song' + (i === 0 && n === 1 ? ' initial' : '');
       card.innerHTML = song.image_url
         ? `<div class="ts-year">${song.year}</div>
-           <img src="${MEME_IMG_BASE}${song.image_url}" alt="Meme" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0">`
+           <video src="${MEME_IMG_BASE}${song.image_url}" muted autoplay loop playsinline style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0"></video>`
         : `<div class="ts-year">${song.year}</div>
            <div class="ts-info">
              <div class="ts-title">${esc(song.title)}</div>
@@ -862,7 +862,7 @@ function renderResults(state) {
 
   const rMemeImg = document.getElementById('r-meme-img');
   rMemeImg.classList.toggle('d-none', !isMeme);
-  if (isMeme) rMemeImg.src = MEME_IMG_BASE + song.image_url;
+  if (isMeme) { rMemeImg.src = MEME_IMG_BASE + song.image_url; rMemeImg.load(); }
 
   // Carátula de la canción — solo se muestra aquí (resultados), nunca durante la pregunta
   const rSongImg = document.getElementById('r-song-img');
@@ -995,7 +995,7 @@ function renderMiniTimeline(id, timeline) {
     card.className = 'timeline-song mb-1' + (i === 0 ? ' initial' : '');
     card.innerHTML = s.image_url
       ? `<div class="ts-year">${s.year}</div>
-         <img src="${MEME_IMG_BASE}${s.image_url}" alt="Meme" style="width:36px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0">`
+         <video src="${MEME_IMG_BASE}${s.image_url}" muted autoplay loop playsinline style="width:36px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0"></video>`
       : `<div class="ts-year">${s.year}</div>
          <div class="ts-info">
            <div class="ts-title">${esc(s.title)}</div>

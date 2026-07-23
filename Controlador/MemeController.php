@@ -2,17 +2,25 @@
 /**
  * MemeController.php — Catálogo de memes (modo de juego "memes")
  *
- * Permite subir imágenes de memes con su año, listarlas y eliminarlas
+ * Permite subir vídeos cortos de memes con su año, listarlos y eliminarlos
  * desde el panel superadmin. Funciona en paralelo al catálogo de
  * canciones (Option A: tablas separadas). Los memes no tienen género.
+ * La columna `image_url` se mantiene por compatibilidad con la BD, pero
+ * ahora guarda el nombre de archivo del vídeo.
  */
 require_once __DIR__ . '/../Modelo/Database.php';
 
 class MemeController {
     private PDO $db;
 
-    private const UPLOAD_DIR    = __DIR__ . '/../assets/images/memes/';
-    private const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    private const UPLOAD_DIR    = __DIR__ . '/../assets/videos/memes/';
+    private const ALLOWED_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
+    private const EXT_BY_TYPE   = [
+        'video/mp4'       => 'mp4',
+        'video/webm'      => 'webm',
+        'video/quicktime' => 'mov',
+    ];
+    private const MAX_SIZE = 15 * 1024 * 1024; // 15 MB
 
     public function __construct() {
         $this->db = Database::getInstance()->pdo();
@@ -25,7 +33,7 @@ class MemeController {
         )->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /** Sube una imagen nueva (por archivo o por URL) y la añade al catálogo de memes */
+    /** Sube un vídeo nuevo (por archivo o por URL) y lo añade al catálogo de memes */
     public function addMeme(): array {
         $title    = trim($_POST['title'] ?? '');
         $year     = (int)($_POST['year']  ?? 0);
@@ -33,8 +41,8 @@ class MemeController {
         $hasFile  = !empty($_FILES['image']['tmp_name']);
 
         if ($year < 1900 || $year > 2100) return ['error' => 'Año inválido'];
-        if ($hasFile && $imageUrl)  return ['error' => 'Indica solo una imagen: archivo o URL, no ambos'];
-        if (!$hasFile && !$imageUrl) return ['error' => 'Debes subir una imagen o indicar una URL'];
+        if ($hasFile && $imageUrl)  return ['error' => 'Indica solo un vídeo: archivo o URL, no ambos'];
+        if (!$hasFile && !$imageUrl) return ['error' => 'Debes subir un vídeo o indicar una URL'];
 
         $filename = $hasFile ? $this->saveFromUpload($_FILES['image']) : $this->saveFromUrl($imageUrl);
         if (isset($filename['error'])) return $filename;
@@ -49,21 +57,21 @@ class MemeController {
     /** Guarda un archivo subido por formulario y devuelve su nombre en disco */
     private function saveFromUpload(array $file) {
         if (!in_array($file['type'], self::ALLOWED_TYPES, true)) {
-            return ['error' => 'Formato no permitido. Usa JPG, PNG, GIF o WebP'];
+            return ['error' => 'Formato no permitido. Usa MP4, WebM o MOV'];
         }
-        if ($file['size'] > 3 * 1024 * 1024) {
-            return ['error' => 'La imagen no puede superar 3 MB'];
+        if ($file['size'] > self::MAX_SIZE) {
+            return ['error' => 'El vídeo no puede superar 15 MB'];
         }
 
-        $ext      = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = uniqid('meme_') . '.' . strtolower($ext);
+        $ext      = self::EXT_BY_TYPE[$file['type']];
+        $filename = uniqid('meme_') . '.' . $ext;
         if (!move_uploaded_file($file['tmp_name'], self::UPLOAD_DIR . $filename)) {
-            return ['error' => 'Error al guardar la imagen'];
+            return ['error' => 'Error al guardar el vídeo'];
         }
         return $filename;
     }
 
-    /** Descarga una imagen desde una URL externa y la guarda en el servidor */
+    /** Descarga un vídeo desde una URL externa y lo guarda en el servidor */
     private function saveFromUrl(string $url) {
         $parts = parse_url($url);
         if (!$parts || !in_array($parts['scheme'] ?? '', ['http', 'https'], true) || empty($parts['host'])) {
@@ -80,8 +88,8 @@ class MemeController {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS      => 3,
-            CURLOPT_TIMEOUT        => 10,
-            CURLOPT_RANGE          => '0-3145728', // tope de 3 MB
+            CURLOPT_TIMEOUT        => 20,
+            CURLOPT_RANGE          => '0-' . self::MAX_SIZE,
             CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; HitstoricBot/1.0)',
         ]);
         $data = curl_exec($ch);
@@ -89,23 +97,23 @@ class MemeController {
         $ok   = $data !== false && curl_getinfo($ch, CURLINFO_HTTP_CODE) < 400;
         curl_close($ch);
 
-        if (!$ok || !$data) return ['error' => 'No se pudo descargar la imagen de esa URL'];
+        if (!$ok || !$data) return ['error' => 'No se pudo descargar el vídeo de esa URL'];
         if (!in_array($type, self::ALLOWED_TYPES, true)) {
-            return ['error' => 'La URL no apunta a una imagen JPG, PNG, GIF o WebP'];
+            return ['error' => 'La URL no apunta a un vídeo MP4, WebM o MOV'];
         }
-        if (strlen($data) > 3 * 1024 * 1024) {
-            return ['error' => 'La imagen no puede superar 3 MB'];
+        if (strlen($data) > self::MAX_SIZE) {
+            return ['error' => 'El vídeo no puede superar 15 MB'];
         }
 
-        $ext      = strtolower(explode('/', $type)[1]);
+        $ext      = self::EXT_BY_TYPE[$type];
         $filename = uniqid('meme_') . '.' . $ext;
         if (file_put_contents(self::UPLOAD_DIR . $filename, $data) === false) {
-            return ['error' => 'Error al guardar la imagen'];
+            return ['error' => 'Error al guardar el vídeo'];
         }
         return $filename;
     }
 
-    /** Elimina un meme del catálogo y borra su imagen del disco */
+    /** Elimina un meme del catálogo y borra su vídeo del disco */
     public function deleteMeme(): array {
         $id = (int)($_POST['id'] ?? 0);
         if (!$id) return ['error' => 'ID de meme inválido'];

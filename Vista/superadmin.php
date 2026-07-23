@@ -102,7 +102,7 @@ require_once __DIR__ . '/../config.php'; ?>
       display: flex; align-items: center; gap: .75rem;
       padding: .55rem .9rem; border-bottom: 1px solid rgba(255,255,255,.06);
     }
-    .catalog-row img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+    .catalog-row img, .catalog-row video { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
     .catalog-row:last-child { border-bottom: none; }
     .catalog-row-info { flex: 1; min-width: 0; }
     .catalog-row-title { font-weight: 600; font-size: .86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -323,7 +323,7 @@ require_once __DIR__ . '/../config.php'; ?>
     <!-- ══ PESTAÑA: MEMES ══ -->
     <div class="tab-pane fade" id="tab-memes">
 
-      <h6 class="text-secondary text-uppercase fw-semibold mb-3" style="letter-spacing:.08em">Subir meme al catálogo</h6>
+      <h6 class="text-secondary text-uppercase fw-semibold mb-3" style="letter-spacing:.08em">Subir vídeo de meme al catálogo</h6>
 
       <div class="card p-3 mb-3">
         <div class="d-flex gap-2 mb-3">
@@ -335,11 +335,12 @@ require_once __DIR__ . '/../config.php'; ?>
         <form id="meme-upload-form" onsubmit="event.preventDefault();uploadMeme();">
           <div class="d-flex gap-2 flex-wrap align-items-end">
             <div style="flex:1;min-width:200px" id="meme-source-file">
-              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Imagen</label>
-              <input type="file" id="meme-image-input" class="form-control form-control-sm" accept="image/png,image/jpeg,image/gif,image/webp">
+              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Vídeo</label>
+              <input type="file" id="meme-image-input" class="form-control form-control-sm" accept="video/mp4,video/webm,video/quicktime">
+              <div class="small mt-1" style="color:var(--muted);opacity:.75">MP4, WebM o MOV · máx. 15 MB</div>
             </div>
             <div style="flex:1;min-width:220px" id="meme-source-url" class="d-none">
-              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">URL de la imagen</label>
+              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">URL del vídeo</label>
               <input type="url" id="meme-url-input" class="search-bar w-100" placeholder="https://...">
             </div>
             <div style="min-width:120px">
@@ -392,7 +393,7 @@ require_once __DIR__ . '/../config.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const API = '<?= BASE_URL ?>/Controlador/api.php';
-const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
+const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/videos/memes/';
 let allGames = [];
 let detailModal;
 let allCatalogSongs = [];
@@ -1067,8 +1068,8 @@ async function uploadMeme() {
   const title     = document.getElementById('meme-title-input').value.trim();
   const status    = document.getElementById('meme-upload-status');
 
-  if (memeSource === 'file' && !fileInput.files.length) { status.textContent = 'Selecciona una imagen.'; return; }
-  if (memeSource === 'url' && !urlInput.value.trim())   { status.textContent = 'Indica la URL de la imagen.'; return; }
+  if (memeSource === 'file' && !fileInput.files.length) { status.textContent = 'Selecciona un vídeo.'; return; }
+  if (memeSource === 'url' && !urlInput.value.trim())   { status.textContent = 'Indica la URL del vídeo.'; return; }
   if (!year) { status.textContent = 'Indica el año.'; return; }
 
   status.textContent = 'Subiendo…';
@@ -1139,7 +1140,7 @@ function renderMemeCatalog(memes, expand) {
       <div class="collapse${expand ? ' show' : ''}" id="${panelId}">
         ${list.map(m => `
           <div class="catalog-row" id="meme-row-${m.id}">
-            <img src="${MEME_IMG_BASE}${m.image_url}" alt="Meme">
+            <video src="${MEME_IMG_BASE}${m.image_url}" muted autoplay loop playsinline></video>
             <div class="catalog-row-info">
               <div class="catalog-row-title">${esc(m.title || '(sin título)')}</div>
               <div class="catalog-row-sub">${m.year}</div>

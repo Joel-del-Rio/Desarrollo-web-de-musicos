@@ -310,7 +310,7 @@ $genres = Genres::allWithTodos(); ?>
       <!-- Canción del turno — el dinamizador la pone físicamente -->
       <div class="round-song-card">
         <div class="rsc-label" id="q-label">🎵 Canción de esta ronda — ponla en el reproductor</div>
-        <img id="q-meme-img" class="d-none" style="max-width:100%;max-height:280px;border-radius:12px;margin:.5rem 0" alt="Meme">
+        <video id="q-meme-img" class="d-none" style="max-width:100%;max-height:280px;border-radius:12px;margin:.5rem 0" muted autoplay loop playsinline controls></video>
         <div class="rsc-title"  id="q-title">—</div>
         <div class="rsc-artist" id="q-artist">—</div>
         <div class="rsc-year year-hidden" id="q-year">—</div>
@@ -381,7 +381,7 @@ $genres = Genres::allWithTodos(); ?>
       <!-- Reveal -->
       <div class="round-song-card">
         <div class="rsc-label">✅ Respuesta correcta</div>
-        <img id="r-meme-img" class="d-none" style="max-width:100%;max-height:280px;border-radius:12px;margin:.5rem 0" alt="Meme">
+        <video id="r-meme-img" class="d-none" style="max-width:100%;max-height:280px;border-radius:12px;margin:.5rem 0" muted autoplay loop playsinline controls></video>
         <img id="r-song-img" class="d-none" style="width:110px;height:110px;object-fit:cover;border-radius:12px;margin:.5rem 0" alt="Carátula">
         <div class="rsc-title"  id="r-title">—</div>
         <div class="rsc-artist" id="r-artist">—</div>
@@ -453,8 +453,8 @@ $genres = Genres::allWithTodos(); ?>
   const API = '<?= BASE_URL ?>/Controlador/api.php';
   const GK  = 'hitstoric_gid';
   const TK  = 'hitstoric_tok';
-  const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/images/memes/';
+  const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/videos/memes/';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=58"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=59"></script>
 </body>
 </html>

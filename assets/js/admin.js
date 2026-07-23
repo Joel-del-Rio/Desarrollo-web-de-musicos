@@ -292,7 +292,7 @@ function renderQuestion(state) {
     : '🎵 Canción de esta ronda — ponla en el reproductor';
   const qMemeImg = document.getElementById('q-meme-img');
   qMemeImg.classList.toggle('d-none', !isMeme);
-  if (isMeme) qMemeImg.src = MEME_IMG_BASE + song.image_url;
+  if (isMeme) { qMemeImg.src = MEME_IMG_BASE + song.image_url; qMemeImg.load(); }
 
   document.getElementById('q-title').textContent  = isMeme ? (song.title || '') : (song.title || '—');
   const hard = !!gameSettings.hard_mode;
@@ -347,7 +347,7 @@ function renderResults(state) {
   const isMemeR = state.game_type === 'meme';
   const rMemeImg = document.getElementById('r-meme-img');
   rMemeImg.classList.toggle('d-none', !isMemeR);
-  if (isMemeR) rMemeImg.src = MEME_IMG_BASE + song.image_url;
+  if (isMemeR) { rMemeImg.src = MEME_IMG_BASE + song.image_url; rMemeImg.load(); }
 
   // Carátula de la canción — solo se muestra aquí (resultados), nunca durante la pregunta
   const rSongImg = document.getElementById('r-song-img');
