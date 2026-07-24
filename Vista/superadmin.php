@@ -323,25 +323,18 @@ require_once __DIR__ . '/../config.php'; ?>
     <!-- ══ PESTAÑA: MEMES ══ -->
     <div class="tab-pane fade" id="tab-memes">
 
-      <h6 class="text-secondary text-uppercase fw-semibold mb-3" style="letter-spacing:.08em">Subir vídeo de meme al catálogo</h6>
+      <h6 class="text-secondary text-uppercase fw-semibold mb-3" style="letter-spacing:.08em">Añadir meme desde YouTube</h6>
 
       <div class="card p-3 mb-3">
-        <div class="d-flex gap-2 mb-3">
-          <button type="button" class="btn btn-sm rounded-pill genre-btn active"
-                  onclick="setMemeSource(this,'file')" data-source="file">📁 Archivo</button>
-          <button type="button" class="btn btn-sm rounded-pill genre-btn"
-                  onclick="setMemeSource(this,'url')" data-source="url">🔗 URL</button>
-        </div>
         <form id="meme-upload-form" onsubmit="event.preventDefault();uploadMeme();">
           <div class="d-flex gap-2 flex-wrap align-items-end">
-            <div style="flex:1;min-width:200px" id="meme-source-file">
-              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Vídeo</label>
-              <input type="file" id="meme-image-input" class="form-control form-control-sm" accept="video/mp4,video/webm,video/quicktime">
-              <div class="small mt-1" style="color:var(--muted);opacity:.75">MP4, WebM o MOV · máx. 15 MB</div>
+            <div style="flex:1;min-width:240px">
+              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">URL de YouTube</label>
+              <input type="url" id="meme-youtube-url-input" class="search-bar w-100" placeholder="https://www.youtube.com/watch?v=..." required>
             </div>
-            <div style="flex:1;min-width:220px" id="meme-source-url" class="d-none">
-              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">URL del vídeo</label>
-              <input type="url" id="meme-url-input" class="search-bar w-100" placeholder="https://...">
+            <div style="min-width:130px">
+              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Inicio (segundos)</label>
+              <input type="number" id="meme-start-input" class="search-bar" min="0" placeholder="0" value="0">
             </div>
             <div style="min-width:120px">
               <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Año</label>
@@ -351,7 +344,7 @@ require_once __DIR__ . '/../config.php'; ?>
               <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Título (opcional)</label>
               <input type="text" id="meme-title-input" class="search-bar" placeholder="Descripción…">
             </div>
-            <button type="submit" class="btn btn-game rounded-pill fw-bold px-4">Subir meme</button>
+            <button type="submit" class="btn btn-game rounded-pill fw-bold px-4">Añadir meme</button>
           </div>
         </form>
         <div id="meme-upload-status" class="small mt-2" style="color:var(--muted)"></div>
@@ -393,7 +386,6 @@ require_once __DIR__ . '/../config.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const API = '<?= BASE_URL ?>/Controlador/api.php';
-const MEME_IMG_BASE = '<?= BASE_URL ?>/assets/videos/memes/';
 let allGames = [];
 let detailModal;
 let allCatalogSongs = [];
@@ -1051,47 +1043,34 @@ async function addGenre() {
 
 /* ── Catálogo de memes ── */
 
-let memeSource = 'file';
-
-function setMemeSource(btn, source) {
-  document.querySelectorAll('#tab-memes .card .genre-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  memeSource = source;
-  document.getElementById('meme-source-file').classList.toggle('d-none', source !== 'file');
-  document.getElementById('meme-source-url').classList.toggle('d-none', source !== 'url');
-}
-
 async function uploadMeme() {
-  const fileInput = document.getElementById('meme-image-input');
-  const urlInput  = document.getElementById('meme-url-input');
-  const year      = document.getElementById('meme-year-input').value;
-  const title     = document.getElementById('meme-title-input').value.trim();
-  const status    = document.getElementById('meme-upload-status');
+  const urlInput   = document.getElementById('meme-youtube-url-input');
+  const startInput = document.getElementById('meme-start-input');
+  const year        = document.getElementById('meme-year-input').value;
+  const title       = document.getElementById('meme-title-input').value.trim();
+  const status      = document.getElementById('meme-upload-status');
 
-  if (memeSource === 'file' && !fileInput.files.length) { status.textContent = 'Selecciona un vídeo.'; return; }
-  if (memeSource === 'url' && !urlInput.value.trim())   { status.textContent = 'Indica la URL del vídeo.'; return; }
+  if (!urlInput.value.trim()) { status.textContent = 'Indica la URL del vídeo de YouTube.'; return; }
   if (!year) { status.textContent = 'Indica el año.'; return; }
 
-  status.textContent = 'Subiendo…';
+  status.textContent = 'Añadiendo…';
 
-  const body = new FormData();
-  if (memeSource === 'file') {
-    body.append('image', fileInput.files[0]);
-  } else {
-    body.append('image_url', urlInput.value.trim());
-  }
-  body.append('year', year);
-  body.append('title', title);
-
-  const r = await fetch(`${API}?action=add_meme`, { method: 'POST', body })
-    .then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
+  const r = await fetch(`${API}?action=add_meme`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      youtube_url: urlInput.value.trim(),
+      start_seconds: startInput.value || '0',
+      year, title,
+    }),
+  }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
 
   if (r.success) {
     status.textContent = '✓ Meme añadido al catálogo';
     document.getElementById('meme-upload-form').reset();
     loadMemeCatalog();
   } else {
-    status.textContent = r.error || 'Error al subir el meme';
+    status.textContent = r.error || 'Error al añadir el meme';
   }
 }
 
@@ -1140,7 +1119,7 @@ function renderMemeCatalog(memes, expand) {
       <div class="collapse${expand ? ' show' : ''}" id="${panelId}">
         ${list.map(m => `
           <div class="catalog-row" id="meme-row-${m.id}">
-            <video src="${MEME_IMG_BASE}${m.image_url}" muted autoplay loop playsinline></video>
+            <img src="https://img.youtube.com/vi/${m.youtube_id}/default.jpg" alt="Miniatura del vídeo">
             <div class="catalog-row-info">
               <div class="catalog-row-title">${esc(m.title || '(sin título)')}</div>
               <div class="catalog-row-sub">${m.year}</div>

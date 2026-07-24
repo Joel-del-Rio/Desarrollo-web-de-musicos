@@ -309,7 +309,7 @@ class Game {
 
         if ($gameType === 'meme') {
             $st = $this->db->prepare(
-                "SELECT m.id, m.image_url, m.title, m.year, m.genre, gm.round_number
+                "SELECT m.id, m.youtube_id, m.start_seconds, m.title, m.year, gm.round_number
                  FROM game_memes gm
                  JOIN memes m ON gm.meme_id = m.id
                  JOIN games  g ON gm.game_id = g.id

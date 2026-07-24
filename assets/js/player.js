@@ -18,6 +18,12 @@ let questionTime = 30;          // Duración de la pregunta en segundos
 let lastReactionId = 0;         // Id de la última reacción ya mostrada (evita repetirlas)
 let serverBrowserModal = null;  // Instancia del modal de partidas públicas
 
+/** Construye la URL de embed de YouTube para un meme (autoplay en bucle, sin sonido) */
+function ytEmbedUrl(videoId, startSeconds) {
+  const start = startSeconds || 0;
+  return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&start=${start}&controls=1&playsinline=1`;
+}
+
 /* ── Selección de avatar y complementos ───────────────────────── */
 // Mismas listas y orden que las constantes de Player.php en el backend
 const AVATAR_LIST      = ['😐','👽','🤖','🐱','🐶','🦊','🐼','🐸','🐵','🦁','🐯','🐰','🐻','🐨','🐮','🐷','🐹','🐭'];
@@ -519,7 +525,7 @@ function renderQuestion(state) {
     ? '😂 ¿En qué año se hizo viral? Colócalo en tu línea del tiempo'
     : '🎵 ¿En qué año salió? Colócala en tu línea del tiempo';
   memeImg.classList.toggle('d-none', !isMeme);
-  if (isMeme) { memeImg.src = MEME_IMG_BASE + currentSong.image_url; memeImg.load(); }
+  if (isMeme) memeImg.src = ytEmbedUrl(currentSong.youtube_id, currentSong.start_seconds);
 
   document.getElementById('q-title').textContent  = isMeme ? (currentSong.title || '') : (currentSong.title || '—');
   const artistEl = document.getElementById('q-artist');
@@ -767,9 +773,9 @@ function buildTimeline(timeline) {
       const song = timeline[i];
       const card = document.createElement('div');
       card.className = 'timeline-song' + (i === 0 && n === 1 ? ' initial' : '');
-      card.innerHTML = song.image_url
+      card.innerHTML = song.youtube_id
         ? `<div class="ts-year">${song.year}</div>
-           <video src="${MEME_IMG_BASE}${song.image_url}" muted autoplay loop playsinline style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0"></video>`
+           <img src="https://img.youtube.com/vi/${song.youtube_id}/default.jpg" alt="Meme" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0">`
         : `<div class="ts-year">${song.year}</div>
            <div class="ts-info">
              <div class="ts-title">${esc(song.title)}</div>
@@ -862,7 +868,7 @@ function renderResults(state) {
 
   const rMemeImg = document.getElementById('r-meme-img');
   rMemeImg.classList.toggle('d-none', !isMeme);
-  if (isMeme) { rMemeImg.src = MEME_IMG_BASE + song.image_url; rMemeImg.load(); }
+  if (isMeme) rMemeImg.src = ytEmbedUrl(song.youtube_id, song.start_seconds);
 
   // Carátula de la canción — solo se muestra aquí (resultados), nunca durante la pregunta
   const rSongImg = document.getElementById('r-song-img');
@@ -993,9 +999,9 @@ function renderMiniTimeline(id, timeline) {
   timeline.forEach((s, i) => {
     const card = document.createElement('div');
     card.className = 'timeline-song mb-1' + (i === 0 ? ' initial' : '');
-    card.innerHTML = s.image_url
+    card.innerHTML = s.youtube_id
       ? `<div class="ts-year">${s.year}</div>
-         <video src="${MEME_IMG_BASE}${s.image_url}" muted autoplay loop playsinline style="width:36px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0"></video>`
+         <img src="https://img.youtube.com/vi/${s.youtube_id}/default.jpg" alt="Meme" style="width:36px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0">`
       : `<div class="ts-year">${s.year}</div>
          <div class="ts-info">
            <div class="ts-title">${esc(s.title)}</div>

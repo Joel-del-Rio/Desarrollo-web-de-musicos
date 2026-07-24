@@ -158,7 +158,7 @@ class Player {
     public function getTimeline(int $playerId, int $gameId, string $gameType = 'song'): array {
         if ($gameType === 'meme') {
             $st = $this->db->prepare(
-                "SELECT m.id, m.image_url, m.title, m.year, m.genre
+                "SELECT m.id, m.youtube_id, m.start_seconds, m.title, m.year
                  FROM player_meme_timeline pt
                  JOIN memes m ON pt.meme_id = m.id
                  WHERE pt.player_id=? AND pt.game_id=?

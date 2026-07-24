@@ -16,6 +16,12 @@ let lastQuestionRound = -1;                   // Última ronda renderizada
 let questionTime = 30;                        // Duración de la pregunta en segundos
 let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0, hard_mode: 0 }; // Opciones de la partida
 
+/** Construye la URL de embed de YouTube para un meme (autoplay en bucle, sin sonido) */
+function ytEmbedUrl(videoId, startSeconds) {
+  const start = startSeconds || 0;
+  return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&start=${start}&controls=1&playsinline=1`;
+}
+
 // Complementos: posición y tamaño FIJOS — debe coincidir con player.js. No son ajustables por el jugador.
 const ACCESSORY_SPECS = {
   glasses:     { fontPct: 0.56, z: 2, defTop: 48, defLeft: 50 },
@@ -292,7 +298,7 @@ function renderQuestion(state) {
     : '🎵 Canción de esta ronda — ponla en el reproductor';
   const qMemeImg = document.getElementById('q-meme-img');
   qMemeImg.classList.toggle('d-none', !isMeme);
-  if (isMeme) { qMemeImg.src = MEME_IMG_BASE + song.image_url; qMemeImg.load(); }
+  if (isMeme) qMemeImg.src = ytEmbedUrl(song.youtube_id, song.start_seconds);
 
   document.getElementById('q-title').textContent  = isMeme ? (song.title || '') : (song.title || '—');
   const hard = !!gameSettings.hard_mode;
@@ -347,7 +353,7 @@ function renderResults(state) {
   const isMemeR = state.game_type === 'meme';
   const rMemeImg = document.getElementById('r-meme-img');
   rMemeImg.classList.toggle('d-none', !isMemeR);
-  if (isMemeR) { rMemeImg.src = MEME_IMG_BASE + song.image_url; rMemeImg.load(); }
+  if (isMemeR) rMemeImg.src = ytEmbedUrl(song.youtube_id, song.start_seconds);
 
   // Carátula de la canción — solo se muestra aquí (resultados), nunca durante la pregunta
   const rSongImg = document.getElementById('r-song-img');

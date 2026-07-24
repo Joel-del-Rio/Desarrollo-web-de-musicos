@@ -322,8 +322,17 @@ class Installer {
             $currentVersion = 24;
         }
 
+        // v25: los memes se embeben desde YouTube en vez de subir/alojar el vídeo
+        if ($currentVersion === 24) {
+            try { $pdo->exec("ALTER TABLE memes MODIFY image_url VARCHAR(255) NULL"); } catch (\Exception $e) {}
+            try { $pdo->exec("ALTER TABLE memes ADD COLUMN youtube_id VARCHAR(20) NULL"); } catch (\Exception $e) {}
+            try { $pdo->exec("ALTER TABLE memes ADD COLUMN start_seconds INT NOT NULL DEFAULT 0"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=25");
+            $currentVersion = 25;
+        }
+
         // Esquema actualizado: verificar integridad y salir
-        if ($currentVersion >= 24) {
+        if ($currentVersion >= 25) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
             $tables = $pdo->query("SHOW TABLES LIKE 'individual_pins'")->fetchAll();
             if (empty($tables)) {
@@ -520,11 +529,12 @@ class Installer {
         // Modo de juego "memes" — tablas paralelas a songs/game_songs/player_timeline/answers
         $pdo->exec("
             CREATE TABLE memes (
-                id        INT AUTO_INCREMENT PRIMARY KEY,
-                image_url VARCHAR(255) NOT NULL,
-                title     VARCHAR(200) NULL,
-                year      INT NOT NULL,
-                genre     VARCHAR(100)
+                id            INT AUTO_INCREMENT PRIMARY KEY,
+                image_url     VARCHAR(255) NULL,
+                youtube_id    VARCHAR(20) NULL,
+                start_seconds INT NOT NULL DEFAULT 0,
+                title         VARCHAR(200) NULL,
+                year          INT NOT NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
         $pdo->exec("
