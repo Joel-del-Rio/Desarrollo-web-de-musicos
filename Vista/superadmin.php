@@ -323,10 +323,11 @@ require_once __DIR__ . '/../config.php'; ?>
     <!-- ══ PESTAÑA: MEMES ══ -->
     <div class="tab-pane fade" id="tab-memes">
 
-      <h6 class="text-secondary text-uppercase fw-semibold mb-3" style="letter-spacing:.08em">Añadir meme desde YouTube</h6>
+      <h6 class="text-secondary text-uppercase fw-semibold mb-3" style="letter-spacing:.08em" id="meme-form-heading">Añadir meme desde YouTube</h6>
 
       <div class="card p-3 mb-3">
         <form id="meme-upload-form" onsubmit="event.preventDefault();uploadMeme();">
+          <input type="hidden" id="meme-editing-id" value="">
           <div class="d-flex gap-2 flex-wrap align-items-end">
             <div style="flex:1;min-width:240px">
               <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">URL de YouTube</label>
@@ -344,7 +345,8 @@ require_once __DIR__ . '/../config.php'; ?>
               <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Título (opcional)</label>
               <input type="text" id="meme-title-input" class="search-bar" placeholder="Descripción…">
             </div>
-            <button type="submit" class="btn btn-game rounded-pill fw-bold px-4">Añadir meme</button>
+            <button type="submit" class="btn btn-game rounded-pill fw-bold px-4" id="meme-submit-btn">Añadir meme</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill d-none" id="meme-cancel-edit-btn" onclick="cancelMemeEdit()">Cancelar</button>
           </div>
         </form>
         <div id="meme-upload-status" class="small mt-2" style="color:var(--muted)"></div>
@@ -1053,7 +1055,33 @@ function parseMmSs(value) {
   return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
 }
 
+function editMeme(id) {
+  const meme = allMemeCatalog.find(m => m.id === id);
+  if (!meme) return;
+  document.getElementById('meme-editing-id').value = id;
+  document.getElementById('meme-youtube-url-input').value = meme.youtube_id ? `https://www.youtube.com/watch?v=${meme.youtube_id}` : '';
+  const mins = Math.floor((meme.start_seconds || 0) / 60);
+  const secs = (meme.start_seconds || 0) % 60;
+  document.getElementById('meme-start-input').value = `${mins}:${String(secs).padStart(2, '0')}`;
+  document.getElementById('meme-year-input').value = meme.year;
+  document.getElementById('meme-title-input').value = meme.title || '';
+  document.getElementById('meme-form-heading').textContent = 'Editar meme';
+  document.getElementById('meme-submit-btn').textContent = 'Guardar cambios';
+  document.getElementById('meme-cancel-edit-btn').classList.remove('d-none');
+  document.getElementById('meme-upload-status').textContent = '';
+  document.getElementById('meme-youtube-url-input').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function cancelMemeEdit() {
+  document.getElementById('meme-editing-id').value = '';
+  document.getElementById('meme-upload-form').reset();
+  document.getElementById('meme-form-heading').textContent = 'Añadir meme desde YouTube';
+  document.getElementById('meme-submit-btn').textContent = 'Añadir meme';
+  document.getElementById('meme-cancel-edit-btn').classList.add('d-none');
+}
+
 async function uploadMeme() {
+  const editingId  = document.getElementById('meme-editing-id').value;
   const urlInput   = document.getElementById('meme-youtube-url-input');
   const startInput = document.getElementById('meme-start-input');
   const year        = document.getElementById('meme-year-input').value;
@@ -1066,24 +1094,27 @@ async function uploadMeme() {
   const startSeconds = parseMmSs(startInput.value);
   if (startSeconds === null) { status.textContent = 'Formato de inicio inválido. Usa mm:ss (ej. 1:23).'; return; }
 
-  status.textContent = 'Añadiendo…';
+  status.textContent = editingId ? 'Guardando…' : 'Añadiendo…';
 
-  const r = await fetch(`${API}?action=add_meme`, {
+  const params = {
+    youtube_url: urlInput.value.trim(),
+    start_seconds: String(startSeconds),
+    year, title,
+  };
+  if (editingId) params.id = editingId;
+
+  const r = await fetch(`${API}?action=${editingId ? 'update_meme' : 'add_meme'}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      youtube_url: urlInput.value.trim(),
-      start_seconds: String(startSeconds),
-      year, title,
-    }),
+    body: new URLSearchParams(params),
   }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
 
   if (r.success) {
-    status.textContent = '✓ Meme añadido al catálogo';
-    document.getElementById('meme-upload-form').reset();
+    status.textContent = editingId ? '✓ Meme actualizado' : '✓ Meme añadido al catálogo';
+    cancelMemeEdit();
     loadMemeCatalog();
   } else {
-    status.textContent = r.error || 'Error al añadir el meme';
+    status.textContent = r.error || 'Error al guardar el meme';
   }
 }
 
@@ -1137,6 +1168,7 @@ function renderMemeCatalog(memes, expand) {
               <div class="catalog-row-title">${esc(m.title || '(sin título)')}</div>
               <div class="catalog-row-sub">${m.year}</div>
             </div>
+            <button class="catalog-del-btn" onclick="editMeme(${m.id})" title="Editar" style="margin-right:.25rem">✎</button>
             <button class="catalog-del-btn" onclick="deleteCatalogMeme(${m.id})" title="Eliminar del catálogo">✕</button>
           </div>
         `).join('')}

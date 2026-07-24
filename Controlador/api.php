@@ -231,9 +231,15 @@ try {
             break;
 
         case 'add_meme':
-            // Sube una imagen nueva al catálogo de memes
+            // Añade un meme nuevo al catálogo a partir de una URL de YouTube
             require_once __DIR__ . '/MemeController.php';
             echo json_encode((new MemeController())->addMeme());
+            break;
+
+        case 'update_meme':
+            // Corrige la URL/año/título de un meme existente sin perder su historial de partidas
+            require_once __DIR__ . '/MemeController.php';
+            echo json_encode((new MemeController())->updateMeme());
             break;
 
         case 'delete_meme':

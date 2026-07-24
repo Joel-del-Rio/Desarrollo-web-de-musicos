@@ -42,6 +42,30 @@ class MemeController {
         return ['success' => true, 'id' => (int)$this->db->lastInsertId(), 'youtube_id' => $videoId];
     }
 
+    /** Edita un meme existente (útil para corregir la URL/año sin perder su historial de partidas) */
+    public function updateMeme(): array {
+        $id    = (int)($_POST['id'] ?? 0);
+        $title = trim($_POST['title'] ?? '');
+        $year  = (int)($_POST['year']  ?? 0);
+        $url   = trim($_POST['youtube_url'] ?? '');
+        $start = max(0, (int)($_POST['start_seconds'] ?? 0));
+
+        if (!$id) return ['error' => 'ID de meme inválido'];
+        if ($year < 1900 || $year > 2100) return ['error' => 'Año inválido'];
+        if (!$url) return ['error' => 'Indica la URL del vídeo de YouTube'];
+
+        $videoId = self::extractYoutubeId($url);
+        if (!$videoId) return ['error' => 'No se ha reconocido un enlace de YouTube válido'];
+
+        $st = $this->db->prepare(
+            "UPDATE memes SET youtube_id=?, start_seconds=?, title=?, year=? WHERE id=?"
+        );
+        $st->execute([$videoId, $start, $title ?: null, $year, $id]);
+        if ($st->rowCount() === 0) return ['error' => 'Meme no encontrado'];
+
+        return ['success' => true, 'id' => $id, 'youtube_id' => $videoId];
+    }
+
     /** Extrae el ID de vídeo de las URLs habituales de YouTube (watch, youtu.be, shorts, embed) */
     private static function extractYoutubeId(string $url): ?string {
         $patterns = [
