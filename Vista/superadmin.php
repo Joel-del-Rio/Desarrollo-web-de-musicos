@@ -1045,6 +1045,20 @@ async function addGenre() {
 
 /* ── Catálogo de memes ── */
 
+/** Muestra u oculta el reproductor embebido de YouTube para previsualizar un meme del catálogo */
+function togglePlayMeme(id, youtubeId, startSeconds) {
+  const box = document.getElementById(`meme-player-${id}`);
+  if (!box.classList.contains('d-none')) {
+    box.classList.add('d-none');
+    box.innerHTML = '';
+    return;
+  }
+  document.querySelectorAll('[id^="meme-player-"]').forEach(el => { el.classList.add('d-none'); el.innerHTML = ''; });
+  const url = `https://www.youtube.com/embed/${youtubeId}?autoplay=1&start=${startSeconds || 0}&playsinline=1`;
+  box.innerHTML = `<iframe src="${url}" style="width:100%;max-width:360px;aspect-ratio:16/9;border:0;border-radius:8px" allow="autoplay" allowfullscreen></iframe>`;
+  box.classList.remove('d-none');
+}
+
 /** Convierte "mm:ss" o "ss" a segundos totales. Devuelve null si el formato no es válido. */
 function parseMmSs(value) {
   const v = (value || '').trim();
@@ -1162,14 +1176,18 @@ function renderMemeCatalog(memes, expand) {
       </button>
       <div class="collapse${expand ? ' show' : ''}" id="${panelId}">
         ${list.map(m => `
-          <div class="catalog-row" id="meme-row-${m.id}">
-            <img src="https://img.youtube.com/vi/${m.youtube_id}/default.jpg" alt="Miniatura del vídeo">
-            <div class="catalog-row-info">
-              <div class="catalog-row-title">${esc(m.title || '(sin título)')}</div>
-              <div class="catalog-row-sub">${m.year}</div>
+          <div id="meme-row-${m.id}">
+            <div class="catalog-row">
+              <img src="https://img.youtube.com/vi/${m.youtube_id}/default.jpg" alt="Miniatura del vídeo">
+              <div class="catalog-row-info">
+                <div class="catalog-row-title">${esc(m.title || '(sin título)')}</div>
+                <div class="catalog-row-sub">${m.year}</div>
+              </div>
+              <button class="catalog-del-btn" onclick="togglePlayMeme(${m.id}, '${m.youtube_id}', ${m.start_seconds || 0})" title="Reproducir" style="margin-right:.25rem">▶</button>
+              <button class="catalog-del-btn" onclick="editMeme(${m.id})" title="Editar" style="margin-right:.25rem">✎</button>
+              <button class="catalog-del-btn" onclick="deleteCatalogMeme(${m.id})" title="Eliminar del catálogo">✕</button>
             </div>
-            <button class="catalog-del-btn" onclick="editMeme(${m.id})" title="Editar" style="margin-right:.25rem">✎</button>
-            <button class="catalog-del-btn" onclick="deleteCatalogMeme(${m.id})" title="Eliminar del catálogo">✕</button>
+            <div id="meme-player-${m.id}" class="d-none p-2"></div>
           </div>
         `).join('')}
       </div>
