@@ -332,9 +332,9 @@ require_once __DIR__ . '/../config.php'; ?>
               <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">URL de YouTube</label>
               <input type="url" id="meme-youtube-url-input" class="search-bar w-100" placeholder="https://www.youtube.com/watch?v=..." required>
             </div>
-            <div style="min-width:130px">
-              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Inicio (segundos)</label>
-              <input type="number" id="meme-start-input" class="search-bar" min="0" placeholder="0" value="0">
+            <div style="min-width:110px">
+              <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Inicio (mm:ss)</label>
+              <input type="text" id="meme-start-input" class="search-bar" placeholder="0:00" value="0:00" pattern="[0-9]+:[0-5][0-9]">
             </div>
             <div style="min-width:120px">
               <label class="form-label small text-secondary fw-semibold text-uppercase mb-1">Año</label>
@@ -1043,6 +1043,16 @@ async function addGenre() {
 
 /* ── Catálogo de memes ── */
 
+/** Convierte "mm:ss" o "ss" a segundos totales. Devuelve null si el formato no es válido. */
+function parseMmSs(value) {
+  const v = (value || '').trim();
+  if (!v) return 0;
+  if (/^\d+$/.test(v)) return parseInt(v, 10);
+  const m = v.match(/^(\d+):([0-5]?\d)$/);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+
 async function uploadMeme() {
   const urlInput   = document.getElementById('meme-youtube-url-input');
   const startInput = document.getElementById('meme-start-input');
@@ -1053,6 +1063,9 @@ async function uploadMeme() {
   if (!urlInput.value.trim()) { status.textContent = 'Indica la URL del vídeo de YouTube.'; return; }
   if (!year) { status.textContent = 'Indica el año.'; return; }
 
+  const startSeconds = parseMmSs(startInput.value);
+  if (startSeconds === null) { status.textContent = 'Formato de inicio inválido. Usa mm:ss (ej. 1:23).'; return; }
+
   status.textContent = 'Añadiendo…';
 
   const r = await fetch(`${API}?action=add_meme`, {
@@ -1060,7 +1073,7 @@ async function uploadMeme() {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       youtube_url: urlInput.value.trim(),
-      start_seconds: startInput.value || '0',
+      start_seconds: String(startSeconds),
       year, title,
     }),
   }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
