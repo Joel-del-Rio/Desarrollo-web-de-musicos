@@ -1157,25 +1157,18 @@ function renderMemeCatalog(memes, expand) {
     return;
   }
 
-  const byDecade = {};
-  memes.forEach(m => {
-    const decade = `${Math.floor(m.year / 10) * 10}s`;
-    (byDecade[decade] ??= []).push(m);
-  });
-  const decades = Object.keys(byDecade).sort();
+  const sorted = [...memes].sort((a, b) => a.year - b.year || a.id - b.id);
+  const panelId = 'meme-catalog-panel';
 
-  box.innerHTML = decades.map((decade, idx) => {
-    const list = byDecade[decade];
-    const panelId = `meme-decade-panel-${idx}`;
-    return `
+  box.innerHTML = `
     <div class="genre-group">
       <button class="genre-group-header w-100 border-0 bg-transparent text-start${expand ? '' : ' collapsed'}" type="button"
               data-bs-toggle="collapse" data-bs-target="#${panelId}" aria-expanded="${expand ? 'true' : 'false'}">
-        <span>${esc(decade)}<span class="genre-group-count">${list.length}</span></span>
+        <span>Memes<span class="genre-group-count">${sorted.length}</span></span>
         <span class="chevron">▾</span>
       </button>
       <div class="collapse${expand ? ' show' : ''}" id="${panelId}">
-        ${list.map(m => `
+        ${sorted.map(m => `
           <div id="meme-row-${m.id}">
             <div class="catalog-row">
               <img src="https://img.youtube.com/vi/${m.youtube_id}/default.jpg" alt="Miniatura del vídeo">
@@ -1192,7 +1185,6 @@ function renderMemeCatalog(memes, expand) {
         `).join('')}
       </div>
     </div>`;
-  }).join('');
 }
 
 async function deleteCatalogMeme(id) {
