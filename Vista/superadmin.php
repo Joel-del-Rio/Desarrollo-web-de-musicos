@@ -120,6 +120,13 @@ require_once __DIR__ . '/../config.php'; ?>
     }
     .catalog-del-btn:hover { background: rgba(220,53,69,.15); border-color: rgba(220,53,69,.5); color: #dc3545; }
     .catalog-del-btn:disabled { opacity: .4; cursor: default; }
+    .catalog-play-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+      background: transparent; border: 2px solid var(--accent);
+      color: var(--accent); cursor: pointer; transition: all .15s; font-size: .8rem;
+    }
+    .catalog-play-btn:hover { background: var(--accent); color: #fff; }
 
     .genre-group:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,.08); }
     .genre-group-header {
@@ -1176,12 +1183,12 @@ function renderMemeCatalog(memes, expand) {
         ${sorted.map(m => `
           <div id="meme-row-${m.id}">
             <div class="catalog-row">
-              <div class="catalog-row-playicon">▶</div>
+              <img src="https://img.youtube.com/vi/${m.youtube_id}/default.jpg" alt="Miniatura del vídeo">
               <div class="catalog-row-info">
                 <div class="catalog-row-title">${esc(m.title || '(sin título)')}</div>
                 <div class="catalog-row-sub">${m.year}</div>
               </div>
-              <button class="catalog-del-btn" onclick="togglePlayMeme(${m.id}, '${m.youtube_id}', ${m.start_seconds || 0})" title="Reproducir" style="margin-right:.25rem">▶</button>
+              <button class="catalog-play-btn" onclick="togglePlayMeme(${m.id}, '${m.youtube_id}', ${m.start_seconds || 0})" title="Reproducir" style="margin-right:.25rem">▶</button>
               <button class="catalog-del-btn" onclick="editMeme(${m.id})" title="Editar" style="margin-right:.25rem">✎</button>
               <button class="catalog-del-btn" onclick="deleteCatalogMeme(${m.id})" title="Eliminar del catálogo">✕</button>
             </div>
