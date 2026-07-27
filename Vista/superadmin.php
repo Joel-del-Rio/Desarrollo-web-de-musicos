@@ -103,6 +103,11 @@ require_once __DIR__ . '/../config.php'; ?>
       padding: .55rem .9rem; border-bottom: 1px solid rgba(255,255,255,.06);
     }
     .catalog-row img, .catalog-row video { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+    .catalog-row-playicon {
+      width: 40px; height: 40px; border-radius: 6px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.08); color: var(--accent); font-size: 1.1rem;
+    }
     .catalog-row:last-child { border-bottom: none; }
     .catalog-row-info { flex: 1; min-width: 0; }
     .catalog-row-title { font-weight: 600; font-size: .86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1171,7 +1176,7 @@ function renderMemeCatalog(memes, expand) {
         ${sorted.map(m => `
           <div id="meme-row-${m.id}">
             <div class="catalog-row">
-              <img src="https://img.youtube.com/vi/${m.youtube_id}/default.jpg" alt="Miniatura del vídeo">
+              <div class="catalog-row-playicon">▶</div>
               <div class="catalog-row-info">
                 <div class="catalog-row-title">${esc(m.title || '(sin título)')}</div>
                 <div class="catalog-row-sub">${m.year}</div>
