@@ -1002,9 +1002,25 @@ function renderGenreList() {
       <div class="catalog-row-info">
         <div class="catalog-row-title">${esc(g.name)}</div>
       </div>
-      <button class="catalog-del-btn" onclick="editGenre(${g.id})" title="Renombrar">✎</button>
+      <button class="catalog-del-btn" onclick="editGenre(${g.id})" title="Renombrar" style="margin-right:.25rem">✎</button>
+      <button class="catalog-del-btn" onclick="deleteGenre(${g.id})" title="Eliminar">✕</button>
     </div>
   `).join('');
+}
+
+async function deleteGenre(id) {
+  if (!confirm('¿Eliminar este género? Esta acción no se puede deshacer.')) return;
+
+  const r = await fetch(`${API}?action=delete_genre`, {
+    method: 'POST',
+    body: new URLSearchParams({ id }),
+  }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
+
+  if (r.success) {
+    await loadGenres();
+  } else {
+    alert(r.error || 'Error al eliminar el género');
+  }
 }
 
 function editGenre(id) {

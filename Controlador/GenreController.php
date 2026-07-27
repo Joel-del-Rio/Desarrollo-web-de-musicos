@@ -25,4 +25,9 @@ class GenreController {
         $name = trim($_POST['name'] ?? '');
         return Genres::rename($id, $name);
     }
+
+    /** Elimina un género, salvo que haya canciones que aún lo usen */
+    public function delete(): array {
+        return Genres::delete((int)($_POST['id'] ?? 0));
+    }
 }

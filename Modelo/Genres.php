@@ -76,4 +76,24 @@ class Genres {
 
         return ['success' => true];
     }
+
+    /** Elimina un género, salvo que haya canciones que aún lo usen */
+    public static function delete(int $id): array {
+        if (!$id) return ['error' => 'ID de género inválido'];
+
+        $db = self::db();
+        $cur = $db->prepare("SELECT name FROM genres WHERE id=?");
+        $cur->execute([$id]);
+        $name = $cur->fetchColumn();
+        if ($name === false) return ['error' => 'Género no encontrado'];
+
+        $inUse = $db->prepare("SELECT COUNT(*) FROM songs WHERE genre=?");
+        $inUse->execute([$name]);
+        if ((int)$inUse->fetchColumn() > 0) {
+            return ['error' => 'No se puede eliminar: hay canciones con este género. Cámbialas de género primero.'];
+        }
+
+        $db->prepare("DELETE FROM genres WHERE id=?")->execute([$id]);
+        return ['success' => true];
+    }
 }

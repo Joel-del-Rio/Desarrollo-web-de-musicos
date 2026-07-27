@@ -222,6 +222,12 @@ try {
             echo json_encode((new GenreController())->rename());
             break;
 
+        case 'delete_genre':
+            // Elimina un género, salvo que haya canciones que aún lo usen
+            require_once __DIR__ . '/GenreController.php';
+            echo json_encode((new GenreController())->delete());
+            break;
+
         // ── Memes (modo de juego alternativo) ──────────
 
         case 'get_memes':
