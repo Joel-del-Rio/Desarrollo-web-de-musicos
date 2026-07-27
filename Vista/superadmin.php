@@ -1204,7 +1204,9 @@ function renderMemeCatalog(memes, expand) {
                 <div class="catalog-row-title">${esc(m.title || '(sin título)')}</div>
                 <div class="catalog-row-sub">${m.year}</div>
               </div>
-              <button class="catalog-play-btn" onclick="togglePlayMeme(${m.id}, '${m.youtube_id}', ${m.start_seconds || 0})" title="Reproducir" style="margin-right:.25rem">▶</button>
+              <button class="catalog-play-btn" onclick="togglePlayMeme(${m.id}, '${m.youtube_id}', ${m.start_seconds || 0})" title="Reproducir" style="margin-right:.25rem">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><polygon points="1,0 12,6 1,12"/></svg>
+              </button>
               <button class="catalog-del-btn" onclick="editMeme(${m.id})" title="Editar" style="margin-right:.25rem">✎</button>
               <button class="catalog-del-btn" onclick="deleteCatalogMeme(${m.id})" title="Eliminar del catálogo">✕</button>
             </div>
