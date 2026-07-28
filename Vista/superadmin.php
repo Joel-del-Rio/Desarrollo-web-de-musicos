@@ -1186,17 +1186,27 @@ function renderMemeCatalog(memes, expand) {
   }
 
   const sorted = [...memes].sort((a, b) => a.year - b.year || a.id - b.id);
-  const panelId = 'meme-catalog-panel';
 
-  box.innerHTML = `
+  // Divide en 3 tramos de años con un tamaño similar de memes en cada uno
+  const groupCount = Math.min(3, sorted.length);
+  const groups = Array.from({ length: groupCount }, () => []);
+  sorted.forEach((m, i) => groups[Math.floor(i * groupCount / sorted.length)].push(m));
+
+  box.innerHTML = groups.map((list, idx) => {
+    if (!list.length) return '';
+    const panelId = `meme-year-panel-${idx}`;
+    const minY = list[0].year;
+    const maxY = list[list.length - 1].year;
+    const label = minY === maxY ? String(minY) : `${minY}–${maxY}`;
+    return `
     <div class="genre-group">
       <button class="genre-group-header w-100 border-0 bg-transparent text-start${expand ? '' : ' collapsed'}" type="button"
               data-bs-toggle="collapse" data-bs-target="#${panelId}" aria-expanded="${expand ? 'true' : 'false'}">
-        <span>Memes<span class="genre-group-count">${sorted.length}</span></span>
+        <span>${esc(label)}<span class="genre-group-count">${list.length}</span></span>
         <span class="chevron">▾</span>
       </button>
       <div class="collapse${expand ? ' show' : ''}" id="${panelId}">
-        ${sorted.map(m => `
+        ${list.map(m => `
           <div id="meme-row-${m.id}">
             <div class="catalog-row">
               <img src="https://img.youtube.com/vi/${m.youtube_id}/default.jpg" alt="Miniatura del vídeo">
@@ -1215,6 +1225,7 @@ function renderMemeCatalog(memes, expand) {
         `).join('')}
       </div>
     </div>`;
+  }).join('');
 }
 
 async function deleteCatalogMeme(id) {
