@@ -636,10 +636,10 @@ function setGameType(btn, type) {
   const catalogLink = document.getElementById('catalog-link');
   if (isMeme) {
     catalogLink.href = catalogLink.href.replace(/songs\.php$/, 'memes.php');
-    catalogLink.textContent = '😂 Gestionar catálogo de memes';
+    catalogLink.textContent = '😂 Catálogo de memes';
   } else {
     catalogLink.href = catalogLink.href.replace(/memes\.php$/, 'songs.php');
-    catalogLink.textContent = '🎵 Gestionar catálogo de canciones';
+    catalogLink.textContent = '🎵 Catálogo de canciones';
   }
   if (isMeme) {
     document.querySelectorAll('#genre-selector .genre-btn').forEach(b => b.classList.remove('active'));
