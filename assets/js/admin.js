@@ -296,6 +296,10 @@ function renderQuestion(state) {
   document.getElementById('q-label').textContent = isMeme
     ? '😂 Meme de esta ronda — muéstralo a los jugadores'
     : '🎵 Canción de esta ronda — ponla en el reproductor';
+  // Parar el vídeo del meme de resultados de la ronda anterior, si seguía sonando
+  const rMemeImgPrev = document.getElementById('r-meme-img');
+  if (rMemeImgPrev) rMemeImgPrev.src = '';
+
   const qMemeImg = document.getElementById('q-meme-img');
   qMemeImg.classList.toggle('d-none', !isMeme);
   if (isMeme) qMemeImg.src = ytEmbedUrl(song.youtube_id, song.start_seconds);
@@ -349,6 +353,10 @@ function renderResults(state) {
 
   document.getElementById('r-round').textContent  = state.current_round;
   document.getElementById('r-total').textContent  = state.total_rounds;
+
+  // Parar el vídeo del meme de la pregunta — la ronda ya pasó a resultados
+  const qMemeImgPrev = document.getElementById('q-meme-img');
+  if (qMemeImgPrev) qMemeImgPrev.src = '';
 
   const isMemeR = state.game_type === 'meme';
   const rMemeImg = document.getElementById('r-meme-img');
@@ -410,6 +418,11 @@ function renderResults(state) {
 function renderFinished(state) {
   stopPolling(); stopTimer();
   showScreen('finished');
+  // Parar cualquier vídeo de meme que siguiera reproduciéndose de la última ronda
+  const qMemeImg = document.getElementById('q-meme-img');
+  const rMemeImg = document.getElementById('r-meme-img');
+  if (qMemeImg) qMemeImg.src = '';
+  if (rMemeImg) rMemeImg.src = '';
   renderPodium('f-podium', state.players || []);
   renderLeaderboard('f-leaderboard', state.players || []);
 }

@@ -519,6 +519,10 @@ function renderQuestion(state) {
   questionTime = state.question_time || 30;
 
   showScreen('question');
+  // Parar el vídeo del meme de resultados de la ronda anterior, si seguía sonando
+  const rMemeImgPrev = document.getElementById('r-meme-img');
+  if (rMemeImgPrev) rMemeImgPrev.src = '';
+
   const isMeme = state.game_type === 'meme';
   const memeImg = document.getElementById('q-meme-img');
   document.getElementById('q-label').textContent = isMeme
@@ -866,6 +870,10 @@ function renderResults(state) {
   const myRes  = state.my_result || null;
   const isMeme = state.game_type === 'meme';
 
+  // Parar el vídeo del meme de la pregunta — la ronda ya pasó a resultados
+  const qMemeImgPrev = document.getElementById('q-meme-img');
+  if (qMemeImgPrev) qMemeImgPrev.src = '';
+
   const rMemeImg = document.getElementById('r-meme-img');
   rMemeImg.classList.toggle('d-none', !isMeme);
   if (isMeme) rMemeImg.src = ytEmbedUrl(song.youtube_id, song.start_seconds);
@@ -936,6 +944,11 @@ function renderResults(state) {
 function renderFinished(state) {
   stopPolling(); stopCountdown();
   showScreen('finished');
+  // Parar cualquier vídeo de meme que siguiera reproduciéndose de la última ronda
+  const qMemeImg = document.getElementById('q-meme-img');
+  const rMemeImg = document.getElementById('r-meme-img');
+  if (qMemeImg) qMemeImg.src = '';
+  if (rMemeImg) rMemeImg.src = '';
   const p = state.player || {};
   document.getElementById('f-rank').textContent  = `Posición final: ${state.player_rank} / ${state.total_players}`;
   document.getElementById('f-score').textContent = `${p.score} pts`;
