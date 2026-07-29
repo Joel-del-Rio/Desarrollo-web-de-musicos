@@ -310,7 +310,7 @@ $genres = Genres::allWithTodos(); ?>
       <!-- Canción del turno — el dinamizador la pone físicamente -->
       <div class="round-song-card">
         <div class="rsc-label" id="q-label">🎵 Canción de esta ronda — ponla en el reproductor</div>
-        <div id="q-meme-img" class="d-none meme-video-wrap" style="width:min(94vw, 640px);margin:.5rem auto"><div id="q-meme-img-player"></div></div>
+        <div id="q-meme-img" class="d-none meme-video-wrap" style="width:100%;max-width:640px;margin:.5rem auto"><div id="q-meme-img-player"></div></div>
         <div class="rsc-title"  id="q-title">—</div>
         <div class="rsc-artist" id="q-artist">—</div>
         <div class="rsc-year year-hidden" id="q-year">—</div>
@@ -381,7 +381,7 @@ $genres = Genres::allWithTodos(); ?>
       <!-- Reveal -->
       <div class="round-song-card">
         <div class="rsc-label">✅ Respuesta correcta</div>
-        <div id="r-meme-img" class="d-none meme-video-wrap" style="width:min(94vw, 640px);margin:.5rem auto"><div id="r-meme-img-player"></div></div>
+        <div id="r-meme-img" class="d-none meme-video-wrap" style="width:100%;max-width:640px;margin:.5rem auto"><div id="r-meme-img-player"></div></div>
         <img id="r-song-img" class="d-none" style="width:110px;height:110px;object-fit:cover;border-radius:12px;margin:.5rem 0" alt="Carátula">
         <div class="rsc-title"  id="r-title">—</div>
         <div class="rsc-artist" id="r-artist">—</div>
