@@ -1143,6 +1143,7 @@ async function joinGame() {
 }
 
 function goToJoin() {
+  hideMemePlayer('q-meme-img'); hideMemePlayer('r-meme-img');
   clearSession(); showScreen('join');
   document.getElementById('pin-input').value  = '';
   document.getElementById('name-input').value = '';

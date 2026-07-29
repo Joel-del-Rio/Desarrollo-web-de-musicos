@@ -876,7 +876,10 @@ function showAdminError(msg) {
   el._t = setTimeout(() => { el.style.display = 'none'; }, 4000);
 }
 
-function newGame() { clearSession(); showScreen('setup'); }
+function newGame() {
+  hideMemePlayer('q-meme-img'); hideMemePlayer('r-meme-img');
+  clearSession(); showScreen('setup');
+}
 
 /** Limpia toda la sesión de admin del localStorage */
 function clearSession() {

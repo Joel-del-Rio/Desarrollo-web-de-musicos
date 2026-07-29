@@ -367,6 +367,6 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=89"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=90"></script>
 </body>
 </html>
