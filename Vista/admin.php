@@ -63,7 +63,7 @@ $genres = Genres::allWithTodos(); ?>
         <div class="text-center fw-black mb-1" style="font-size:3rem;color:var(--accent)" id="time-display">30</div>
         <input type="range" class="form-range" id="time-input" min="20" max="60" value="30" step="5"
                oninput="document.getElementById('time-display').textContent=this.value">
-        <div class="d-flex justify-content-between text-secondary small"><span>20s</span><span>60s</span></div>
+        <div class="d-flex justify-content-between text-secondary small"><span>20s</span><span id="time-max-label">60s</span></div>
       </div>
 
       <div class="mb-4" id="section-genre">
@@ -454,6 +454,6 @@ $genres = Genres::allWithTodos(); ?>
   const GK  = 'hitstoric_gid';
   const TK  = 'hitstoric_tok';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=62"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=63"></script>
 </body>
 </html>

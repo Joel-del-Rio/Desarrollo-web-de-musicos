@@ -26,9 +26,11 @@ class GameController {
     public function createGame(): array {
         // Validar y sanitizar parámetros (con rangos mínimos/máximos)
         $rounds       = max(5,  min(20, (int)($_POST['total_rounds']   ?? 10)));
-        $questionTime = max(20, min(60, (int)($_POST['question_time'] ?? 30)));
         $genre        = in_array($_POST['genre'] ?? '', Genres::allWithTodos(), true) ? $_POST['genre'] : 'Todos';
         $gameType     = ($_POST['game_type'] ?? 'song') === 'meme' ? 'meme' : 'song';
+        // El modo memes admite rondas más largas (hasta 120s) que el de canciones (hasta 60s)
+        $maxTime      = $gameType === 'meme' ? 120 : 60;
+        $questionTime = max(20, min($maxTime, (int)($_POST['question_time'] ?? 30)));
         // El modo memes no tiene audio ni links de streaming — se fuerzan a 0 al margen de lo enviado
         $showLinks    = $gameType === 'meme' ? 0 : (($_POST['show_links']    ?? '0') === '1' ? 1 : 0);
         $embedYoutube = $gameType === 'meme' ? 0 : (($_POST['embed_youtube'] ?? '0') === '1' ? 1 : 0);

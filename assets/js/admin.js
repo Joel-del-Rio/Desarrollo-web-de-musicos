@@ -654,6 +654,16 @@ function setGameType(btn, type) {
     catalogLink.href = catalogLink.href.replace(/memes\.php$/, 'songs.php');
     catalogLink.textContent = '🎵 Catálogo de canciones';
   }
+
+  // El modo memes permite rondas más largas (hasta 120s) que el de canciones (hasta 60s)
+  const timeInput = document.getElementById('time-input');
+  const maxTime   = isMeme ? 120 : 60;
+  timeInput.max = maxTime;
+  document.getElementById('time-max-label').textContent = maxTime + 's';
+  if (parseInt(timeInput.value, 10) > maxTime) {
+    timeInput.value = maxTime;
+    document.getElementById('time-display').textContent = maxTime;
+  }
   if (isMeme) {
     document.querySelectorAll('#genre-selector .genre-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('#genre-selector .genre-btn[data-genre="Todos"]')?.classList.add('active');
