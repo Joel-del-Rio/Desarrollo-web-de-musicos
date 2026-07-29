@@ -227,7 +227,7 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
     <div class="d-flex align-items-start justify-content-between gap-2">
       <div style="flex:1;min-width:0">
         <div class="ns-label" id="q-label">🎵 ¿En qué año salió? Colócala en tu línea del tiempo</div>
-        <iframe id="q-meme-img" class="d-none" style="width:100%;max-width:320px;aspect-ratio:16/9;border:0;border-radius:10px;margin:.4rem 0" allow="autoplay" allowfullscreen></iframe>
+        <iframe id="q-meme-img" class="d-none" style="width:min(94vw, 420px);aspect-ratio:16/9;border:0;border-radius:10px;margin:.4rem auto;display:block" allow="autoplay" allowfullscreen></iframe>
         <div class="ns-title"  id="q-title">—</div>
         <div class="ns-artist" id="q-artist">—</div>
       </div>
@@ -312,7 +312,7 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
 
     <!-- Reveal canción -->
     <div class="card w-100 p-3">
-      <iframe id="r-meme-img" class="d-none" style="width:100%;max-width:320px;aspect-ratio:16/9;border:0;border-radius:10px;margin:0 auto .5rem;display:block" allow="autoplay" allowfullscreen></iframe>
+      <iframe id="r-meme-img" class="d-none" style="width:min(94vw, 420px);aspect-ratio:16/9;border:0;border-radius:10px;margin:0 auto .5rem;display:block" allow="autoplay" allowfullscreen></iframe>
       <img id="r-song-img" class="d-none" style="width:96px;height:96px;object-fit:cover;border-radius:10px;margin:0 auto .5rem;display:block" alt="Carátula">
       <div class="fw-bold fs-5" id="r-title">—</div>
       <div class="text-secondary"    id="r-artist">—</div>
