@@ -20,7 +20,7 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Hitstoric — Jugador</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=8">
+  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=9">
   <style>
     #screen-question {
       height: 100dvh; /* dynamic viewport height (iOS safe) */
@@ -166,8 +166,8 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
       <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-4" onclick="openServerBrowser()">
         🌐 Ver partidas públicas
       </button>
-      <a href="<?= BASE_URL ?>/Vista/index.php" class="btn btn-outline-secondary btn-sm rounded-pill px-4">‹ Volver al inicio</a>
     </div>
+    <a href="<?= BASE_URL ?>/Vista/index.php" class="btn btn-outline-secondary btn-sm rounded-pill px-4 back-btn">‹ Volver al inicio</a>
 
   </div>
 </div>
@@ -216,7 +216,7 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
     </div>
   </div>
 
-  <button class="btn btn-outline-secondary btn-sm rounded-pill px-4" onclick="goToJoin()">‹ Salir</button>
+  <button class="btn btn-outline-secondary btn-sm rounded-pill px-4 back-btn" onclick="goToJoin()">‹ Salir</button>
 </div>
 
 <!-- ══ QUESTION (timeline) ══ -->
@@ -286,8 +286,8 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
       <div class="text-secondary" style="font-size:.75rem" id="confirm-hint">
         👆 Toca «Antes» o «Después» para colocarla
       </div>
-      <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" style="font-size:.72rem"
-              onclick="leaveGame()">Salir</button>
+      <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 back-btn" style="font-size:.72rem"
+              onclick="leaveGame()">‹ Salir</button>
     </div>
   </div>
 
@@ -298,7 +298,7 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
   <div class="game-spinner"></div>
   <div class="fw-semibold fs-5">Respuesta enviada</div>
   <div class="text-secondary small">Esperando a los demás jugadores…</div>
-  <button class="btn btn-outline-secondary btn-sm rounded-pill px-4 mt-2" onclick="leaveGame()">‹ Salir</button>
+  <button class="btn btn-outline-secondary btn-sm rounded-pill px-4 back-btn" onclick="leaveGame()">‹ Salir</button>
 </div>
 
 <!-- ══ RESULTS ══ -->
@@ -331,7 +331,7 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
       <div id="res-timeline"></div>
     </div>
 
-    <button class="btn btn-outline-secondary btn-sm rounded-pill px-4 mt-1" onclick="leaveGame()">‹ Salir</button>
+    <button class="btn btn-outline-secondary btn-sm rounded-pill px-4 back-btn" onclick="leaveGame()">‹ Salir</button>
 
   </div>
 </div>
@@ -345,7 +345,7 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
     <div id="f-prize" class="d-none w-100 text-center py-2 px-3 rounded-3 fw-bold" style="background:rgba(233,69,96,.15);border:2px solid var(--accent);font-size:1.05rem"></div>
     <div id="f-leaderboard" class="leaderboard w-100"></div>
     <button class="btn btn-game rounded-pill px-5 mt-2 fw-bold" onclick="goToJoin()">🎮 Jugar de nuevo</button>
-    <a href="<?= BASE_URL ?>/Vista/index.php" class="btn btn-outline-secondary rounded-pill px-5">‹ Inicio</a>
+    <a href="<?= BASE_URL ?>/Vista/index.php" class="btn btn-outline-secondary rounded-pill px-5 back-btn">‹ Inicio</a>
   </div>
 </div>
 

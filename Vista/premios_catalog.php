@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hitstoric — Gestionar premios</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=8">
+  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=9">
 </head>
 <body>
 
@@ -18,7 +18,7 @@
       <h4 class="fw-black mb-0">Gestionar premios</h4>
       <div class="small" style="color:var(--muted)">Catálogo de premios canjeables por puntos</div>
     </div>
-    <a href="<?= BASE_URL ?>/Vista/admin.php" class="btn btn-outline-secondary btn-sm rounded-pill ms-auto">‹ Volver al panel</a>
+    <a href="<?= BASE_URL ?>/Vista/admin.php" class="btn btn-outline-secondary btn-sm rounded-pill back-btn">‹ Volver al panel</a>
   </div>
 
   <!-- Formulario añadir / editar -->

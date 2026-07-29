@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hitstoric — Catálogo de memes</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=8">
+  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=9">
   <style>
     .filter-bar { position: sticky; top: 0; z-index: 10; background: var(--bg); padding: .75rem 0; }
 
@@ -35,7 +35,7 @@
       <h4 class="fw-black mb-0">Catálogo de memes</h4>
       <div class="small" style="color:var(--muted)">Consulta los memes disponibles</div>
     </div>
-    <a href="<?= BASE_URL ?>/Vista/admin.php" class="btn btn-outline-secondary btn-sm rounded-pill ms-auto">‹ Volver al panel</a>
+    <a href="<?= BASE_URL ?>/Vista/admin.php" class="btn btn-outline-secondary btn-sm rounded-pill back-btn">‹ Volver al panel</a>
   </div>
 
   <!-- Filtros -->

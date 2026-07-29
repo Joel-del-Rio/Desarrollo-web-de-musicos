@@ -22,7 +22,7 @@ $genres = Genres::allWithTodos(); ?>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hitstoric — Dinamizador</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=8">
+  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=9">
 </head>
 <body>
 
@@ -217,9 +217,7 @@ $genres = Genres::allWithTodos(); ?>
       <div id="setup-error" class="alert alert-danger mt-3 py-2 small d-none"></div>
     </div>
 
-    <div class="text-center mt-3">
-      <a href="<?= BASE_URL ?>/Vista/index.php" class="btn btn-outline-secondary btn-sm rounded-pill px-4">‹ Volver al inicio</a>
-    </div>
+    <a href="<?= BASE_URL ?>/Vista/index.php" class="btn btn-outline-secondary btn-sm rounded-pill px-4 back-btn">‹ Volver al inicio</a>
 
   </div>
 </div>
@@ -270,7 +268,7 @@ $genres = Genres::allWithTodos(); ?>
       <span class="text-secondary small">Mínimo 1 jugador para comenzar</span>
     </div>
 
-    <button class="btn btn-outline-secondary btn-sm rounded-pill px-4" onclick="newGame()">‹ Cancelar partida</button>
+    <button class="btn btn-outline-secondary btn-sm rounded-pill px-4 back-btn" onclick="newGame()">‹ Cancelar partida</button>
 
   </div>
 </div>
@@ -319,7 +317,7 @@ $genres = Genres::allWithTodos(); ?>
       </div>
 
       <div class="d-flex justify-content-between align-items-center">
-        <button class="btn btn-outline-secondary btn-sm rounded-pill" onclick="if(confirm('¿Abandonar la partida?')) newGame()">‹ Salir</button>
+        <button class="btn btn-outline-secondary btn-sm rounded-pill back-btn" onclick="if(confirm('¿Abandonar la partida?')) newGame()">‹ Salir</button>
         <button class="btn btn-game rounded-pill px-4 fw-bold" onclick="showResults()">
           Revelar año y ver resultados →
         </button>
@@ -395,7 +393,7 @@ $genres = Genres::allWithTodos(); ?>
       </div>
 
       <div class="mt-auto d-flex justify-content-between align-items-center pb-3">
-        <button class="btn btn-outline-secondary btn-sm rounded-pill" onclick="if(confirm('¿Abandonar la partida?')) newGame()">‹ Salir</button>
+        <button class="btn btn-outline-secondary btn-sm rounded-pill back-btn" onclick="if(confirm('¿Abandonar la partida?')) newGame()">‹ Salir</button>
         <button class="btn btn-game btn-lg rounded-pill px-5 fw-bold" id="btn-next" onclick="nextRound()">
           Siguiente Ronda →
         </button>
