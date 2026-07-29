@@ -632,6 +632,15 @@ function setGameType(btn, type) {
   document.getElementById('section-streaming').classList.toggle('d-none', isMeme);
   document.getElementById('section-genre').classList.toggle('d-none', isMeme);
   document.getElementById('section-hard-mode').classList.toggle('d-none', isMeme);
+
+  const catalogLink = document.getElementById('catalog-link');
+  if (isMeme) {
+    catalogLink.href = catalogLink.href.replace(/songs\.php$/, 'memes.php');
+    catalogLink.textContent = '😂 Gestionar catálogo de memes';
+  } else {
+    catalogLink.href = catalogLink.href.replace(/memes\.php$/, 'songs.php');
+    catalogLink.textContent = '🎵 Gestionar catálogo de canciones';
+  }
   if (isMeme) {
     document.querySelectorAll('#genre-selector .genre-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('#genre-selector .genre-btn[data-genre="Todos"]')?.classList.add('active');

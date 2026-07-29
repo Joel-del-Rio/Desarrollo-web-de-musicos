@@ -212,7 +212,7 @@ $genres = Genres::allWithTodos(); ?>
         🎮 Crear Partida
       </button>
       <div class="text-center mt-2">
-        <a href="<?= BASE_URL ?>/Vista/songs.php" class="small" style="color:var(--accent)">🎵 Gestionar catálogo de canciones</a>
+        <a href="<?= BASE_URL ?>/Vista/songs.php" id="catalog-link" class="small" style="color:var(--accent)">🎵 Gestionar catálogo de canciones</a>
       </div>
       <div id="setup-error" class="alert alert-danger mt-3 py-2 small d-none"></div>
     </div>
@@ -454,6 +454,6 @@ $genres = Genres::allWithTodos(); ?>
   const GK  = 'hitstoric_gid';
   const TK  = 'hitstoric_tok';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=59"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=60"></script>
 </body>
 </html>
