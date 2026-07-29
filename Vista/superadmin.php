@@ -180,9 +180,9 @@ require_once __DIR__ . '/../config.php'; ?>
 <div id="main-panel" class="d-none">
 
   <!-- Navbar -->
-  <nav class="navbar px-3 py-2" style="background:var(--card);border-bottom:1.5px solid rgba(255,255,255,.07)">
+  <nav class="navbar pe-3 py-2" style="background:var(--card);border-bottom:1.5px solid rgba(255,255,255,.07);padding-left:6.5rem">
     <div class="d-flex align-items-center gap-3">
-      <img src="<?= BASE_URL ?>/assets/images/Logo.png" alt="Hitstoric" style="height:30px">
+      <img src="<?= BASE_URL ?>/assets/images/Logo.png" alt="Hitstoric" style="height:38px">
       <span class="fw-black text-secondary small text-uppercase" style="letter-spacing:.08em">Superadmin</span>
     </div>
     <div class="d-flex align-items-center gap-2 ms-auto">

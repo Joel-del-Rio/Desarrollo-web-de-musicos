@@ -12,7 +12,7 @@
 
 <div class="container py-4" style="max-width:760px">
 
-  <div class="d-flex align-items-center gap-3 mb-4">
+  <div class="d-flex align-items-center gap-3 mb-4" style="margin-left:6rem">
     <img src="<?= BASE_URL ?>/assets/images/Logo.png" alt="Hitstoric" style="height:48px">
     <div>
       <h4 class="fw-black mb-0">Gestionar premios</h4>
