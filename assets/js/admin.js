@@ -16,10 +16,77 @@ let lastQuestionRound = -1;                   // Última ronda renderizada
 let questionTime = 30;                        // Duración de la pregunta en segundos
 let gameSettings = { show_links: 0, embed_youtube: 0, autoplay: 0, hard_mode: 0 }; // Opciones de la partida
 
-/** Construye la URL de embed de YouTube para un meme (autoplay en bucle, sin sonido) */
-function ytEmbedUrl(videoId, startSeconds) {
-  const start = startSeconds || 0;
-  return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&start=${start}&controls=1&playsinline=1`;
+/* ── Reproductor de memes (YouTube IFrame API) ──────────────────
+ * Se usa la API con postMessage (en vez de solo parámetros en la URL)
+ * para poder controlar y recordar el volumen entre rondas y partidas. */
+let ytApiReady = false;
+const ytApiWaiters = [];
+function loadYTApi() {
+  if (window.YT && window.YT.Player) { ytApiReady = true; return; }
+  if (document.getElementById('yt-iframe-api')) return;
+  const tag = document.createElement('script');
+  tag.id  = 'yt-iframe-api';
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+  window.onYouTubeIframeAPIReady = function () {
+    ytApiReady = true;
+    ytApiWaiters.splice(0).forEach(cb => cb());
+  };
+}
+function whenYTReady(cb) { ytApiReady ? cb() : ytApiWaiters.push(cb); }
+loadYTApi();
+
+const MEME_VOLUME_KEY = 'hitstoric_meme_volume';
+function getSavedMemeVolume() {
+  const v = parseInt(localStorage.getItem(MEME_VOLUME_KEY), 10);
+  return Number.isFinite(v) ? Math.min(100, Math.max(0, v)) : 70;
+}
+
+const memePlayers      = {}; // elId -> instancia de YT.Player
+const memeVolPollers   = {}; // elId -> id de setInterval
+
+/** Destruye el reproductor de un meme (para el vídeo y deja de vigilar su volumen) */
+function destroyMemePlayer(elId) {
+  if (memeVolPollers[elId]) { clearInterval(memeVolPollers[elId]); delete memeVolPollers[elId]; }
+  if (memePlayers[elId]) {
+    try { memePlayers[elId].destroy(); } catch (e) {}
+    delete memePlayers[elId];
+  }
+}
+
+/** Crea (o recrea) el reproductor de un meme con el volumen guardado, sin mutear */
+function loadMemePlayer(elId, videoId, startSeconds) {
+  destroyMemePlayer(elId);
+  document.getElementById(elId)?.classList.remove('d-none');
+  whenYTReady(() => {
+    memePlayers[elId] = new YT.Player(elId + '-player', {
+      videoId,
+      playerVars: {
+        autoplay: 1, start: startSeconds || 0, controls: 1,
+        playsinline: 1, loop: 1, playlist: videoId, rel: 0,
+      },
+      events: {
+        onReady: (e) => {
+          e.target.setVolume(getSavedMemeVolume());
+          e.target.unMute();
+          e.target.playVideo();
+          memeVolPollers[elId] = setInterval(() => {
+            try {
+              if (e.target.isMuted && e.target.isMuted()) return;
+              const vol = e.target.getVolume();
+              if (typeof vol === 'number') localStorage.setItem(MEME_VOLUME_KEY, String(vol));
+            } catch (err) {}
+          }, 1500);
+        },
+      },
+    });
+  });
+}
+
+/** Oculta y para el reproductor de un meme */
+function hideMemePlayer(elId) {
+  destroyMemePlayer(elId);
+  document.getElementById(elId)?.classList.add('d-none');
 }
 
 // Complementos: posición y tamaño FIJOS — debe coincidir con player.js. No son ajustables por el jugador.
@@ -297,12 +364,10 @@ function renderQuestion(state) {
     ? '😂 Meme de esta ronda — muéstralo a los jugadores'
     : '🎵 Canción de esta ronda — ponla en el reproductor';
   // Parar el vídeo del meme de resultados de la ronda anterior, si seguía sonando
-  const rMemeImgPrev = document.getElementById('r-meme-img');
-  if (rMemeImgPrev) rMemeImgPrev.src = '';
+  hideMemePlayer('r-meme-img');
 
-  const qMemeImg = document.getElementById('q-meme-img');
-  qMemeImg.classList.toggle('d-none', !isMeme);
-  if (isMeme) qMemeImg.src = ytEmbedUrl(song.youtube_id, song.start_seconds);
+  if (isMeme) loadMemePlayer('q-meme-img', song.youtube_id, song.start_seconds);
+  else hideMemePlayer('q-meme-img');
 
   document.getElementById('q-title').textContent  = isMeme ? (song.title || '') : (song.title || '—');
   const hard = !!gameSettings.hard_mode;
@@ -355,13 +420,11 @@ function renderResults(state) {
   document.getElementById('r-total').textContent  = state.total_rounds;
 
   // Parar el vídeo del meme de la pregunta — la ronda ya pasó a resultados
-  const qMemeImgPrev = document.getElementById('q-meme-img');
-  if (qMemeImgPrev) qMemeImgPrev.src = '';
+  hideMemePlayer('q-meme-img');
 
   const isMemeR = state.game_type === 'meme';
-  const rMemeImg = document.getElementById('r-meme-img');
-  rMemeImg.classList.toggle('d-none', !isMemeR);
-  if (isMemeR) rMemeImg.src = ytEmbedUrl(song.youtube_id, song.start_seconds);
+  if (isMemeR) loadMemePlayer('r-meme-img', song.youtube_id, song.start_seconds);
+  else hideMemePlayer('r-meme-img');
 
   // Carátula de la canción — solo se muestra aquí (resultados), nunca durante la pregunta
   const rSongImg = document.getElementById('r-song-img');
@@ -419,10 +482,8 @@ function renderFinished(state) {
   stopPolling(); stopTimer();
   showScreen('finished');
   // Parar cualquier vídeo de meme que siguiera reproduciéndose de la última ronda
-  const qMemeImg = document.getElementById('q-meme-img');
-  const rMemeImg = document.getElementById('r-meme-img');
-  if (qMemeImg) qMemeImg.src = '';
-  if (rMemeImg) rMemeImg.src = '';
+  hideMemePlayer('q-meme-img');
+  hideMemePlayer('r-meme-img');
   renderPodium('f-podium', state.players || []);
   renderLeaderboard('f-leaderboard', state.players || []);
 }

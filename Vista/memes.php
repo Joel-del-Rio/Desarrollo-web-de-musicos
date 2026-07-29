@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hitstoric — Catálogo de memes</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=7">
+  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=8">
   <style>
     .filter-bar { position: sticky; top: 0; z-index: 10; background: var(--bg); padding: .75rem 0; }
 
@@ -119,7 +119,7 @@ function togglePlayMeme(id, youtubeId, startSeconds) {
   }
   document.querySelectorAll('[id^="meme-player-"]').forEach(el => { el.classList.add('d-none'); el.innerHTML = ''; });
   const url = `https://www.youtube.com/embed/${youtubeId}?autoplay=1&start=${startSeconds || 0}&playsinline=1`;
-  box.innerHTML = `<iframe src="${url}" style="width:100%;max-width:360px;aspect-ratio:16/9;border:0;border-radius:8px" allow="autoplay" allowfullscreen></iframe>`;
+  box.innerHTML = `<iframe src="${url}" style="width:100%;max-width:360px;aspect-ratio:16/9;border:0;border-radius:8px;overflow:hidden" allow="autoplay" allowfullscreen></iframe>`;
   box.classList.remove('d-none');
 }
 
