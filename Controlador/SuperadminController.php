@@ -14,14 +14,11 @@ class SuperadminController {
         $this->db = Database::getInstance()->pdo();
     }
 
-    /** Verifica credenciales (mismas que panel de premios) */
+    /** Verifica credenciales y abre la sesión de administrador (mismas que panel de premios) */
     public function login(): array {
-        $email = strtolower(trim($_POST['email'] ?? ''));
-        $pass  = $_POST['password'] ?? '';
-        if ($email === 'joel@nite.black' && hash('sha256', $pass) === '4f1cf128cc1cda92976abb1be3455ace44aa9b5b4a3459ca5f89c0657536cc40') {
-            return ['success' => true];
-        }
-        return ['error' => 'Credenciales incorrectas'];
+        return Auth::login($_POST['email'] ?? '', $_POST['password'] ?? '')
+            ? ['success' => true]
+            : ['error' => 'Credenciales incorrectas'];
     }
 
     /** Estadísticas globales del sistema */

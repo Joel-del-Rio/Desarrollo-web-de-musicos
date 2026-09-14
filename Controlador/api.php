@@ -7,6 +7,17 @@
  * Los errores no capturados devuelven HTTP 500 con el mensaje de excepción.
  */
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../Modelo/Auth.php';
+
+// Acciones que modifican el catálogo o exponen datos privados: exigen sesión de
+// administrador. Cualquier acción nueva de este tipo debe añadirse aquí.
+const PROTECTED_ACTIONS = [
+    'superadmin_stats', 'superadmin_games', 'superadmin_game_detail',
+    'get_prizes_all', 'save_prize', 'toggle_prize', 'delete_prize',
+    'add_song', 'delete_song', 'update_song_links',
+    'add_genre', 'rename_genre', 'delete_genre',
+    'add_meme', 'update_meme', 'delete_meme',
+];
 
 // Cabeceras comunes para todas las respuestas
 header('Content-Type: application/json; charset=utf-8');
@@ -21,8 +32,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') exit(0);
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
+if (in_array($action, PROTECTED_ACTIONS, true) && !Auth::check()) {
+    http_response_code(401);
+    echo json_encode(['error' => 'No autorizado', 'auth_required' => true]);
+    exit;
+}
+
 try {
     switch ($action) {
+
+        // ── Sesión de administrador ────────────────────
+
+        case 'session_check':
+            // Permite al frontend saber si la sesión sigue abierta al recargar
+            echo json_encode(['authenticated' => Auth::check()]);
+            break;
+
+        case 'logout':
+            Auth::logout();
+            echo json_encode(['success' => true]);
+            break;
 
         // ── Panel del dinamizador (admin) ──────────────
 

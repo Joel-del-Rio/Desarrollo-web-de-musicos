@@ -165,7 +165,12 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-loadPrizes();
+// Esta página no tiene login propio: sin sesión de admin, redirigir a premios.php (que sí lo tiene)
+(async () => {
+  const r = await fetch(`${API}?action=session_check`).then(r => r.json()).catch(() => ({}));
+  if (!r.authenticated) { location.href = '<?= BASE_URL ?>/Vista/premios.php'; return; }
+  loadPrizes();
+})();
 </script>
 </body>
 </html>

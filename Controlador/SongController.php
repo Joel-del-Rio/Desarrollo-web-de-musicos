@@ -109,6 +109,15 @@ class SongController {
         if (!$id)  return ['error' => 'ID de canción inválido'];
         if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) return ['error' => 'URL inválida'];
 
+        // Esta acción es pública (la disparan los jugadores al ver resultados), así que
+        // solo acepta carátulas del CDN de iTunes: sin esto cualquiera podría poner
+        // una imagen arbitraria en las canciones que aún no tienen carátula.
+        $parts = parse_url($url);
+        if (($parts['scheme'] ?? '') !== 'https'
+            || !preg_match('/^is\d+-ssl\.mzstatic\.com$/', $parts['host'] ?? '')) {
+            return ['error' => 'Origen de carátula no permitido'];
+        }
+
         $this->db->prepare(
             "UPDATE songs SET artwork_url=? WHERE id=? AND artwork_url IS NULL"
         )->execute([$url, $id]);

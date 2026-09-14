@@ -241,12 +241,22 @@ require_once __DIR__ . '/../config.php'; ?>
 <script>
 const API = '<?= BASE_URL ?>/Controlador/api.php';
 
+// Si una acción de admin responde 401 (sesión caducada), ocultar el panel y pedir login otra vez
+const nativeFetch = window.fetch.bind(window);
+window.fetch = async (...args) => {
+  const res = await nativeFetch(...args);
+  if (res.status === 401 && String(args[0]).startsWith(API)) { hideAdminPanel(); showLoginModal(); }
+  return res;
+};
+
 /* ── Login modal ── */
 let loginModal;
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
-  if (sessionStorage.getItem('premios_admin') === '1') showAdminPanel();
   loadPrizes();
+  // La sesión vive en el servidor: comprobar si sigue abierta al recargar
+  const r = await fetch(`${API}?action=session_check`).then(r => r.json()).catch(() => ({}));
+  if (r.authenticated) showAdminPanel();
 });
 
 function showLoginModal() {
@@ -273,7 +283,6 @@ async function doLogin() {
     });
     const d = await r.json();
     if (d.success) {
-      sessionStorage.setItem('premios_admin', '1');
       loginModal.hide();
       showAdminPanel();
     } else {
@@ -295,8 +304,12 @@ function showAdminPanel() {
   loadAdminPrizes();
 }
 
-function adminLogout() {
-  sessionStorage.removeItem('premios_admin');
+async function adminLogout() {
+  await fetch(`${API}?action=logout`, { method: 'POST' }).catch(() => {});
+  hideAdminPanel();
+}
+
+function hideAdminPanel() {
   document.getElementById('admin-panel').classList.add('d-none');
   document.getElementById('admin-btn-wrap').classList.remove('d-none');
 }

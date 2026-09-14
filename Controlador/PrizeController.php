@@ -14,17 +14,11 @@ class PrizeController {
         $this->db = Database::getInstance()->pdo();
     }
 
-    /**
-     * Verifica las credenciales del administrador de premios.
-     * El hash SHA-256 evita guardar la contraseña en texto plano en el código.
-     */
+    /** Verifica las credenciales del administrador de premios y abre su sesión */
     public function login(): array {
-        $email = strtolower(trim($_POST['email'] ?? ''));
-        $pass  = $_POST['password'] ?? '';
-        if ($email === 'joel@nite.black' && hash('sha256', $pass) === '4f1cf128cc1cda92976abb1be3455ace44aa9b5b4a3459ca5f89c0657536cc40') {
-            return ['success' => true];
-        }
-        return ['error' => 'Credenciales incorrectas'];
+        return Auth::login($_POST['email'] ?? '', $_POST['password'] ?? '')
+            ? ['success' => true]
+            : ['error' => 'Credenciales incorrectas'];
     }
 
     // Directorio del servidor donde se guardan las imágenes de los premios

@@ -187,6 +187,7 @@ require_once __DIR__ . '/../config.php'; ?>
     </div>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <span id="sa-nav-status" class="text-secondary small"></span>
+      <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="saLogout()">Cerrar sesión</button>
     </div>
     <a href="<?= BASE_URL ?>/Vista/index.php" class="btn btn-outline-secondary btn-sm rounded-pill px-3 back-btn">‹ Inicio</a>
   </nav>
@@ -406,12 +407,30 @@ let songHitsData = [];
 let SONG_GENRES = [];    // nombres (para el selector de la búsqueda)
 let allGenres = [];      // {id, name} (para el panel de gestión)
 
-document.addEventListener('DOMContentLoaded', () => {
+// Si la API responde 401 (sesión caducada o cerrada), volver a la pantalla de login.
+// Un único punto de intercepción cubre todas las llamadas de esta página.
+const nativeFetch = window.fetch.bind(window);
+window.fetch = async (...args) => {
+  const res = await nativeFetch(...args);
+  if (res.status === 401 && String(args[0]).startsWith(API)) showLogin('Tu sesión ha caducado. Vuelve a entrar.');
+  return res;
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
   detailModal = new bootstrap.Modal(document.getElementById('gameDetailModal'));
-  // Si ya hemos autenticado en esta sesión, saltamos el login
-  if (sessionStorage.getItem('sa_auth') === '1') showPanel();
   initSongSectionNav();
+  // La sesión vive en el servidor: preguntamos si sigue abierta en vez de fiarnos del navegador
+  const r = await fetch(`${API}?action=session_check`).then(r => r.json()).catch(() => ({}));
+  if (r.authenticated) showPanel();
 });
+
+function showLogin(message = '') {
+  document.getElementById('main-panel').classList.add('d-none');
+  document.getElementById('login-screen').classList.remove('d-none');
+  const errEl = document.getElementById('sa-login-err');
+  errEl.textContent = message;
+  errEl.classList.toggle('d-none', !message);
+}
 
 /* Resalta el enlace de la sección visible en la navegación rápida de la pestaña Canciones */
 function initSongSectionNav() {
@@ -440,7 +459,7 @@ async function saLogin() {
   }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
 
   if (r.success) {
-    sessionStorage.setItem('sa_auth', '1');
+    document.getElementById('sa-pass').value = '';
     showPanel();
   } else {
     errEl.textContent = r.error || 'Credenciales incorrectas';
@@ -448,6 +467,11 @@ async function saLogin() {
     document.getElementById('sa-pass').value = '';
     document.getElementById('sa-pass').focus();
   }
+}
+
+async function saLogout() {
+  await fetch(`${API}?action=logout`, { method: 'POST' }).catch(() => {});
+  showLogin();
 }
 
 function showPanel() {

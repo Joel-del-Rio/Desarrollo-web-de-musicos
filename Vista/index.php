@@ -400,11 +400,12 @@ require_once __DIR__ . '/../config.php'; ?>
 
     const _API = '<?= BASE_URL ?>/Controlador/api.php';
 
-    // Mostrar tarjeta superadmin si ya autenticado en esta sesión
-    if (sessionStorage.getItem('sa_auth') === '1') {
+    // Mostrar tarjeta superadmin si la sesión de administrador sigue abierta en el servidor
+    fetch(`${_API}?action=session_check`).then(r => r.json()).then(r => {
+      if (!r.authenticated) return;
       document.getElementById('superadmin-card').classList.remove('d-none');
       document.getElementById('sa-btn-wrap').classList.add('d-none');
-    }
+    }).catch(() => {});
 
     async function idxSaLogin() {
       const email = document.getElementById('idx-sa-email').value.trim();
@@ -418,7 +419,6 @@ require_once __DIR__ . '/../config.php'; ?>
       }).then(r => r.json()).catch(() => ({ error: 'Error de conexión' }));
 
       if (r.success) {
-        sessionStorage.setItem('sa_auth', '1');
         document.getElementById('saLoginModal').style.display = 'none';
         document.getElementById('superadmin-card').classList.remove('d-none');
         document.getElementById('sa-btn-wrap').classList.add('d-none');
