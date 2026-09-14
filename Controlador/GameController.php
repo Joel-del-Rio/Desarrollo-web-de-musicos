@@ -101,10 +101,16 @@ class GameController {
     /**
      * Devuelve el estado completo de la partida para el polling del admin.
      * Incluye jugadores, conteo de respuestas y resultados de ronda si aplica.
+     *
+     * Requiere el admin_token: la respuesta incluye el año de la canción en curso,
+     * que en player_state se oculta durante la pregunta. Sin esta comprobación
+     * cualquier jugador podría leer aquí la solución antes de responder.
      */
     public function getGameState(): array {
         $gameId = (int)($_GET['game_id'] ?? 0);
+        $token  = $_GET['admin_token'] ?? $_POST['admin_token'] ?? '';
         if (!$gameId) return ['error' => 'Falta game_id'];
+        if (!$this->game->verifyAdmin($gameId, $token)) return ['error' => 'No autorizado'];
 
         $state    = $this->game->getState($gameId);
         $gameType = $state['game_type'] ?? 'song';

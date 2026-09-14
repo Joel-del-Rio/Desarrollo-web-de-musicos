@@ -189,7 +189,10 @@ function avatarLayers(p, size) {
 
 /* ── Llamadas API ─────────────────────────────────────────────── */
 async function apiGet(action) {
-  const r = await fetch(`${API}?action=${action}&game_id=${gameId}&_t=${Date.now()}`, { cache: 'no-store' });
+  // El token va en la query porque game_state se consulta por GET en cada poll
+  const url = `${API}?action=${action}&game_id=${gameId}`
+            + `&admin_token=${encodeURIComponent(adminToken ?? '')}&_t=${Date.now()}`;
+  const r = await fetch(url, { cache: 'no-store' });
   return r.json();
 }
 async function apiPost(action, extra = {}) {

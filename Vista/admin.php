@@ -452,6 +452,6 @@ $genres = Genres::allWithTodos(); ?>
   const GK  = 'hitstoric_gid';
   const TK  = 'hitstoric_tok';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=65"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=66"></script>
 </body>
 </html>
