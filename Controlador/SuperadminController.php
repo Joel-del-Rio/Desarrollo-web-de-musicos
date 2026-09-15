@@ -45,8 +45,15 @@ class SuperadminController {
 
     /** Finaliza automáticamente partidas caducadas */
     private function finishStale(): void {
-        // Partidas atascadas en resultados → finalizadas
-        $this->db->exec("UPDATE games SET status='finished' WHERE status='results'");
+        // Partidas atascadas en resultados desde hace más de 1 hora → finalizadas
+        // (si no, cualquier partida que esté mostrando el resultado de una ronda
+        // se cerraba en cuanto el superadmin cargaba la lista de partidas)
+        $this->db->exec("
+            UPDATE games SET status='finished'
+            WHERE status='results'
+              AND results_started_at IS NOT NULL
+              AND TIMESTAMPDIFF(SECOND, results_started_at, UTC_TIMESTAMP()) > 3600
+        ");
 
         // Partidas en pregunta desde hace más de 1 hora → finalizadas
         $this->db->exec("

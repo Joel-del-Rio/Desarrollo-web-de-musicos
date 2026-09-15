@@ -331,6 +331,14 @@ class Installer {
             $currentVersion = 25;
         }
 
+        // v26: marca cuándo entra una partida en 'results' para poder distinguir
+        // una partida atascada de una que sigue mostrando el resultado de la ronda
+        if ($currentVersion === 25) {
+            try { $pdo->exec("ALTER TABLE games ADD COLUMN results_started_at TIMESTAMP NULL"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=26");
+            $currentVersion = 26;
+        }
+
         // Esquema actualizado: verificar integridad y salir
         if ($currentVersion >= 25) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
@@ -379,6 +387,7 @@ class Installer {
                 pin_mode            ENUM('shared','individual') DEFAULT 'shared',
                 organizer_email     VARCHAR(255) NULL,
                 question_started_at TIMESTAMP NULL,
+                results_started_at  TIMESTAMP NULL,
                 created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 game_type           ENUM('song','meme') DEFAULT 'song',
                 genre_vote_enabled  TINYINT(1) DEFAULT 0,

@@ -259,7 +259,7 @@ class Game {
 
     /** Pasa la partida a estado 'results' para mostrar el año de la canción */
     public function showResults(int $gameId): void {
-        $this->db->prepare("UPDATE games SET status='results' WHERE id=?")->execute([$gameId]);
+        $this->db->prepare("UPDATE games SET status='results', results_started_at=UTC_TIMESTAMP() WHERE id=?")->execute([$gameId]);
     }
 
     /**
@@ -343,7 +343,7 @@ class Game {
         if ($game && $game['status'] === 'question' && $game['question_started_at']) {
             $elapsed = time() - strtotime($game['question_started_at'] . ' UTC');
             if ($elapsed >= (int)$game['question_time']) {
-                $this->db->prepare("UPDATE games SET status='results' WHERE id=?")->execute([$gameId]);
+                $this->db->prepare("UPDATE games SET status='results', results_started_at=UTC_TIMESTAMP() WHERE id=?")->execute([$gameId]);
                 $game = $this->getById($gameId);
             }
         }
