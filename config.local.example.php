@@ -23,6 +23,12 @@ define('TELEGRAM_ENABLED', false);
 define('TELEGRAM_BOT_TOKEN', '');
 define('TELEGRAM_CHAT_ID', '');
 
+// ── Webhook de Discord (anuncio de partidas públicas) ─────────────────
+// Canal de Discord → icono ⚙️ → Integraciones → Webhooks → Nuevo Webhook →
+// Copiar URL. Con DISCORD_ENABLED en false no se anuncia nada.
+define('DISCORD_ENABLED', false);
+define('DISCORD_WEBHOOK_URL', '');
+
 // ── Acceso de administrador (superadmin y panel de premios) ───────────
 // Genera el hash de tu contraseña con:
 //   php -r "echo password_hash('tu_contraseña_nueva', PASSWORD_BCRYPT), PHP_EOL;"

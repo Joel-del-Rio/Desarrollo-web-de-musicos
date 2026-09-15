@@ -73,20 +73,35 @@ class GameController {
                 }
             }
 
-            // Partida pública: anunciar el PIN, el enlace y los detalles de la partida en Telegram
-            if ($isPublic && defined('TELEGRAM_ENABLED') && TELEGRAM_ENABLED) {
-                require_once __DIR__ . '/../Modelo/TelegramBot.php';
-                $bot     = new TelegramBot(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID);
+            // Partida pública: anunciar el PIN, el enlace y los detalles de la partida en Telegram/Discord
+            if ($isPublic) {
                 $joinUrl = BASE_URL . '/player?pin=' . $result['pin'];
                 $kind    = $gameType === 'meme' ? '😂 Memes' : '🎵 Canciones';
-                $bot->sendMessage(
-                    "🎮 *¡Nueva partida pública de Hitstoric!*\n" .
-                    "PIN: `{$result['pin']}`\n" .
-                    "Únete aquí: {$joinUrl}\n\n" .
-                    "{$kind} · {$genre}\n" .
-                    "🔢 {$rounds} rondas · ⏱️ {$questionTime}s por ronda" .
-                    ($hardMode ? "\n🔥 Modo difícil" : '')
-                );
+                $details = "{$kind} · {$genre}\n" .
+                           "🔢 {$rounds} rondas · ⏱️ {$questionTime}s por ronda" .
+                           ($hardMode ? "\n🔥 Modo difícil" : '');
+
+                if (defined('TELEGRAM_ENABLED') && TELEGRAM_ENABLED) {
+                    require_once __DIR__ . '/../Modelo/TelegramBot.php';
+                    $bot = new TelegramBot(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID);
+                    $bot->sendMessage(
+                        "🎮 *¡Nueva partida pública de Hitstoric!*\n" .
+                        "PIN: `{$result['pin']}`\n" .
+                        "Únete aquí: {$joinUrl}\n\n" .
+                        $details
+                    );
+                }
+
+                if (defined('DISCORD_ENABLED') && DISCORD_ENABLED) {
+                    require_once __DIR__ . '/../Modelo/DiscordWebhook.php';
+                    $webhook = new DiscordWebhook(DISCORD_WEBHOOK_URL);
+                    $webhook->sendMessage(
+                        "🎮 **¡Nueva partida pública de Hitstoric!**\n" .
+                        "PIN: `{$result['pin']}`\n" .
+                        "Únete aquí: {$joinUrl}\n\n" .
+                        $details
+                    );
+                }
             }
         }
 
