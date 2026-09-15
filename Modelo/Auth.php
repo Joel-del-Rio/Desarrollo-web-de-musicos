@@ -7,9 +7,6 @@
  * así que ocultar o mostrar el panel en el navegador ya no basta para usarlas.
  */
 class Auth {
-    private const ADMIN_EMAIL     = 'joel@nite.black';
-    private const ADMIN_PASS_HASH = '4f1cf128cc1cda92976abb1be3455ace44aa9b5b4a3459ca5f89c0657536cc40';
-
     /** Arranca la sesión con cookie HttpOnly/SameSite (idempotente) */
     public static function start(): void {
         if (session_status() === PHP_SESSION_ACTIVE) return;
@@ -26,8 +23,9 @@ class Auth {
 
     /** Valida credenciales y, si son correctas, marca la sesión como administrador */
     public static function login(string $email, string $password): bool {
-        $ok = hash_equals(self::ADMIN_EMAIL, strtolower(trim($email)))
-           && hash_equals(self::ADMIN_PASS_HASH, hash('sha256', $password));
+        $ok = hash_equals(ADMIN_EMAIL, strtolower(trim($email)))
+           && ADMIN_PASS_HASH !== ''
+           && password_verify($password, ADMIN_PASS_HASH);
         if (!$ok) return false;
 
         self::start();

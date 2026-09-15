@@ -1,0 +1,4 @@
+# Secretos locales (contraseña de BD, token de Telegram, hash del admin).
+# Cada entorno (tu PC y el servidor) tiene su propia copia, nunca se sube.
+# Plantilla en config.local.example.php.
+config.local.php

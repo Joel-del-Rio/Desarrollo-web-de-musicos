@@ -6,6 +6,16 @@
  * Se carga en todos los puntos de entrada (api.php, vistas).
  */
 
+// ── Secretos (BD de producción, Telegram, admin) ──────
+// Viven en config.local.php, que NO se sube a git (ver .gitignore).
+// Plantilla y explicación en config.local.example.php.
+$secretsFile = __DIR__ . '/config.local.php';
+if (!file_exists($secretsFile)) {
+    http_response_code(500);
+    die('Falta config.local.php. Copia config.local.example.php como config.local.php y rellena los valores.');
+}
+require_once $secretsFile;
+
 // ── Base de datos ─────────────────────────────────────
 // Se diferencia entre Windows (XAMPP local) y Linux (SiteGround producción)
 if (PHP_OS_FAMILY === 'Windows') {
@@ -14,20 +24,11 @@ if (PHP_OS_FAMILY === 'Windows') {
     define('DB_PASS', '');
     define('DB_NAME', 'hitster_musicos');
 } else {
-    define('DB_HOST', 'localhost');
-    define('DB_USER', 'ug5qzildxb4vc');
-    define('DB_PASS', '0lx5wdgggcri');
-    define('DB_NAME', 'dbe7oc67cjh788');
+    define('DB_HOST', DB_HOST_PROD);
+    define('DB_USER', DB_USER_PROD);
+    define('DB_PASS', DB_PASS_PROD);
+    define('DB_NAME', DB_NAME_PROD);
 }
-
-// ── Bot de Telegram (anuncio de partidas públicas) ────
-// Crea un bot con @BotFather en Telegram, añádelo al grupo/canal y pon aquí
-// el token y el chat_id. Mientras TELEGRAM_ENABLED sea false, no se anuncia nada.
-// Cuando el dinamizador marca una partida como pública, se manda el PIN + enlace
-// aquí automáticamente (GameController::createGame).
-define('TELEGRAM_ENABLED', true);
-define('TELEGRAM_BOT_TOKEN', '8942003671:AAH0ce6MXF_kcZXLDp9LHXsFC8u7xiCOqOA');
-define('TELEGRAM_CHAT_ID', '-1003833086131'); // el grupo se convirtió en supergrupo y cambió de id
 
 // ── Correo saliente ───────────────────────────────────
 // Usa PHP mail() del servidor — no requiere credenciales SMTP externas.
