@@ -339,6 +339,15 @@ class Installer {
             $currentVersion = 26;
         }
 
+        // v27: jugadores bot — el dinamizador puede rellenar la sala con bots de
+        // una edad orientativa para probar la partida sin gente real
+        if ($currentVersion === 26) {
+            try { $pdo->exec("ALTER TABLE players ADD COLUMN is_bot TINYINT(1) NOT NULL DEFAULT 0"); } catch (\Exception $e) {}
+            try { $pdo->exec("ALTER TABLE players ADD COLUMN bot_age INT NULL"); } catch (\Exception $e) {}
+            $pdo->exec("UPDATE schema_version SET version=27");
+            $currentVersion = 27;
+        }
+
         // Esquema actualizado: verificar integridad y salir
         if ($currentVersion >= 25) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente
@@ -430,6 +439,8 @@ class Installer {
                 genre_vote   VARCHAR(100) NULL,
                 email        VARCHAR(255) NULL,
                 streak       INT DEFAULT 0,
+                is_bot       TINYINT(1) NOT NULL DEFAULT 0,
+                bot_age      INT NULL,
                 last_seen    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 joined_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE

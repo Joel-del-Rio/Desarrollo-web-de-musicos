@@ -288,10 +288,14 @@ function renderWaiting(state) {
     const chip = document.createElement('div');
     chip.className = 'player-chip';
     chip.style.cssText = `background:${p.avatar_color}22;border:2px solid ${p.avatar_color};display:flex;align-items:center;justify-content:space-between;gap:.5rem`;
+    const botBadge = p.is_bot
+      ? `<span class="badge bg-secondary" style="font-size:.6rem">BOT ${p.bot_age ?? ''}a</span>`
+      : '';
     chip.innerHTML = `
       <span style="display:flex;align-items:center;gap:.5rem;min-width:0">
         <span class="avatar-circle" style="background:${p.avatar_color}">${avatarLayers(p,28)}</span>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
+        ${botBadge}
       </span>
       <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0"
               style="font-size:.7rem;flex-shrink:0" title="Expulsar jugador"
@@ -821,6 +825,14 @@ async function startGame() {
   const d = await apiPost('start_game');
   if (d.error) { alert(d.error); return; }
   const s = await fetchState(); applyState(s);
+}
+
+/** Añade un jugador bot con la edad orientativa elegida (prueba de jugabilidad) */
+async function addBot() {
+  const age = document.getElementById('bot-age').value;
+  const d = await apiPost('add_bot', { age });
+  if (d.error) { alert(d.error); return; }
+  const s = await fetchState(); if (s) applyState(s);
 }
 
 /** Expulsa a un jugador de la sala de espera */

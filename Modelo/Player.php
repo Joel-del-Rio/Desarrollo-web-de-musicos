@@ -99,11 +99,39 @@ class Player {
     public function getByGame(int $gameId): array {
         $st = $this->db->prepare(
             "SELECT id, name, score, avatar_color, avatar, hair, glasses, hat, headphones, facial_hair,
-                    glasses_pos, hat_pos, facial_hair_pos, streak
+                    glasses_pos, hat_pos, facial_hair_pos, streak, is_bot, bot_age
              FROM players
              WHERE game_id=?
              ORDER BY score DESC, name ASC"
         );
+        $st->execute([$gameId]);
+        return $st->fetchAll();
+    }
+
+    /**
+     * Crea un jugador bot: mismo modelo de datos que un jugador real, pero
+     * marcado con is_bot=1 y una edad orientativa que determina qué tan bien
+     * "conoce" cada época musical (ver BotBrain::familiarity). Sirve para
+     * probar la jugabilidad de una partida sin necesitar gente real.
+     */
+    public function createBot(int $gameId, string $name, int $age): array {
+        $color  = self::COLORS[random_int(0, count(self::COLORS) - 1)];
+        $avatar = '🤖';
+
+        $this->db->prepare(
+            "INSERT INTO players (game_id, name, avatar_color, avatar, is_bot, bot_age)
+             VALUES (?,?,?,?,1,?)"
+        )->execute([$gameId, $name, $color, $avatar, $age]);
+
+        return [
+            'id' => (int)$this->db->lastInsertId(), 'name' => $name,
+            'color' => $color, 'avatar' => $avatar, 'is_bot' => true, 'bot_age' => $age,
+        ];
+    }
+
+    /** Devuelve los bots de una partida (usado por Game::processBots para hacerlos jugar solos) */
+    public function getBots(int $gameId): array {
+        $st = $this->db->prepare("SELECT * FROM players WHERE game_id=? AND is_bot=1");
         $st->execute([$gameId]);
         return $st->fetchAll();
     }

@@ -259,6 +259,17 @@ $genres = Genres::allWithTodos(); ?>
         <span class="badge rounded-pill fw-bold fs-6" style="background:var(--accent)" id="w-count">0</span>
       </div>
       <div id="w-players" class="card d-flex flex-wrap gap-2 justify-content-center p-3" style="min-height:60px"></div>
+      <div class="d-flex align-items-center justify-content-center gap-2 mt-2 flex-wrap">
+        <span class="text-secondary small">🤖 Rellenar con bots:</span>
+        <select id="bot-age" class="form-select form-select-sm" style="width:auto" title="Edad orientativa del bot">
+          <option value="16">16 años</option>
+          <option value="22" selected>22 años</option>
+          <option value="35">35 años</option>
+          <option value="50">50 años</option>
+          <option value="65">65 años</option>
+        </select>
+        <button type="button" class="btn btn-sm btn-outline-info rounded-pill" onclick="addBot()">+ Añadir bot</button>
+      </div>
     </div>
 
     <div class="d-flex flex-column align-items-center gap-2">
@@ -452,6 +463,6 @@ $genres = Genres::allWithTodos(); ?>
   const GK  = 'hitstoric_gid';
   const TK  = 'hitstoric_tok';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=66"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=67"></script>
 </body>
 </html>

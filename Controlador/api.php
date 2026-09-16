@@ -103,6 +103,12 @@ try {
             echo json_encode((new GameController())->kickPlayer());
             break;
 
+        case 'add_bot':
+            // Añade un jugador bot con una edad orientativa (prueba de jugabilidad)
+            require_once __DIR__ . '/GameController.php';
+            echo json_encode((new GameController())->addBot());
+            break;
+
         // ── Autenticación del panel de premios ─────────
 
         case 'admin_login':

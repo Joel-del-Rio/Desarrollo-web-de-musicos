@@ -6,6 +6,9 @@
  * avance de rondas, estado actual y consultas de canciones.
  */
 require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/Player.php';
+require_once __DIR__ . '/Reaction.php';
+require_once __DIR__ . '/BotBrain.php';
 
 class Game {
     private PDO $db;
@@ -329,6 +332,53 @@ class Game {
         return $st->fetch() ?: null;
     }
 
+    /**
+     * Hace que los bots de la partida respondan solos a la ronda en curso.
+     * Se llama en cada poll de getState(): cada bot tiene un tiempo de espera
+     * "humano" fijo por ronda (calculado de forma determinista para no
+     * recalcularlo en cada sondeo) y, al cumplirse, coloca la canción en su
+     * línea del tiempo con BotBrain y a veces lanza una reacción, igual que
+     * haría un jugador real.
+     */
+    private function processBots(int $gameId, array $game): void {
+        $gameType = $game['game_type'] ?? 'song';
+        $player   = new Player();
+        $bots     = $player->getBots($gameId);
+        if (!$bots || empty($game['question_started_at'])) return;
+
+        $song = $this->getCurrentSong($gameId);
+        if (!$song) return;
+
+        $questionTime = (int)$game['question_time'];
+        $elapsed      = time() - strtotime($game['question_started_at'] . ' UTC');
+        $reaction     = new Reaction();
+
+        foreach ($bots as $bot) {
+            if ($player->hasAnswered((int)$bot['id'], $gameId, (int)$song['id'], $gameType)) continue;
+
+            // Retardo determinista (misma semilla en cada poll de esta ronda) para
+            // que el bot "tarde" unos segundos en responder, como una persona real
+            $seed        = crc32($gameId . ':' . $bot['id'] . ':' . $game['current_round']);
+            $maxDelay    = max(3, min($questionTime - 2, 14));
+            $plannedWait = 2 + (($seed % 1000) / 1000) * ($maxDelay - 2);
+            if ($elapsed < $plannedWait) continue;
+
+            $years    = array_column($player->getTimeline((int)$bot['id'], $gameId, $gameType), 'year');
+            $position = BotBrain::choosePosition($years, (int)$song['year'], (int)$bot['bot_age']);
+            $timeLeft = max(0, $questionTime - $elapsed);
+
+            $result = $player->submitPositionAnswer(
+                (int)$bot['id'], $gameId, (int)$song['id'],
+                $position, (int)$song['year'], $timeLeft, $questionTime, $gameType
+            );
+
+            // Los bots también reaccionan con un emoji, igual que el resto de jugadores
+            if (mt_rand(1, 100) <= 45) {
+                $reaction->send($gameId, (int)$bot['id'], BotBrain::reactionEmoji($result['correct']));
+            }
+        }
+    }
+
     // ── Estado en tiempo real ─────────────────────────
 
     /**
@@ -338,6 +388,11 @@ class Game {
      */
     public function getState(int $gameId): array {
         $game = $this->getById($gameId);
+
+        // Hacer que los bots de la partida respondan/reaccionen solos si les toca
+        if ($game && $game['status'] === 'question') {
+            $this->processBots($gameId, $game);
+        }
 
         // Auto-transición cuando se acaba el tiempo de respuesta
         if ($game && $game['status'] === 'question' && $game['question_started_at']) {

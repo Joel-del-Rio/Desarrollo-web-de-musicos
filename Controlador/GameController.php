@@ -216,4 +216,32 @@ class GameController {
         $ok = $this->player->remove($playerId, $gameId);
         return $ok ? ['success' => true] : ['error' => 'No se pudo eliminar al jugador'];
     }
+
+    /**
+     * Añade un jugador bot a la sala de espera, con una edad orientativa que
+     * determina qué tan bien "conoce" cada época musical (ver BotBrain).
+     * Sirve para probar la jugabilidad de una partida sin gente real.
+     */
+    public function addBot(): array {
+        require_once __DIR__ . '/../Modelo/BotBrain.php';
+
+        $gameId = (int)($_POST['game_id'] ?? 0);
+        $token  = $_POST['admin_token'] ?? '';
+        $age    = (int)($_POST['age'] ?? 0);
+        $name   = trim($_POST['name'] ?? '');
+
+        if (!$this->game->verifyAdmin($gameId, $token)) return ['error' => 'No autorizado'];
+
+        $game = $this->game->getById($gameId);
+        if (!$game || $game['status'] !== 'waiting') {
+            return ['error' => 'Solo puedes añadir bots en la sala de espera'];
+        }
+        if ($age < BotBrain::MIN_AGE || $age > BotBrain::MAX_AGE) return ['error' => 'Edad inválida'];
+
+        if ($name === '') $name = "Bot {$age} años";
+        $name = mb_substr($name, 0, 30);
+
+        $bot = $this->player->createBot($gameId, $name, $age);
+        return ['success' => true, 'player_id' => $bot['id'], 'name' => $bot['name']];
+    }
 }
