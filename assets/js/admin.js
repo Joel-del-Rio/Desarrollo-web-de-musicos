@@ -289,7 +289,7 @@ function renderWaiting(state) {
     chip.className = 'player-chip';
     chip.style.cssText = `background:${p.avatar_color}22;border:2px solid ${p.avatar_color};display:flex;align-items:center;justify-content:space-between;gap:.5rem`;
     const botBadge = p.is_bot
-      ? `<span class="badge bg-secondary" style="font-size:.6rem">BOT ${p.bot_age ?? ''}a</span>`
+      ? `<span class="badge" style="font-size:.6rem;background:var(--accent);color:#fff">BOT ${p.bot_age ?? ''}a</span>`
       : '';
     chip.innerHTML = `
       <span style="display:flex;align-items:center;gap:.5rem;min-width:0">
