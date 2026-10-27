@@ -143,7 +143,7 @@ function renderSongs(songs) {
             ${s.artwork_url ? `<img src="${esc(s.artwork_url)}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0">` : ''}
             <div>
               <div class="fw-semibold small">${esc(s.title)}</div>
-              <div style="font-size:.75rem;color:var(--muted)">${esc(s.artist)}</div>
+              <div style="font-size:.75rem;color:var(--muted)">${esc(s.artist)}</div><div class="small" style="color:${s.catalog_status==='verified'?'#61d6ae':'#f2bd69'}">${s.catalog_status==='verified'?'✓ Verificada · disponible':'En revisión · fuera de las partidas'}</div>
             </div>
           </div>
         </td>
@@ -235,9 +235,9 @@ async function playSong(btn) {
 
   try {
     const q   = encodeURIComponent(title + ' ' + artist);
-    const res = await fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=5`);
+    const res = await fetch(`${API}?action=itunes_preview&term=${q}`);
     const d   = await res.json();
-    const hit = d.results?.find(t => t.previewUrl);
+    const hit = d;
 
     if (!hit?.previewUrl) {
       btn.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`;

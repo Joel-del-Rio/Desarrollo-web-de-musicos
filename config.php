@@ -19,7 +19,7 @@ require_once $secretsFile;
 // ── Base de datos ─────────────────────────────────────
 // Se diferencia entre Windows (XAMPP local) y Linux (SiteGround producción)
 if (PHP_OS_FAMILY === 'Windows') {
-    define('DB_HOST', 'localhost');
+    define('DB_HOST', getenv('HITSTORIC_DB_HOST') ?: '127.0.0.1');
     define('DB_USER', 'root');
     define('DB_PASS', '');
     define('DB_NAME', 'hitster_musicos');
@@ -31,7 +31,7 @@ if (PHP_OS_FAMILY === 'Windows') {
 }
 
 // ── Correo saliente ───────────────────────────────────
-// Usa PHP mail() del servidor — no requiere credenciales SMTP externas.
+// SMTP autenticado: credenciales en /home/customer/hitstoric-ops/smtp-private.json.
 // En local (Windows) el envío está desactivado para no depender de configuración extra.
 define('SMTP_FROM',    'noreply@hitstoric.nite.black');
 define('SMTP_FROM_NAME', 'Hitstoric');

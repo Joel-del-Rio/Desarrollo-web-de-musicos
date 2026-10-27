@@ -26,7 +26,7 @@ class PlayerController {
      * - PIN compartido: valida que la partida exista y acepte jugadores.
      */
     public function joinGame(): array {
-        $pin        = trim($_POST['pin']  ?? '');
+        $pin        = strtoupper(trim($_POST['pin']  ?? ''));
         $name       = trim($_POST['name'] ?? '');
         $avatar     = trim($_POST['avatar'] ?? '');
         $hair       = trim($_POST['hair'] ?? '');
@@ -38,9 +38,19 @@ class PlayerController {
         $hatPos        = trim($_POST['hat_pos'] ?? '');
         $facialHairPos = trim($_POST['facial_hair_pos'] ?? '');
 
-        if (strlen($pin) !== 4 || !ctype_digit($pin)) return ['error' => 'PIN inválido (4 dígitos)'];
-        if ($name === '' || strlen($name) > 30)        return ['error' => 'Nombre inválido (máx 30 caracteres)'];
+        if (!Game::validCode($pin)) return ['error' => 'Código no válido'];
+        if ($name === '' || mb_strlen($name) > 30)        return ['error' => 'Nombre inválido (máx 30 caracteres)'];
 
+        $db=Database::getInstance()->pdo();
+        $candidate=$this->game->getByIndividualPin($pin) ?: $this->game->getByPin($pin);
+        if (!$candidate) return ['error'=>'PIN no encontrado o ya utilizado'];
+        $expectedGame = trim((string)($_POST['expected_game'] ?? ''));
+        if ($expectedGame !== '' && (!ctype_digit($expectedGame) || (int)$expectedGame !== (int)$candidate['id'])) {
+            return ['error'=>'Este código pertenece a otra partida. Escanea el QR de esa partida o pide ayuda en la barra.'];
+        }
+        $db->beginTransaction();
+        try {
+        $lock=$db->prepare('SELECT id FROM games WHERE id=? FOR UPDATE');$lock->execute([$candidate['id']]);
         // Buscar primero como PIN individual — el email viene guardado en la tabla
         $gameByIndiv = $this->game->getByIndividualPin($pin);
         if ($gameByIndiv) {
@@ -86,6 +96,8 @@ class PlayerController {
             'player_color' => $pl['color'],
             'player_avatar'=> $pl['avatar'],
         ];
+        } catch (Throwable $e) { if ($db->inTransaction()) $db->rollBack(); throw $e; }
+        finally { if ($db->inTransaction()) $db->commit(); }
     }
 
     /** Cambia el avatar del jugador — solo permitido mientras la partida está en la sala de espera */
@@ -172,7 +184,7 @@ class PlayerController {
 
         // Reacciones nuevas desde la última vez que este jugador preguntó
         $lastReactionId = (int)($_GET['last_reaction_id'] ?? 0);
-        $state['new_reactions'] = $this->reaction->getSince($gameId, $lastReactionId);
+        $state['new_reactions'] = array_values(array_filter($state['new_reactions'],fn($r)=>(int)$r['id']>$lastReactionId));
 
         // Datos específicos del estado de pregunta o resultados
         if (in_array($state['status'], ['question', 'results'], true)) {
@@ -184,6 +196,12 @@ class PlayerController {
                     // Ocultar el año durante la pregunta para que no haga trampa
                     $songForPlayer = $song;
                     unset($songForPlayer['year']);
+                    if ($gameType==='song') {
+                        // Do not send clues to the player during an unanswered round.
+                        $songForPlayer=$state['live_mode']?[]:['id'=>$song['id']];
+                        $state['song_hidden']=true;
+                        $state['show_links']=0;
+                    }
                     $state['song'] = $songForPlayer;
                 } else {
                     // En resultados sí se muestra el año y los resultados de la ronda
@@ -192,7 +210,7 @@ class PlayerController {
                     $state['round_results'] = $results;
                     // Buscar el resultado específico de este jugador
                     foreach ($results as $r) {
-                        if ($r['name'] === $pl['name']) { $state['my_result'] = $r; break; }
+                        if ((int)$r['player_id'] === (int)$pl['id']) { $state['my_result'] = $r; break; }
                     }
                 }
             }
@@ -223,6 +241,8 @@ class PlayerController {
         $state    = $this->game->getState($gameId);
         $gameType = $state['game_type'] ?? 'song';
 
+        PracticeSession::checkSession($state,$_POST);
+        if (isset($_POST['expected_round']) && (int)$_POST['expected_round']!==(int)$state['current_round']) return ['error'=>'La ronda ha cambiado'];
         if ($state['status'] !== 'question') return ['error' => 'No hay ronda activa'];
 
         $song = $this->game->getCurrentSong($gameId);
@@ -236,7 +256,7 @@ class PlayerController {
             $playerId, $gameId, (int)$song['id'],
             $position, (int)$song['year'],
             (int)$state['time_left'], (int)$state['question_time'],
-            $gameType
+            $gameType, (int)$state['session_number'], (int)$state['current_round']
         );
     }
 

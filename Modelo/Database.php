@@ -40,7 +40,14 @@ class Database {
         $this->pdo->exec("SET time_zone = '+00:00'");
 
         // Ejecutar migraciones pendientes en cada arranque (es idempotente)
-        Installer::run(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+        // Normal polling does not need a second connection or repeated DDL.
+        try { $version = (int)$this->pdo->query('SELECT version FROM schema_version LIMIT 1')->fetchColumn(); }
+        catch (PDOException $e) { $version = 0; }
+        if ($version < 33) {
+            if (!(int)$this->pdo->query("SELECT GET_LOCK('hitstoric_schema',15)")->fetchColumn()) throw new RuntimeException('Actualización en curso. Vuelve a intentarlo');
+            try { Installer::run(DB_HOST, DB_USER, DB_PASS, DB_NAME); }
+            finally { $this->pdo->query("SELECT RELEASE_LOCK('hitstoric_schema')"); }
+        }
     }
 
     /** Devuelve la instancia única (patrón Singleton) */

@@ -40,6 +40,29 @@ if (in_array($action, PROTECTED_ACTIONS, true) && !Auth::check()) {
 
 try {
     switch ($action) {
+        case 'live_control':
+            if ($_SERVER['REQUEST_METHOD']!=='POST') throw new InvalidArgumentException('Usa POST');
+            require_once __DIR__.'/../Modelo/LiveGame.php';
+            echo json_encode(LiveGame::request((int)($_POST['game_id']??0),(string)($_POST['admin_token']??''),$_POST));
+            break;
+        case 'manage_prizes':
+            if ($_SERVER['REQUEST_METHOD']!=='POST') throw new InvalidArgumentException('Usa POST');
+            require_once __DIR__.'/../Modelo/GamePrizes.php';
+            echo json_encode(GamePrizes::manage((int)($_POST['game_id']??0),(string)($_POST['admin_token']??''),$_POST));
+            break;
+        case 'host_games':
+        case 'host_attach':
+        case 'manage_game':
+            if ($_SERVER['REQUEST_METHOD']!=='POST') { http_response_code(405); echo json_encode(['error'=>'Usa POST']); break; }
+            require_once __DIR__.'/../Modelo/Planner.php';
+            $planner=new Planner();
+            if ($action==='host_games') echo json_encode(['games'=>$planner->listGames((string)($_POST['host_key']??''))]);
+            elseif ($action==='host_attach') {
+                $planner->attach((int)($_POST['game_id']??0),(string)($_POST['admin_token']??''),(string)($_POST['host_key']??''));
+                echo json_encode(['success'=>true]);
+            } else echo json_encode($planner->manage((int)($_POST['game_id']??0),(string)($_POST['admin_token']??''),(string)($_POST['operation']??''),$_POST));
+            break;
+
 
         // ── Sesión de administrador ────────────────────
 
@@ -186,23 +209,15 @@ try {
         // ── Proxy iTunes (evita CORS en móviles) ──────
 
         case 'itunes_preview':
-            $term = trim($_GET['term'] ?? '');
-            if (!$term) { echo json_encode(['previewUrl' => null, 'artworkUrl' => null]); break; }
-            $url  = 'https://itunes.apple.com/search?media=music&entity=song&limit=5&term=' . urlencode($term);
-            $ctx  = stream_context_create(['http' => ['timeout' => 6, 'ignore_errors' => true,
-                        'header' => 'User-Agent: Hitstoric/1.0']]);
-            $raw  = @file_get_contents($url, false, $ctx);
-            if ($raw === false) { echo json_encode(['previewUrl' => null, 'artworkUrl' => null]); break; }
-            $data = json_decode($raw, true);
-            $hit  = null;
-            $art  = null;
-            foreach (($data['results'] ?? []) as $t) {
-                if (!$art && !empty($t['artworkUrl100'] ?? $t['artworkUrl60'] ?? null)) {
-                    $art = $t['artworkUrl100'] ?? $t['artworkUrl60'];
-                }
-                if (!empty($t['previewUrl'])) { $hit = $t['previewUrl']; break; }
+            if (isset($_GET['song_id'])) {
+                require_once __DIR__.'/../Modelo/SongCatalog.php';
+                echo json_encode(SongCatalog::preview((int)$_GET['song_id'])); break;
             }
-            echo json_encode(['previewUrl' => $hit, 'artworkUrl' => $art]);
+            // Legacy clients can resolve only an exact catalog entry, never a search result.
+            require_once __DIR__.'/../Modelo/SongCatalog.php';
+            $q=Database::getInstance()->pdo()->prepare("SELECT id FROM songs WHERE BINARY CONCAT(title,' ',artist)=BINARY ? LIMIT 1");
+            $q->execute([trim($_GET['term']??'')]);
+            echo json_encode(SongCatalog::preview((int)$q->fetchColumn()));
             break;
 
         // ── Canciones ──────────────────────────────────
@@ -331,6 +346,8 @@ try {
             http_response_code(400);
             echo json_encode(['error' => 'Acción desconocida: ' . htmlspecialchars($action)]);
     }
+} catch (InvalidArgumentException $e) {
+    http_response_code(422); echo json_encode(['error'=>$e->getMessage()]);
 } catch (Throwable $e) {
     // Cualquier excepción no capturada devuelve 500 con el mensaje de error
     http_response_code(500);

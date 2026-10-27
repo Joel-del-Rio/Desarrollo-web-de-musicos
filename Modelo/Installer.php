@@ -348,6 +348,26 @@ class Installer {
             $currentVersion = 27;
         }
 
+        if ($currentVersion === 27) {
+            require_once __DIR__ . '/PlanningSchema.php';
+            PlanningSchema::migrate($pdo);
+            $currentVersion = 28;
+        }
+
+        if ($currentVersion === 28) {
+            require_once __DIR__.'/GamePrizes.php';
+            GamePrizes::migrate($pdo);
+            $currentVersion = 29;
+        }
+
+        if ($currentVersion === 29) { require_once __DIR__.'/LiveGame.php'; LiveGame::migrate($pdo); $currentVersion=30; }
+
+        if ($currentVersion === 30) { require_once __DIR__.'/PracticeSession.php'; PracticeSession::migrate($pdo); $currentVersion=31; }
+
+        if ($currentVersion === 31) { require_once __DIR__.'/SongCatalog.php'; SongCatalog::migrate($pdo); $currentVersion=32; }
+
+        if ($currentVersion === 32) { require_once __DIR__.'/PracticeSession.php'; PracticeSession::migrateHistory($pdo); $currentVersion=33; }
+
         // Esquema actualizado: verificar integridad y salir
         if ($currentVersion >= 25) {
             // Garantizar que individual_pins existe aunque la migración v5 fallara parcialmente

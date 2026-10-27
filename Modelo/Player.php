@@ -236,9 +236,18 @@ class Player {
         int $playerId, int $gameId, int $itemId,
         int $position, int $itemYear,
         int $timeLeft, int $questionTime,
-        string $gameType = 'song'
+        string $gameType = 'song', ?int $expectedSession = null, ?int $expectedRound = null
     ): array {
+        $this->db->beginTransaction();
+        try {
+        $lock=$this->db->prepare('SELECT * FROM games WHERE id=? FOR UPDATE');$lock->execute([$gameId]);$active=$lock->fetch();
+        if ($expectedSession!==null && $expectedSession!==(int)$active['session_number']) throw new InvalidArgumentException('La sesión ha cambiado');
+        if ($expectedRound!==null && $expectedRound!==(int)$active['current_round']) throw new InvalidArgumentException('La ronda ha cambiado');
+        $current=(new Game())->getCurrentSong($gameId);
+        if ($active && $active['live_paused']) throw new InvalidArgumentException('Partida en pausa. Espera a que el dinamizador reanude');
+        if (!$active || $active['status']!=='question' || !$current || (int)$current['id']!==$itemId || $active['live_paused'] || (!$active['live_mode'] && time()-strtotime($active['question_started_at'].' UTC') >= (int)$active['question_time'])) throw new InvalidArgumentException('Esta ronda ya ha terminado');
         $timeline  = $this->getTimeline($playerId, $gameId, $gameType);
+        if ($position<0 || $position>count($timeline)) throw new InvalidArgumentException('Posición inválida');
         $years     = array_column($timeline, 'year');
         $isCorrect = $this->isPositionCorrect($years, $position, $itemYear);
 
@@ -271,7 +280,7 @@ class Player {
         );
         $st->execute([$gameId, $playerId, $itemId, $position, $isCorrect ? 1 : 0, $points]);
 
-        if ($this->db->lastInsertId() > 0) {
+        if ($st->rowCount() > 0) {
             // Actualizar racha en BD siempre que la respuesta sea nueva (no duplicado)
             $this->db->prepare("UPDATE players SET streak=? WHERE id=?")->execute([$newStreak, $playerId]);
 
@@ -289,7 +298,7 @@ class Player {
                 $gmSt->execute([$gameId]);
                 $gameRow = $gmSt->fetch();
 
-                if (($gameRow['pin_mode'] ?? '') === 'individual') {
+                if ($active['session_kind']!=='tutorial' && ($gameRow['pin_mode'] ?? '') === 'individual') {
                     $pl = $this->getById($playerId);
                     if (!empty($pl['email'])) {
                         // UPSERT: si ya existe el email, suma los puntos; si no, lo crea
@@ -303,12 +312,14 @@ class Player {
             }
         }
 
+        $this->db->commit();
         return [
             'correct'    => $isCorrect,
             'points'     => $points,
             'streak'     => $newStreak,
             'multiplier' => $multiplier,
         ];
+        } catch (Throwable $e) { if($this->db->inTransaction())$this->db->rollBack(); throw $e; }
     }
 
     /** Cuenta cuántos jugadores han respondido ya la canción (o meme) actual */
@@ -325,7 +336,7 @@ class Player {
         $table = $gameType === 'meme' ? 'meme_answers' : 'answers';
         $col   = $gameType === 'meme' ? 'meme_id' : 'song_id';
         $st = $this->db->prepare(
-            "SELECT p.name, p.avatar_color, p.avatar, p.hair, p.glasses, p.hat, p.headphones, p.facial_hair,
+            "SELECT p.id AS player_id, p.name, p.avatar_color, p.avatar, p.hair, p.glasses, p.hat, p.headphones, p.facial_hair,
                     p.glasses_pos, p.hat_pos, p.facial_hair_pos, a.position_guess, a.is_correct, a.points_earned
              FROM {$table} a
              JOIN players p ON a.player_id = p.id

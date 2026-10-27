@@ -7,6 +7,7 @@
  */
 require_once __DIR__ . '/../Modelo/Database.php';
 require_once __DIR__ . '/../Modelo/Genres.php';
+require_once __DIR__ . '/../Modelo/SongCatalog.php';
 
 class SongController {
     private PDO $db;
@@ -18,11 +19,10 @@ class SongController {
     /** Devuelve todas las canciones ordenadas por género, año y título */
     public function getSongs(): array {
         $st = $this->db->query(
-            "SELECT id, title, artist, year, genre,
-                    COALESCE(spotify_url,'') AS spotify_url,
-                    COALESCE(youtube_url,'') AS youtube_url,
-                    COALESCE(artwork_url,'') AS artwork_url
-             FROM songs ORDER BY genre, year, title"
+            "SELECT s.id,s.title,s.artist,s.year,s.genre,COALESCE(s.spotify_url,'') AS spotify_url,COALESCE(s.youtube_url,'') AS youtube_url,COALESCE(s.artwork_url,'') AS artwork_url,
+             IF(v.status='verified' AND BINARY v.title=BINARY s.title AND BINARY v.artist=BINARY s.artist AND v.year=s.year AND v.preview_url IS NOT NULL,'verified','review') AS catalog_status,
+             COALESCE(v.reason,'Pendiente de comprobar título, artista, año y audio') AS catalog_reason
+             FROM songs s LEFT JOIN song_validation v ON v.song_id=s.id ORDER BY s.genre,s.year,s.title"
         );
         return $st->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -51,7 +51,7 @@ class SongController {
 
     /**
      * Añade una canción nueva al catálogo (desde el buscador del panel superadmin).
-     * Queda disponible de inmediato para cualquier partida que se cree a partir de ahora.
+     * Queda pendiente de validación antes de poder participar en una partida.
      */
     public function addSong(): array {
         $title      = trim($_POST['title']       ?? '');

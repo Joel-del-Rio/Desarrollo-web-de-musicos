@@ -9,6 +9,8 @@
 require_once __DIR__ . '/../Modelo/Game.php';
 require_once __DIR__ . '/../Modelo/Player.php';
 require_once __DIR__ . '/../Modelo/Genres.php';
+require_once __DIR__ . '/../Modelo/Planner.php';
+require_once __DIR__ . '/../Modelo/LiveGame.php';
 
 class GameController {
     private Game   $game;
@@ -25,7 +27,7 @@ class GameController {
      */
     public function createGame(): array {
         // Validar y sanitizar parámetros (con rangos mínimos/máximos)
-        $rounds       = max(5,  min(20, (int)($_POST['total_rounds']   ?? 10)));
+        $rounds       = max(5,  min(50, (int)($_POST['total_rounds']   ?? 10)));
         $genre        = in_array($_POST['genre'] ?? '', Genres::allWithTodos(), true) ? $_POST['genre'] : 'Todos';
         $gameType     = ($_POST['game_type'] ?? 'song') === 'meme' ? 'meme' : 'song';
         // El modo memes admite rondas más largas (hasta 120s) que el de canciones (hasta 60s)
@@ -38,15 +40,28 @@ class GameController {
         $hardMode     = ($_POST['hard_mode']     ?? '0') === '1' ? 1 : 0;
         $pinMode      = ($_POST['pin_mode'] ?? 'shared') === 'individual' ? 'individual' : 'shared';
         $email        = filter_var(trim($_POST['organizer_email'] ?? ''), FILTER_VALIDATE_EMAIL) ?: '';
-        $indivCount   = max(2, min(30, (int)($_POST['individual_count'] ?? 2)));
+        $indivCount = filter_var($_POST['individual_count'] ?? 0, FILTER_VALIDATE_INT);
+        if ($indivCount === false || $indivCount < 0 || $indivCount > 500) return ['error'=>'Genera de 0 a 500 códigos inicialmente; después puedes añadir más'];
+        $hostHash = Planner::hostHash((string)($_POST['host_key'] ?? bin2hex(random_bytes(32))));
+        [$title,$plannedAt] = Planner::details($_POST);
+        $rawOrganizer = trim((string)($_POST['organizer_email'] ?? ''));
+        if ($rawOrganizer !== '' && !$email) return ['error'=>'Correo del organizador no válido'];
         $isPublic     = ($_POST['is_public'] ?? '0') === '1';
 
         // Emails de los jugadores (modo individual) — se validan uno a uno
+        if (!is_array($_POST['player_emails'] ?? [])) return ['error'=>'Lista de correos no válida'];
+        foreach (($_POST['player_emails'] ?? []) as $value) {
+            if (!is_string($value) || (trim($value)!=='' && !filter_var(trim($value),FILTER_VALIDATE_EMAIL))) return ['error'=>'Revisa los correos de los jugadores'];
+        }
         $playerEmails = array_values(array_map(
             fn($e) => filter_var(trim($e), FILTER_VALIDATE_EMAIL) ?: '',
             $_POST['player_emails'] ?? []
         ));
 
+        $db = Database::getInstance()->pdo();
+        if (!(int)$db->query("SELECT GET_LOCK('hitstoric_pin_allocator',10)")->fetchColumn()) return ['error'=>'Servidor ocupado. Vuelve a intentarlo'];
+        $db->beginTransaction();
+        try {
         $result = $this->game->create(
             $rounds, $questionTime, $genre, $showLinks, $embedYoutube, $autoplay,
             $pinMode, $email, $pinMode === 'individual' ? $indivCount : 0,
@@ -57,22 +72,22 @@ class GameController {
             $isPublic
         );
 
-        // Enviar emails de confirmación si la partida se creó correctamente
-        if (empty($result['error'])) {
-            require_once __DIR__ . '/../Modelo/EmailService.php';
-
-            if ($pinMode === 'shared' && $email) {
-                // Modo compartido: un solo email al organizador con el PIN de sala
-                EmailService::sendGameCreated($email, $result['pin'], BASE_URL, 'shared', []);
-
-            } elseif ($pinMode === 'individual' && !empty($result['individual_pins'])) {
-                // Modo individual: un email a cada jugador con su PIN personal
-                foreach ($result['individual_pins'] as $idx => $pin) {
-                    $pEmail = $playerEmails[$idx] ?? '';
-                    if ($pEmail) EmailService::sendPlayerPin($pEmail, $pin, BASE_URL, $idx + 1);
+        $db->prepare('UPDATE games SET host_key_hash=?,title=?,planned_at=? WHERE id=?')->execute([$hostHash,$title,$plannedAt,$result['id']]);
+        $db->prepare('UPDATE games SET live_mode=? WHERE id=?')->execute([$gameType==='song' && ($_POST['live_mode']??'0')==='1'?1:0,$result['id']]);
+        require_once __DIR__.'/../Modelo/GamePrizes.php';
+        GamePrizes::defaults($db,$this->game->getById($result['id']));
+        if (($_POST['send_emails'] ?? '0') === '1') {
+            if ($pinMode==='shared' && $email) MailQueue::enqueue($db,$result['id'],null,$email,$result['pin'],'organizer');
+            if ($pinMode==='individual') {
+                foreach ((new Planner())->invitations($result['id']) as $inv) {
+                    if ($inv['email']) MailQueue::enqueue($db,$result['id'],(int)$inv['id'],$inv['email'],$inv['pin']);
                 }
             }
-
+        }
+        $db->commit();
+        } catch (Throwable $e) { if ($db->inTransaction()) $db->rollBack(); throw $e; }
+        finally { $db->query("SELECT RELEASE_LOCK('hitstoric_pin_allocator')"); }
+        if (empty($result['error'])) {
             // Partida pública: anunciar el PIN, el enlace y los detalles de la partida en Telegram/Discord
             if ($isPublic) {
                 $joinUrl = BASE_URL . '/player?pin=' . $result['pin'];
@@ -123,7 +138,7 @@ class GameController {
      */
     public function getGameState(): array {
         $gameId = (int)($_GET['game_id'] ?? 0);
-        $token  = $_GET['admin_token'] ?? $_POST['admin_token'] ?? '';
+        $token  = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? $_GET['admin_token'] ?? $_POST['admin_token'] ?? '';
         if (!$gameId) return ['error' => 'Falta game_id'];
         if (!$this->game->verifyAdmin($gameId, $token)) return ['error' => 'No autorizado'];
 
@@ -131,6 +146,15 @@ class GameController {
         $gameType = $state['game_type'] ?? 'song';
         $players  = $this->player->getByGame($gameId);
 
+        $record = $this->game->getById($gameId);
+        $pins=Database::getInstance()->pdo()->prepare('SELECT player_id,pin FROM individual_pins WHERE game_id=? AND player_id IS NOT NULL AND revoked=0');$pins->execute([$gameId]);$pinMap=$pins->fetchAll(PDO::FETCH_KEY_PAIR);
+        foreach($state['event_prizes']['awards'] as &$award)$award['participation_pin']=$pinMap[$award['player_id']]??null;
+        unset($award);
+        $state['live_output'] = LiveGame::info($record);
+        $state['pin'] = $record['pin'];
+        $state['title'] = $record['title'];
+        $state['planned_at'] = $record['planned_at'];
+        if ($state['status']==='waiting' && ($_GET['roster']??'0')==='1') $state['invitations']=(new Planner())->invitations($gameId);
         $state['players']      = $players;
         $state['player_count'] = count($players);
 
@@ -154,8 +178,8 @@ class GameController {
      * Prueba primero como PIN individual y luego como PIN de sala.
      */
     public function getGameStateByPin(): array {
-        $pin = trim($_GET['pin'] ?? '');
-        if (strlen($pin) !== 4 || !ctype_digit($pin)) return ['error' => 'PIN inválido'];
+        $pin = strtoupper(trim($_GET['pin'] ?? ''));
+        if (!Game::validCode($pin)) return ['error' => 'PIN inválido'];
 
         $game = $this->game->getByPin($pin);
         if (!$game) {
@@ -183,8 +207,13 @@ class GameController {
         if (!$game)                        return ['error' => 'Partida no encontrada'];
         if ($game['status'] !== 'waiting') return ['error' => 'La partida ya ha comenzado'];
 
-        $this->game->start($gameId);
-        return ['success' => true];
+        return (new Planner())->waiting($gameId,$token,function($record) use ($gameId) {
+            PracticeSession::checkSession($record,$_POST);
+            if (!$this->player->getByGame($gameId)) throw new InvalidArgumentException('Debe haber al menos un jugador');
+            LiveGame::requireSound($this->game->getById($gameId));
+            $this->game->prepareSession($gameId,(string)($_POST['session_kind']??'main'));
+            $this->game->start($gameId); return ['success'=>true];
+        });
     }
 
     /** Pasa a modo resultados y muestra el año de la canción */
@@ -192,8 +221,13 @@ class GameController {
         $gameId = (int)($_POST['game_id'] ?? 0);
         $token  = $_POST['admin_token'] ?? '';
         if (!$this->game->verifyAdmin($gameId, $token)) return ['error' => 'No autorizado'];
-        $this->game->showResults($gameId);
-        return ['success' => true];
+        $db=Database::getInstance()->pdo();$db->beginTransaction();
+        try {
+            $st=$db->prepare('SELECT * FROM games WHERE id=? FOR UPDATE');$st->execute([$gameId]);$record=$st->fetch();
+            PracticeSession::checkSession($record,$_POST);
+            if (isset($_POST['expected_round']) && (int)$_POST['expected_round']!==(int)$record['current_round']) throw new InvalidArgumentException('La ronda ha cambiado');
+            $this->game->showResults($gameId);$db->commit();return ['success'=>true];
+        } finally {if($db->inTransaction())$db->rollBack();}
     }
 
     /** Avanza a la siguiente ronda o termina la partida */
@@ -201,8 +235,17 @@ class GameController {
         $gameId = (int)($_POST['game_id'] ?? 0);
         $token  = $_POST['admin_token'] ?? '';
         if (!$this->game->verifyAdmin($gameId, $token)) return ['error' => 'No autorizado'];
-        $newStatus = $this->game->nextRound($gameId);
-        return ['success' => true, 'new_status' => $newStatus];
+        $db=Database::getInstance()->pdo();$db->beginTransaction();
+        try {
+            $st=$db->prepare('SELECT * FROM games WHERE id=? FOR UPDATE');$st->execute([$gameId]);$record=$st->fetch();
+            PracticeSession::checkSession($record,$_POST);
+            if (!$record || $record['status']!=='results') return ['error'=>'La ronda todavía no ha terminado'];
+            if (isset($_POST['expected_round']) && (int)$_POST['expected_round']!==(int)$record['current_round']) return ['error'=>'La ronda ya ha cambiado. Actualiza la pantalla'];
+            $currentGame=$this->game->getById($gameId);
+            if((int)$currentGame['current_round']<(int)$currentGame['total_rounds'])LiveGame::requireSound($currentGame);
+            $newStatus = $this->game->nextRound($gameId);
+            $db->commit();return ['success'=>true,'new_status'=>$newStatus];
+        } finally { if($db->inTransaction())$db->rollBack(); }
     }
 
     /** Expulsa a un jugador de la sala de espera (solo el admin autorizado puede hacerlo) */
@@ -213,8 +256,11 @@ class GameController {
         if (!$this->game->verifyAdmin($gameId, $token)) return ['error' => 'No autorizado'];
         if (!$playerId) return ['error' => 'Falta player_id'];
 
-        $ok = $this->player->remove($playerId, $gameId);
-        return $ok ? ['success' => true] : ['error' => 'No se pudo eliminar al jugador'];
+        return (new Planner())->waiting($gameId,$token,function() use ($playerId,$gameId) {
+            $db=Database::getInstance()->pdo();
+            $db->prepare('UPDATE individual_pins SET used=0,player_id=NULL WHERE player_id=? AND game_id=?')->execute([$playerId,$gameId]);
+            return $this->player->remove($playerId,$gameId) ? ['success'=>true] : ['error'=>'Jugador no encontrado'];
+        });
     }
 
     /**

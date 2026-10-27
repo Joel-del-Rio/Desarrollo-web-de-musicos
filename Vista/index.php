@@ -5,7 +5,8 @@
  * Muestra las tres opciones de navegación principales:
  * Dinamizador, Jugador y Premios, junto con las instrucciones del juego.
  */
-require_once __DIR__ . '/../config.php'; ?>
+require_once __DIR__ . '/../config.php';
+header('Cache-Control: no-cache, must-revalidate, max-age=0'); ?>
 <!DOCTYPE html>
 <html lang="es" data-bs-theme="dark">
 
@@ -46,7 +47,7 @@ require_once __DIR__ . '/../config.php'; ?>
         <span style="font-size:2.5rem">📱</span>
         <div>
           <div class="fw-bold fs-5 text-white mb-1">Jugador</div>
-          <div class="small">Únete con el PIN de 4 dígitos</div>
+          <div class="small">Únete con tu código de acceso</div>
         </div>
         <span class="ms-auto fs-4">›</span>
       </a>
@@ -88,7 +89,7 @@ require_once __DIR__ . '/../config.php'; ?>
           <span style="font-size:1.6rem;flex-shrink:0">🎟️</span>
           <div>
             <div class="fw-bold text-white mb-1">Únete con el PIN</div>
-            <div style="color:var(--muted)">El dinamizador te da un código de 4 dígitos. Introdúcelo en la pantalla de jugador para entrar a la partida.</div>
+            <div style="color:var(--muted)">El dinamizador te da un código de acceso. Puedes recibirlo en persona, por enlace o por correo. Introdúcelo en la pantalla de jugador para entrar a la partida.</div>
           </div>
         </div>
 

@@ -1,3 +1,4 @@
+let activeSession = 0;
 /* ═══════════════════════════════════════════════════════════════
  * admin.js — Panel del dinamizador (admin)
  *
@@ -10,6 +11,7 @@
 let gameId     = localStorage.getItem(GK);   // ID de la partida activa
 let adminToken = localStorage.getItem(TK);   // Token secreto del admin
 let pollTimer  = null;                        // Intervalo de polling
+let pollGeneration = 0;
 let timerInterval = null;                     // Cuenta atrás del anillo SVG
 let lastStatus = null;                        // Último estado procesado (evita re-renders)
 let lastQuestionRound = -1;                   // Última ronda renderizada
@@ -175,7 +177,9 @@ function avatarLayers(p, size) {
 (function init() {
   onAudioToggle();     // sincronizar estado inicial del toggle de autoplay
   onHardModeToggle();  // sincronizar estado inicial del modo difícil
-  updatePlayerEmailFields(2); // pre-poblar los campos de email individual desde el inicio
+  updatePlayerEmailFields(0); // pre-poblar los campos de email individual desde el inicio
+  const importedHost=prepareHost();
+  if(importedHost){openSavedGames();return;}
   if (gameId && adminToken) {
     // Hay una partida guardada en localStorage — intentar recuperarla
     fetchState().then(state => {
@@ -183,23 +187,25 @@ function avatarLayers(p, size) {
       else { clearSession(); showScreen('setup'); }
     });
   } else {
-    showScreen('setup');
+    openSavedGames();
   }
 })();
 
 /* ── Llamadas API ─────────────────────────────────────────────── */
 async function apiGet(action) {
   // El token va en la query porque game_state se consulta por GET en cada poll
-  const url = `${API}?action=${action}&game_id=${gameId}`
-            + `&admin_token=${encodeURIComponent(adminToken ?? '')}&_t=${Date.now()}`;
-  const r = await fetch(url, { cache: 'no-store' });
+  const roster=action==='game_state' && Date.now()-lastRosterFetch>10000;
+  if(roster)lastRosterFetch=Date.now();
+  const url = `${API}?action=${action}&game_id=${gameId}&roster=${roster?'1':'0'}`
+            + `&_t=${Date.now()}`;
+  const r = await fetch(url, { cache: 'no-store', headers:{'X-Admin-Token':adminToken||''} });
   return r.json();
 }
 async function apiPost(action, extra = {}) {
   const r = await fetch(`${API}?action=${action}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ game_id: gameId, admin_token: adminToken, ...extra }),
+    body: new URLSearchParams({ game_id: gameId, admin_token: adminToken, expected_session: activeSession, expected_round: lastQuestionRound, ...extra }),
   });
   return r.json();
 }
@@ -211,22 +217,38 @@ async function fetchState() {
 function startPolling(ms = 1500) {
   stopPolling();
   pollTimer = setInterval(async () => {
-    const s = await fetchState();
-    if (s && !s.error) applyState(s);
+    if (document.hidden || window.adminPollBusy) return;
+    window.adminPollBusy=true;
+    const polledId=gameId, generation=pollGeneration;
+    try { const s=await fetchState(); if(generation===pollGeneration && polledId===gameId && s && !s.error) applyState(s); }
+    finally {window.adminPollBusy=false;}
   }, ms);
 }
-function stopPolling() { clearInterval(pollTimer); pollTimer = null; }
+function stopPolling() { clearInterval(pollTimer); pollTimer = null; pollGeneration++; }
 
 /* ── Gestión de pantallas ─────────────────────────────────────── */
 function showScreen(name) {
+  const livePanel=document.getElementById('live-control');if(livePanel)livePanel.hidden=['library','setup'].includes(name)||liveControlState?.game_type==='meme';
+  const sessionNotice=document.getElementById('session-notice');if(sessionNotice)sessionNotice.hidden=['library','setup'].includes(name);
+  const prizes=document.getElementById('event-prizes');if(prizes)prizes.hidden=['library','setup','join'].includes(name);
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`).classList.add('active');
 }
 
 /* ── Dispatcher de estado ─────────────────────────────────────── */
 function applyState(state) {
+  ReactionFeed.render(state);
+  if (activeSession !== Number(state.session_number||0)) {lastStatus=null;lastQuestionRound=null;lastRosterFetch=0;}
+  activeSession=Number(state.session_number||0);
+  let notice=document.getElementById('session-notice');
+  if(!notice){notice=document.createElement('p');notice.id='session-notice';notice.className='container py-2 text-center fw-bold';notice.setAttribute('role','status');document.querySelector('.screen').before(notice);}
+  notice.textContent=state.session_kind==='tutorial' ? (state.status==='waiting'?'Tutorial terminado. Puedes añadir jugadores, repetir cinco canciones o empezar la partida con premios.':'TUTORIAL '+state.tutorial_count+' · 5 canciones · Sin premios. Practicamos antes de la partida.') : (state.main_started?'PARTIDA CON PREMIOS':'Sala preparada · Puedes empezar con un tutorial de 5 canciones.');
+  setShareGame(state.id || gameId);
+  renderEventPrizes(state, true);
+  renderLiveControl(state);
   const st    = state.status;
   const round = state.current_round;
+  if (st==='results') lastQuestionRound=round;
 
   // Misma ronda en pregunta → actualización ligera (no reiniciar timer ni reconstruir DOM)
   if (st === 'question' && lastStatus === 'question' && round === lastQuestionRound) {
@@ -252,35 +274,9 @@ function renderWaiting(state) {
   document.getElementById('w-pin').textContent   = localStorage.getItem(GK + '_pin') || '----';
   document.getElementById('w-count').textContent = state.player_count || 0;
 
-  const indivPanel = document.getElementById('w-indiv-pins');
-  const pinsGrid   = document.getElementById('w-pins-grid');
-  const indivPins  = JSON.parse(localStorage.getItem(GK + '_indivPins') || 'null');
-  const pinMode    = state.pin_mode || localStorage.getItem(GK + '_pinMode') || 'shared';
-
-  const pinCard    = document.getElementById('w-pin-card');
-  const playerUrl  = document.getElementById('w-player-url');
-  const gamePin    = localStorage.getItem(GK + '_pin') || '----';
-  const baseOrigin = API.replace('/Controlador/api.php', '');
-
-  if (indivPins && indivPins.length && pinMode === 'individual') {
-    // Modo individual: ocultar card de PIN, mostrar cartones difuminados al pasar el ratón
-    if (pinCard) pinCard.classList.add('d-none');
-    indivPanel.classList.remove('d-none');
-    if (!pinsGrid.hasChildNodes()) {
-      pinsGrid.innerHTML = indivPins.map((pin, i) =>
-        `<div class="pin-ticket" onclick="copyPin(this,'${pin}')" title="Pasar el ratón para ver · Clic para copiar">
-           <div class="pin-ticket-num">Cartón ${i + 1}</div>
-           <div class="pin-ticket-code pin-blurred">${pin}</div>
-         </div>`
-      ).join('');
-    }
-  } else {
-    // Modo compartido: mostrar PIN único con enlace directo a la sala
-    if (pinCard) pinCard.classList.remove('d-none');
-    indivPanel.classList.add('d-none');
-    if (playerUrl) playerUrl.textContent = `${baseOrigin}/player?pin=${gamePin}`;
-  }
-
+  refreshPlanning(state);
+  const playerUrl=document.getElementById('w-player-url');
+  if(playerUrl)playerUrl.textContent=publicGameUrl(state.id || gameId);
   // Renderizar chips de jugadores conectados
   const list = document.getElementById('w-players');
   list.innerHTML = '';
@@ -299,12 +295,15 @@ function renderWaiting(state) {
       </span>
       <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0"
               style="font-size:.7rem;flex-shrink:0" title="Expulsar jugador"
-              onclick="kickPlayer(${p.id},'${esc(p.name)}')">✕</button>`;
+              data-kick="${Number(p.id)}">✕</button>`;
+    chip.querySelector('[data-kick]').addEventListener('click',()=>kickPlayer(p.id,p.name));
+    const editButton=document.createElement('button');editButton.className='btn btn-sm btn-outline-secondary';editButton.textContent='Editar';editButton.addEventListener('click',()=>editConnectedPlayer(p.id,p.name));chip.append(editButton);
     list.appendChild(chip);
   });
 
   document.getElementById('btn-start').disabled = (state.player_count || 0) < 1;
-  startPolling(1500);
+  const tutorial=document.getElementById('btn-tutorial');tutorial.hidden=state.game_type==='meme';tutorial.disabled=(state.player_count||0)<1;tutorial.textContent=state.tutorial_count?'Repetir tutorial · 5 canciones':'Iniciar tutorial · 5 canciones';
+  startPolling(5000);
 }
 
 /** Copia el PIN compartido y la URL de jugador al portapapeles */
@@ -335,11 +334,7 @@ function copyPin(el, pin) {
 
 /** Copia todos los PINs individuales formateados al portapapeles */
 function copyAllPins() {
-  const pins = JSON.parse(localStorage.getItem(GK + '_indivPins') || '[]');
-  const text = pins.map((p, i) => `Cartón ${i + 1}: ${p}`).join('\n');
-  navigator.clipboard?.writeText(text);
-  const btn = document.getElementById('btn-copy-all');
-  if (btn) { btn.textContent = '✓ Copiados'; setTimeout(() => btn.textContent = '📋 Copiar todos', 1500); }
+  copyText(inviteRows.map((p,i)=>(p.display_name||('Jugador '+(i+1)))+': '+p.pin).join('\n'));
 }
 
 /* ── Pantalla de pregunta ─────────────────────────────────────── */
@@ -369,7 +364,7 @@ function renderQuestion(state) {
   const isMeme = state.game_type === 'meme';
   document.getElementById('q-label').textContent = isMeme
     ? '😂 Meme de esta ronda — muéstralo a los jugadores'
-    : '🎵 Canción de esta ronda — ponla en el reproductor';
+    : (liveMode ? '🎵 Canción de esta ronda — equipo de sonido' : '🎵 Canción de esta ronda — ponla en el reproductor');
   // Parar el vídeo del meme de resultados de la ronda anterior, si seguía sonando
   hideMemePlayer('r-meme-img');
 
@@ -413,7 +408,8 @@ function updateQuestionPoll(state) {
 
   // Si el servidor indica que se acabó el tiempo, revelar automáticamente
   const tl = state.time_left ?? questionTime;
-  if (tl <= 0) { stopTimer(); showResults(); }
+  if (tl <= 0 && !liveMode) { stopTimer(); showResults(); }
+  if(liveMode){document.getElementById('q-timer').textContent=livePaused?'Ⅱ':'∞';}
 }
 
 /* ── Pantalla de resultados ───────────────────────────────────── */
@@ -478,7 +474,7 @@ function renderResults(state) {
 
   // Cambiar texto del botón si es la última ronda
   const isLast = state.current_round >= state.total_rounds;
-  document.getElementById('btn-next').textContent = isLast ? '🏆 Resultados finales' : 'Siguiente Ronda →';
+  document.getElementById('btn-next').textContent = isLast ? (state.session_kind==='tutorial'?'Terminar tutorial y volver a la sala':'🏆 Resultados finales') : 'Siguiente Ronda →';
 
   renderLeaderboard('r-leaderboard', players);
   startPolling(2000);
@@ -486,7 +482,7 @@ function renderResults(state) {
 
 /* ── Pantalla final ───────────────────────────────────────────── */
 function renderFinished(state) {
-  stopPolling(); stopTimer();
+  startPolling(10000); stopTimer();
   showScreen('finished');
   // Parar cualquier vídeo de meme que siguiera reproduciéndose de la última ronda
   hideMemePlayer('q-meme-img');
@@ -545,6 +541,7 @@ function startTimerRing(seconds, total) {
   const circle = document.getElementById('timer-circle');
   const label  = document.getElementById('q-timer');
   if (!circle || !label) return;
+  if(liveMode){label.textContent=livePaused?'Ⅱ':'∞';circle.style.strokeDashoffset='0';return;}
   const circ = 2 * Math.PI * 35; // circunferencia del anillo (radio=35)
   let s = seconds;
   function tick() {
@@ -559,7 +556,7 @@ function startTimerRing(seconds, total) {
     if (s < 0) {
       stopTimer();
       // Revelar automáticamente si el admin no ha pulsado el botón
-      if (lastStatus === 'question') showResults();
+      if (lastStatus === 'question' && !liveMode) showResults();
       return;
     }
     tick();
@@ -593,20 +590,17 @@ function setPinMode(btn, mode) {
   document.getElementById('section-indiv-emails').classList.toggle('d-none', !isIndiv);
   document.getElementById('pin-mode-desc-shared').classList.toggle('d-none', isIndiv);
   document.getElementById('pin-mode-desc-individual').classList.toggle('d-none', !isIndiv);
-  updatePlayerEmailFields(parseInt(document.getElementById('indiv-count-input').value) || 2);
+  updatePlayerEmailFields(Number(document.getElementById('indiv-count-input').value));
 }
 
 /** Regenera dinámicamente los campos de email según el número de jugadores */
 function updatePlayerEmailFields(count) {
-  count = Math.max(2, Math.min(30, count));
-  document.getElementById('indiv-count-input').value = count;
-  const container = document.getElementById('indiv-email-fields');
-  container.innerHTML = '';
-  for (let i = 1; i <= count; i++) {
-    const div = document.createElement('div');
-    div.innerHTML = `<input type="email" class="form-control form-control-sm player-email-input"
-      placeholder="Jugador ${i} — email" data-player="${i}" required>`;
-    container.appendChild(div);
+  if(!Number.isInteger(count)||count<0||count>500)return;
+  const container=document.getElementById('indiv-email-fields');
+  const previous=[...container.querySelectorAll('input')].map(i=>i.value);
+  container.replaceChildren();
+  for(let i=0;i<count;i++){
+    const input=document.createElement('input');input.type='email';input.className='form-control form-control-sm player-email-input';input.placeholder='Jugador '+(i+1)+' — correo opcional';input.setAttribute('aria-label',input.placeholder);input.value=previous[i]||'';container.append(input);
   }
 }
 
@@ -710,6 +704,7 @@ function setGameType(btn, type) {
   btn.classList.add('active');
   document.getElementById('game-type').value = type;
   const isMeme = type === 'meme';
+  document.getElementById('live-mode').closest('div').hidden=isMeme;
   document.getElementById('section-streaming').classList.toggle('d-none', isMeme);
   document.getElementById('section-genre').classList.toggle('d-none', isMeme);
   document.getElementById('section-hard-mode').classList.toggle('d-none', isMeme);
@@ -745,6 +740,7 @@ function setGameType(btn, type) {
 
 /** Crea una nueva partida con la configuración del formulario */
 async function createGame() {
+  if(creatingGame)return;
   const rounds = parseInt(document.getElementById('rounds-input').value, 10);
   const time   = parseInt(document.getElementById('time-input').value,   10);
   const gameType        = document.getElementById('game-type').value;
@@ -757,13 +753,12 @@ async function createGame() {
   const hardMode        = document.getElementById('toggle-hard-mode').checked ? '1' : '0';
   const pinMode         = document.getElementById('pin-mode').value;
   const organizerEmail  = pinMode === 'shared' ? document.getElementById('organizer-email').value.trim() : '';
-  const individualCount = Math.max(2, Math.min(30, parseInt(document.getElementById('indiv-count-input').value, 10) || 2));
+  const individualCount = Number(document.getElementById('indiv-count-input').value);
   const errEl = document.getElementById('setup-error');
   errEl.classList.add('d-none');
 
-  // En modo compartido, el email del organizador es obligatorio
-  if (pinMode === 'shared' && !organizerEmail) {
-    errEl.textContent = 'Introduce tu email para recibir el PIN de la partida.';
+  if (organizerEmail && !document.getElementById('organizer-email').checkValidity()) {
+    errEl.textContent = 'Revisa el correo del organizador.';
     errEl.classList.remove('d-none');
     document.getElementById('organizer-email').focus();
     return;
@@ -772,20 +767,24 @@ async function createGame() {
   // En modo individual, validar que todos los emails estén rellenos
   if (pinMode === 'individual') {
     const inputs = [...document.querySelectorAll('#indiv-email-fields .player-email-input')];
-    const invalids = inputs.filter(inp => !inp.value.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inp.value.trim()));
+    const invalids = inputs.filter(inp => inp.value.trim() && !inp.checkValidity());
     inputs.forEach(inp => inp.classList.remove('is-invalid'));
     if (invalids.length) {
       invalids.forEach(inp => inp.classList.add('is-invalid'));
-      errEl.textContent = `Debes introducir un email válido para cada jugador (${invalids.length} pendiente${invalids.length > 1 ? 's' : ''})`;
+      errEl.textContent = `Revisa los correos indicados (${invalids.length} pendiente${invalids.length > 1 ? 's' : ''})`;
       errEl.classList.remove('d-none');
       invalids[0].focus();
       return;
     }
   }
 
+  if(!Number.isInteger(individualCount)||individualCount<0||individualCount>500){errEl.textContent='Indica de 0 a 500 códigos iniciales. Después podrás añadir más.';errEl.classList.remove('d-none');return;}
+  creatingGame=true;const createButton=document.getElementById('btn-create');createButton.disabled=true;createButton.textContent='Guardando…';
   try {
     const body = new URLSearchParams({
+      host_key:hostKey,title:document.getElementById('game-title').value,planned_at:document.getElementById('game-date').value,send_emails:document.getElementById('send-emails').checked?'1':'0',
       total_rounds: rounds, question_time: time, genre, game_type: gameType, is_public: isPublic,
+      live_mode:document.getElementById('live-mode').checked?'1':'0',
       show_links: showLinks, embed_youtube: embedYoutube, autoplay, hard_mode: hardMode,
       pin_mode: pinMode, organizer_email: organizerEmail, individual_count: individualCount,
     });
@@ -814,17 +813,21 @@ async function createGame() {
       localStorage.removeItem(GK + '_indivPins');
     }
 
-    const s = await fetchState(); applyState(s);
+    lastStatus=null;lastRosterFetch=0;inviteSignature='';invitePage=0;
+    const s = await fetchState(); if(s&&!s.error)applyState(s);else throw new Error('Sin conexión');
   } catch {
-    errEl.textContent = 'Error de conexión. ¿Está XAMPP encendido?';
+    errEl.textContent = 'No se pudo confirmar el guardado. Revisa Mis partidas antes de volver a crearla.';
     errEl.classList.remove('d-none');
-  }
+  } finally {creatingGame=false;createButton.disabled=false;createButton.textContent='Guardar partida';}
 }
 
-async function startGame() {
-  const d = await apiPost('start_game');
-  if (d.error) { alert(d.error); return; }
-  const s = await fetchState(); applyState(s);
+let startingSession=false;
+async function startGame(kind='main') {
+  if(startingSession)return;startingSession=true;
+  document.getElementById('btn-start').disabled=true;document.getElementById('btn-tutorial').disabled=true;
+  try {const d=await apiPost('start_game',{session_kind:kind});if(d.error)throw Error(d.error);const s=await fetchState();if(s)applyState(s);}
+  catch(e){showAdminError(e.message);}
+  finally {startingSession=false;const s=await fetchState();if(s&&!s.error)applyState(s);}
 }
 
 /** Añade un jugador bot con la edad orientativa elegida (prueba de jugabilidad) */
@@ -864,7 +867,7 @@ async function nextRound() {
   const btn = document.getElementById('btn-next');
   if (btn) btn.disabled = true;
   try {
-    const d = await apiPost('next_round');
+    const d = await apiPost('next_round', {expected_round:lastQuestionRound});
     if (d.error) { showAdminError('Error al avanzar ronda: ' + d.error); }
     else { const s = await fetchState(); if (s) applyState(s); }
   } catch (e) {
@@ -892,6 +895,8 @@ function showAdminError(msg) {
 }
 
 function newGame() {
+  if(gameId&&adminToken)hostRequest('host_attach',{game_id:gameId,admin_token:adminToken}).catch(e=>showAdminError(e.message));
+  lastRosterFetch=0;inviteSignature='';invitePage=0;
   hideMemePlayer('q-meme-img'); hideMemePlayer('r-meme-img');
   clearSession(); showScreen('setup');
 }
@@ -927,10 +932,10 @@ function setVolume(val) {
 }
 
 /** Busca una preview de 30s a través del proxy PHP (evita CORS en móviles) */
-async function fetchItunesPreview(title, artist) {
+async function fetchItunesPreview(title, artist, songId) {
   try {
     const q = encodeURIComponent((title || '') + ' ' + (artist || ''));
-    const r = await fetch(`${API}?action=itunes_preview&term=${q}`, { cache: 'no-store' });
+    const r = await fetch(`${API}?action=itunes_preview&song_id=${encodeURIComponent(songId)}`, { cache: 'no-store' });
     const data = await r.json();
     return data.previewUrl ?? null;
   } catch {
@@ -946,7 +951,7 @@ async function fetchItunesPreview(title, artist) {
 async function resolveSongArtwork(song, imgEl) {
   try {
     const q = encodeURIComponent(song.title + ' ' + (song.artist || ''));
-    const r = await fetch(`${API}?action=itunes_preview&term=${q}`, { cache: 'no-store' });
+    const r = await fetch(`${API}?action=itunes_preview&song_id=${encodeURIComponent(song.id)}`, { cache: 'no-store' });
     const d = await r.json();
     if (!d.artworkUrl) return;
     imgEl.src = d.artworkUrl;
@@ -966,6 +971,7 @@ async function resolveSongArtwork(song, imgEl) {
  * @param {string} p  Prefijo del reproductor: 'q' (pregunta) o 'r' (resultados)
  */
 async function audioLoad(p, song) {
+  if(liveMode)return;
   const a    = document.getElementById(p + '-audio');
   const time = document.getElementById(p + '-atime');
 
@@ -983,7 +989,8 @@ async function audioLoad(p, song) {
   document.getElementById(p + '-afill').style.width = '0%';
   time.textContent = '…';
 
-  const previewUrl = await fetchItunesPreview(song.title, song.artist);
+  const previewUrl = await fetchItunesPreview(song.title, song.artist, song.id);
+  if(liveMode)return;
 
   if (!previewUrl) {
     time.textContent = '0:00';
@@ -1006,6 +1013,7 @@ async function audioLoad(p, song) {
 }
 
 function audioToggle(p) {
+  if(liveMode)return;
   const a = document.getElementById(p + '-audio');
   if (!a.src) return;
   if (a.paused) {

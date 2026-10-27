@@ -9,12 +9,33 @@ require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/Player.php';
 require_once __DIR__ . '/Reaction.php';
 require_once __DIR__ . '/BotBrain.php';
+require_once __DIR__ . '/PracticeSession.php';
+require_once __DIR__ . '/SongCatalog.php';
 
 class Game {
     private PDO $db;
 
     public function __construct() {
         $this->db = Database::getInstance()->pdo();
+    }
+
+    public static function admissionCode(): string {
+        $alphabet='23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+        $code=''; for($i=0;$i<6;$i++) $code.=$alphabet[random_int(0,strlen($alphabet)-1)];
+        return $code;
+    }
+    public static function validCode(string $code): bool {
+        return (bool)preg_match('/^(?:[0-9]{4}|[0-9]{8}|[A-Z0-9]{6})$/D',$code);
+    }
+    public function prepareSession(int $id,string $kind): void {
+        $game=$this->getById($id);
+        PracticeSession::prepare($this->db,$game,$kind);
+        if ($game['game_type']==='song' || $kind==='tutorial' || $game['session_kind']==='tutorial') {
+            $table=$game['game_type']==='meme'?'game_memes':'game_songs';
+            $this->db->prepare("DELETE FROM $table WHERE game_id=?")->execute([$id]);
+            $updated=$this->getById($id);
+            $this->assignRoundContent($id,$game['selected_genre'],$game['game_type'],(int)$updated['total_rounds']);
+        }
     }
 
     // ── Creación ──────────────────────────────────────
@@ -37,11 +58,19 @@ class Game {
         string $gameType = 'song',
         bool $isPublic = false
     ): array {
+        if ($totalRounds < 5 || $totalRounds > 50) throw new InvalidArgumentException('Elige entre 5 y 50 canciones.');
+        // Fail before inserting a room when its verified pool is insufficient.
+        if ($gameType==='song') {
+            $source=SongCatalog::source();
+            $q=$this->db->prepare("SELECT COUNT(*) FROM $source".($genre==='Todos'?'':' WHERE genre=?'));
+            $q->execute($genre==='Todos'?[]:[$genre]);
+            if ((int)$q->fetchColumn()<$totalRounds) throw new InvalidArgumentException('No hay suficientes canciones verificadas. Reduce las rondas o elige Todos.');
+        }
         // Generar PIN único de 4 dígitos (no repetir PINs de partidas activas)
         do {
-            $pin = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
-            $st  = $this->db->prepare("SELECT id FROM games WHERE pin=? AND status!='finished'");
-            $st->execute([$pin]);
+            $pin = self::admissionCode();
+            $st  = $this->db->prepare("SELECT id FROM games WHERE pin=? UNION ALL SELECT id FROM individual_pins WHERE pin=?");
+            $st->execute([$pin,$pin]);
         } while ($st->fetch());
 
         // Token secreto del dinamizador para autenticar acciones de admin
@@ -78,18 +107,19 @@ class Game {
      * y lo asigna a game_songs/game_memes.
      */
     private function assignRoundContent(int $gameId, string $genre, string $gameType, int $totalRounds): void {
-        $contentTable = $gameType === 'meme' ? 'memes' : 'songs';
+        $contentTable = $gameType === 'meme' ? 'memes' : SongCatalog::source();
         $gameTable    = $gameType === 'meme' ? 'game_memes' : 'game_songs';
         $itemCol      = $gameType === 'meme' ? 'meme_id' : 'song_id';
 
-        if ($genre === 'Todos') {
-            $st = $this->db->prepare("SELECT id FROM {$contentTable} ORDER BY RAND() LIMIT ?");
-            $st->execute([$totalRounds]);
-        } else {
-            $st = $this->db->prepare("SELECT id FROM {$contentTable} WHERE genre=? ORDER BY RAND() LIMIT ?");
-            $st->execute([$genre, $totalRounds]);
-        }
+        // Unheard songs first; reuse only the shortfall, without duplicates in a session.
+        $order = $gameType === 'song'
+            ? 'EXISTS(SELECT 1 FROM tutorial_song_history h WHERE h.game_id='.(int)$gameId.' AND h.song_id=approved_songs.id), RAND()'
+            : 'RAND()';
+        $st = $this->db->prepare("SELECT id FROM {$contentTable}".($genre === 'Todos' ? '' : ' WHERE genre=?')." ORDER BY $order LIMIT ?");
+        $st->execute($genre === 'Todos' ? [$totalRounds] : [$genre,$totalRounds]);
         $items = $st->fetchAll(PDO::FETCH_COLUMN);
+        shuffle($items);
+        if (count($items)<$totalRounds) throw new InvalidArgumentException('No hay suficientes canciones verificadas en este género. Reduce las rondas o elige Todos.');
 
         $ins = $this->db->prepare(
             "INSERT INTO {$gameTable} (game_id, {$itemCol}, round_number) VALUES (?,?,?)"
@@ -103,7 +133,7 @@ class Game {
      * Genera PINs individuales únicos para cada jugador de la partida.
      * Evita colisiones con PINs de partidas activas mediante reintentos.
      */
-    private function generateIndividualPins(int $gameId, int $count, array $emails = []): array {
+    public function generateIndividualPins(int $gameId, int $count, array $emails = []): array {
         $pins      = [];
         $ins       = $this->db->prepare("INSERT INTO individual_pins (game_id, pin, email) VALUES (?,?,?)");
         $generated = 0;
@@ -111,7 +141,7 @@ class Game {
 
         while ($generated < $count && $attempts < $count * 20) {
             $attempts++;
-            $candidate = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+            $candidate = self::admissionCode();
 
             // Comprobar que no coincida con el PIN general de una partida activa
             $st = $this->db->prepare("SELECT 1 FROM games WHERE pin=? AND status!='finished'");
@@ -132,11 +162,12 @@ class Game {
                 $ins->execute([$gameId, $candidate, $email]);
                 $pins[] = $candidate;
                 $generated++;
-            } catch (\Exception $e) {
-                // Race condition muy poco probable — simplemente reintentamos
+            } catch (PDOException $e) {
+                if (($e->errorInfo[1] ?? null) !== 1062) throw $e;
             }
         }
 
+        if (count($pins)!==$count) throw new RuntimeException('No se pudieron generar todos los códigos. Inténtalo de nuevo.');
         return $pins;
     }
 
@@ -151,7 +182,7 @@ class Game {
             "SELECT g.*, ip.email AS player_email
              FROM individual_pins ip
              JOIN games g ON ip.game_id = g.id
-             WHERE ip.pin=? AND ip.used=0 AND g.status!='finished'"
+             WHERE ip.pin=? AND ip.used=0 AND ip.revoked=0 AND g.status!='finished'"
         );
         $st->execute([$pin]);
         return $st->fetch() ?: null;
@@ -160,7 +191,7 @@ class Game {
     /** Marca un PIN individual como usado y lo vincula al jugador que se unió */
     public function claimIndividualPin(string $pin, int $playerId): void {
         $this->db->prepare(
-            "UPDATE individual_pins SET used=1, player_id=? WHERE pin=?"
+            "UPDATE individual_pins SET used=1, player_id=? WHERE pin=? AND used=0 AND revoked=0"
         )->execute([$playerId, $pin]);
     }
 
@@ -198,11 +229,16 @@ class Game {
         $gameType      = $game['game_type'] ?? 'song';
         $selectedGenre = $game['selected_genre'] ?: 'Todos';
 
-        $contentTable  = $gameType === 'meme' ? 'memes' : 'songs';
+        $contentTable  = $gameType === 'meme' ? 'memes' : SongCatalog::source();
         $gameTable     = $gameType === 'meme' ? 'game_memes' : 'game_songs';
         $timelineTable = $gameType === 'meme' ? 'player_meme_timeline' : 'player_timeline';
         $itemCol       = $gameType === 'meme' ? 'meme_id' : 'song_id';
 
+        if ($gameType==='song') {
+            $source=SongCatalog::source();
+            $q=$this->db->prepare("SELECT COUNT(*) FROM game_songs WHERE game_id=? AND song_id NOT IN (SELECT id FROM $source)");$q->execute([$gameId]);
+            if ($q->fetchColumn()) throw new InvalidArgumentException('Hay canciones pendientes de revisión. Vuelve a preparar la partida.');
+        }
         // Contenido reservado para las rondas (no puede usarse como ancla)
         $st = $this->db->prepare("SELECT {$itemCol} FROM {$gameTable} WHERE game_id=?");
         $st->execute([$gameId]);
@@ -220,25 +256,28 @@ class Game {
         // Placeholder SQL para excluir el contenido de rondas
         $placeholders = $roundIds ? implode(',', array_fill(0, count($roundIds), '?')) : '0';
 
+        $anchorOrder = $gameType === 'song'
+            ? 'EXISTS(SELECT 1 FROM tutorial_song_history h WHERE h.game_id='.(int)$gameId.' AND h.song_id=approved_songs.id), RAND()'
+            : 'RAND()';
         foreach ($playerIds as $pid) {
             if ($selectedGenre !== 'Todos') {
                 // Intentar ancla del mismo género que no esté en las rondas
                 $st = $this->db->prepare(
-                    "SELECT id FROM {$contentTable} WHERE genre=? AND id NOT IN ($placeholders) ORDER BY RAND() LIMIT 1"
+                    "SELECT id FROM {$contentTable} WHERE genre=? AND id NOT IN ($placeholders) ORDER BY $anchorOrder LIMIT 1"
                 );
                 $st->execute(array_merge([$selectedGenre], $roundIds));
                 $initial = $st->fetchColumn();
 
                 // Fallback: cualquier elemento del género aunque esté en rondas
                 if (!$initial) {
-                    $st = $this->db->prepare("SELECT id FROM {$contentTable} WHERE genre=? ORDER BY RAND() LIMIT 1");
+                    $st = $this->db->prepare("SELECT id FROM {$contentTable} WHERE genre=? ORDER BY $anchorOrder LIMIT 1");
                     $st->execute([$selectedGenre]);
                     $initial = $st->fetchColumn();
                 }
             } else {
                 // Sin filtro de género: cualquier elemento fuera de rondas
                 $st = $this->db->prepare(
-                    "SELECT id FROM {$contentTable} WHERE id NOT IN ($placeholders) ORDER BY RAND() LIMIT 1"
+                    "SELECT id FROM {$contentTable} WHERE id NOT IN ($placeholders) ORDER BY $anchorOrder LIMIT 1"
                 );
                 $st->execute($roundIds);
                 $initial = $st->fetchColumn();
@@ -246,7 +285,7 @@ class Game {
 
             // Último fallback: cualquier elemento de la tabla
             if (!$initial) {
-                $st = $this->db->prepare("SELECT id FROM {$contentTable} ORDER BY RAND() LIMIT 1");
+                $st = $this->db->prepare("SELECT id FROM {$contentTable} ORDER BY $anchorOrder LIMIT 1");
                 $st->execute();
                 $initial = $st->fetchColumn();
             }
@@ -256,13 +295,13 @@ class Game {
 
         // Pasar a estado 'question' ronda 1 y registrar el momento de inicio (UTC)
         $this->db->prepare(
-            "UPDATE games SET status='question', current_round=1, question_started_at=UTC_TIMESTAMP() WHERE id=?"
+            "UPDATE games SET status='question', current_round=1, question_started_at=UTC_TIMESTAMP(),live_paused=0,live_pause_at=NULL,music_position=0,music_started_at=UTC_TIMESTAMP(),music_playing=live_mode,live_revision=live_revision+1 WHERE id=?"
         )->execute([$gameId]);
     }
 
     /** Pasa la partida a estado 'results' para mostrar el año de la canción */
     public function showResults(int $gameId): void {
-        $this->db->prepare("UPDATE games SET status='results', results_started_at=UTC_TIMESTAMP() WHERE id=?")->execute([$gameId]);
+        $this->db->prepare("UPDATE games SET status='results', results_started_at=UTC_TIMESTAMP(),music_playing=0,music_position=0,music_started_at=NULL,live_paused=0,live_pause_at=NULL,live_revision=live_revision+1 WHERE id=? AND status='question'")->execute([$gameId]);
     }
 
     /**
@@ -281,6 +320,11 @@ class Game {
         $gameTable    = $gameType === 'meme' ? 'game_memes' : 'game_songs';
         $itemCol      = $gameType === 'meme' ? 'meme_id' : 'song_id';
 
+        if ($gameType==='song' && $next<=(int)$game['total_rounds']) {
+            $source=SongCatalog::source();
+            $q=$this->db->prepare("SELECT song_id FROM game_songs WHERE game_id=? AND round_number=? AND song_id IN (SELECT id FROM $source)");$q->execute([$gameId,$next]);
+            if (!$q->fetchColumn()) throw new InvalidArgumentException('La siguiente canción no está verificada. La partida permanece detenida.');
+        }
         // Romper la racha de jugadores que no respondieron en la ronda completada
         $this->db->prepare(
             "UPDATE players SET streak = 0
@@ -295,12 +339,16 @@ class Game {
         )->execute([$gameId, $gameId, $gameId, $currentRound]);
 
         if ($next > (int)$game['total_rounds']) {
-            $this->db->prepare("UPDATE games SET status='finished' WHERE id=?")->execute([$gameId]);
+            if ($game['session_kind']==='tutorial') {
+                $this->db->prepare("UPDATE games SET status='waiting',current_round=0,total_rounds=competitive_rounds,question_started_at=NULL,results_started_at=NULL,music_playing=0,music_position=0,music_started_at=NULL,live_paused=0,live_pause_at=NULL,live_revision=live_revision+1 WHERE id=?")->execute([$gameId]);
+                return 'waiting';
+            }
+            $this->db->prepare("UPDATE games SET status='finished',music_playing=0,live_revision=live_revision+1 WHERE id=?")->execute([$gameId]);
             return 'finished';
         }
 
         $this->db->prepare(
-            "UPDATE games SET status='question', current_round=?, question_started_at=UTC_TIMESTAMP() WHERE id=?"
+            "UPDATE games SET status='question', current_round=?, question_started_at=UTC_TIMESTAMP(),live_paused=0,live_pause_at=NULL,music_position=0,music_started_at=UTC_TIMESTAMP(),music_playing=live_mode,live_revision=live_revision+1 WHERE id=?"
         )->execute([$next, $gameId]);
         return 'question';
     }
@@ -387,18 +435,21 @@ class Game {
      * a 'results' sin necesidad de que el admin pulse el botón.
      */
     public function getState(int $gameId): array {
+        require_once __DIR__.'/LiveGame.php';
+        $record=$this->getById($gameId);
+        if($record && $record['live_mode'] && $record['status']==='question')LiveGame::watchdog($this->db,$gameId);
         $game = $this->getById($gameId);
 
         // Hacer que los bots de la partida respondan/reaccionen solos si les toca
-        if ($game && $game['status'] === 'question') {
+        if ($game && $game['status'] === 'question' && !$game['live_paused']) {
             $this->processBots($gameId, $game);
         }
 
         // Auto-transición cuando se acaba el tiempo de respuesta
-        if ($game && $game['status'] === 'question' && $game['question_started_at']) {
+        if ($game && !$game['live_mode'] && $game['status'] === 'question' && $game['question_started_at']) {
             $elapsed = time() - strtotime($game['question_started_at'] . ' UTC');
             if ($elapsed >= (int)$game['question_time']) {
-                $this->db->prepare("UPDATE games SET status='results', results_started_at=UTC_TIMESTAMP() WHERE id=?")->execute([$gameId]);
+                $this->db->prepare("UPDATE games SET status='results', results_started_at=UTC_TIMESTAMP() WHERE id=? AND status='question' AND current_round=?")->execute([$gameId,$game['current_round']]);
                 $game = $this->getById($gameId);
             }
         }
@@ -408,19 +459,29 @@ class Game {
         // Calcular segundos restantes para la cuenta atrás del frontend
         $timeLeft = (int)$game['question_time'];
         if ($game['status'] === 'question' && $game['question_started_at']) {
-            $elapsed  = time() - strtotime($game['question_started_at'] . ' UTC');
+            $elapsed  = ($game['live_paused'] && $game['live_pause_at'] ? strtotime($game['live_pause_at'].' UTC') : time()) - strtotime($game['question_started_at'] . ' UTC');
             $timeLeft = max(0, (int)$game['question_time'] - $elapsed);
         }
 
+        require_once __DIR__.'/GamePrizes.php';
+        $prizes = GamePrizes::state($gameId);
         return [
+            ...Reaction::state($game),
+            'event_prizes' => $prizes,
+            'session_kind' => $game['session_kind'],
+            'session_number' => (int)$game['session_number'],
+            'tutorial_count' => (int)$game['tutorial_count'],
+            'main_started' => (int)$game['main_started'],
+            'live_mode' => (int)$game['live_mode'],
+            'live_paused' => (int)$game['live_paused'],
             'status'        => $game['status'],
             'current_round' => (int)$game['current_round'],
             'total_rounds'  => (int)$game['total_rounds'],
             'question_time' => (int)$game['question_time'],
             'time_left'     => $timeLeft,
-            'show_links'    => (int)($game['show_links']    ?? 0),
-            'embed_youtube' => (int)($game['embed_youtube'] ?? 0),
-            'autoplay'      => (int)($game['autoplay']      ?? 0),
+            'show_links'    => $game['live_mode'] ? 0 : (int)($game['show_links']    ?? 0),
+            'embed_youtube' => $game['live_mode'] ? 0 : (int)($game['embed_youtube'] ?? 0),
+            'autoplay'      => $game['live_mode'] ? 0 : (int)($game['autoplay']      ?? 0),
             'hard_mode'     => (int)($game['hard_mode']     ?? 0),
             'pin_mode'      => $game['pin_mode'] ?? 'shared',
             'prize_1'       => $game['prize_1'] ?? null,

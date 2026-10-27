@@ -2,3 +2,16 @@
 # Cada entorno (tu PC y el servidor) tiene su propia copia, nunca se sube.
 # Plantilla en config.local.example.php.
 config.local.php
+
+# Logs y volcados de error generados en el servidor
+php_errorlog
+*.log
+*.bak
+
+# Archivos de prueba sueltos en el servidor (dr.php, sitetest.txt, test.html)
+/dr.php
+/sitetest.txt
+/test.html
+
+# Vídeos de memes subidos a mano (obsoleto: ahora los memes se embeben de YouTube)
+/assets/videos/

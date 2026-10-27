@@ -13,6 +13,8 @@
  *   TK  = clave localStorage para el token de admin
  */
 require_once __DIR__ . '/../config.php';
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 require_once __DIR__ . '/../Modelo/Genres.php';
 $genres = Genres::allWithTodos(); ?>
 <!DOCTYPE html>
@@ -23,8 +25,12 @@ $genres = Genres::allWithTodos(); ?>
   <title>Hitstoric — Dinamizador</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=9">
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/game-qr.css?v=20261024-kick1">
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/reactions.css?v=20261024-kick1">
+<script src="<?= BASE_URL ?>/assets/js/reaction-feed.js?v=20261024-kick1"></script>
 </head>
 <body>
+<?php require __DIR__.'/planner.php'; ?>
 
 <!-- ══ SETUP ══ -->
 <div id="screen-setup" class="screen active align-items-center justify-content-center">
@@ -36,7 +42,10 @@ $genres = Genres::allWithTodos(); ?>
     <p class="text-secondary text-center mb-2">Panel del Dinamizador</p>
 
     <div class="card p-4">
-      <h5 class="fw-bold mb-4">Configurar partida</h5>
+      <h5 class="fw-bold mb-4">Preparar partida</h5>
+      <label for="game-title" class="form-label">Nombre de la partida</label><input id="game-title" maxlength="120" class="form-control mb-3" placeholder="Por ejemplo: fiesta del sábado">
+      <label for="game-date" class="form-label">Fecha prevista (opcional, hora de Madrid)</label><input id="game-date" type="datetime-local" class="form-control mb-2">
+      <p class="small text-secondary mb-4">Se guardará para más tarde. Solo empieza cuando pulses Iniciar partida.</p>
 
       <!-- Modo de juego -->
       <div class="mb-4">
@@ -52,10 +61,10 @@ $genres = Genres::allWithTodos(); ?>
 
       <div class="mb-4">
         <label class="form-label text-secondary small fw-semibold text-uppercase">Número de rondas</label>
-        <div class="text-center fw-black mb-1" style="font-size:3rem;color:var(--accent)" id="rounds-display">10</div>
-        <input type="range" class="form-range" id="rounds-input" min="5" max="20" value="10"
+        <div class="text-center fw-black mb-1" style="font-size:3rem;color:var(--accent)" id="rounds-display">30</div>
+        <input type="range" class="form-range" id="rounds-input" min="5" max="50" value="30"
                oninput="document.getElementById('rounds-display').textContent=this.value">
-        <div class="d-flex justify-content-between text-secondary small"><span>5</span><span>20</span></div>
+        <div class="d-flex justify-content-between text-secondary small"><span>5</span><span>50</span></div>
       </div>
 
       <div class="mb-4">
@@ -98,8 +107,11 @@ $genres = Genres::allWithTodos(); ?>
         </div>
       </div>
 
+      <div class="mb-4 p-3 rounded-3 border border-secondary">
+        <label class="d-flex gap-2 align-items-start"><input type="checkbox" id="live-mode" checked onchange="document.getElementById('section-streaming').hidden=this.checked"><span><strong>Evento presencial · equipo de sonido y mando separado</strong><br><small>Solo suena el equipo que actives. Mando y jugadores en silencio. Pausa y avance manual desde tu móvil.</small></span></label>
+      </div>
       <!-- Opciones de streaming -->
-      <div class="mb-4" id="section-streaming">
+      <div class="mb-4" id="section-streaming" hidden>
         <label class="form-label text-secondary small fw-semibold text-uppercase">Streaming</label>
 
         <div class="d-flex align-items-center justify-content-between py-2 border-bottom border-secondary border-opacity-25">
@@ -170,7 +182,7 @@ $genres = Genres::allWithTodos(); ?>
         <div id="pin-mode-desc-shared" class="mt-3 p-3 rounded-3" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
           <div class="fw-semibold small mb-2">🔑 PIN compartido</div>
           <ul class="small mb-0 ps-3" style="color:var(--muted);line-height:1.9">
-            <li>Se genera un único PIN de 4 dígitos para toda la sala.</li>
+            <li>Se genera un único código de 6 letras y números para toda la sala.</li>
             <li>Los jugadores lo introducen ellos mismos en su móvil para unirse.</li>
             <li>Ideal para partidas en grupo presencial (proyectas el PIN en pantalla).</li>
             <li>Los puntos <strong style="color:#fff">no</strong> se acumulan en el ranking global de premios.</li>
@@ -180,9 +192,9 @@ $genres = Genres::allWithTodos(); ?>
           <div class="fw-semibold small mb-2" style="color:var(--accent)">🎟️ PINs individuales</div>
           <ul class="small mb-0 ps-3" style="color:var(--muted);line-height:1.9">
             <li>Se genera un PIN único y personal para cada jugador.</li>
-            <li>Cada jugador recibe su PIN por email — no hace falta que estén presentes para apuntarse.</li>
-            <li>Los puntos <strong style="color:#fff">sí</strong> se acumulan en el ranking global y pueden canjearse por premios.</li>
-            <li>Requiere introducir el email de cada jugador antes de crear la partida.</li>
+            <li>Entrega el código en persona, copia el enlace o envíalo por correo.</li>
+            <li>Con correo, los puntos se acumulan en el ranking global. Sin correo, se conservan en esta partida.</li>
+            <li>El correo es opcional. Puedes añadir y editar jugadores hasta empezar.</li>
           </ul>
         </div>
 
@@ -191,25 +203,26 @@ $genres = Genres::allWithTodos(); ?>
 
       <!-- Email organizador (modo compartido) -->
       <div class="mb-4" id="section-shared-email">
-        <label class="form-label text-secondary small fw-semibold text-uppercase">Tu email <span class="text-danger">*</span></label>
-        <input type="email" id="organizer-email" class="form-control" placeholder="tucorreo@ejemplo.com" required>
-        <div class="form-text small" style="color:var(--muted)">Recibirás el PIN al crear la partida</div>
+        <label class="form-label text-secondary small fw-semibold text-uppercase">Tu email (opcional)</label>
+        <input type="email" id="organizer-email" class="form-control" placeholder="tucorreo@ejemplo.com">
+        <div class="form-text small" style="color:var(--muted)">El PIN aparece al instante aunque no envíes correo</div>
       </div>
 
       <!-- Emails individuales (modo individual, oculto por defecto) -->
       <div class="d-none" id="section-indiv-emails">
         <div class="mb-3">
-          <label class="form-label text-secondary small fw-semibold text-uppercase">Número de jugadores</label>
-          <input type="number" id="indiv-count-input" class="form-control" min="2" max="30" value="2"
-                 oninput="updatePlayerEmailFields(parseInt(this.value)||2)">
-            <div class="form-text small" style="color:var(--muted)">Máximo 30 — cada jugador recibirá su PIN por email (obligatorio)</div>
+          <label class="form-label text-secondary small fw-semibold text-uppercase">Códigos iniciales (puedes añadir más después)</label>
+          <input type="number" id="indiv-count-input" class="form-control" min="0" max="500" value="0"
+                 onchange="updatePlayerEmailFields(Number(this.value))">
+            <div class="form-text small" style="color:var(--muted)">Empieza con 0 si todavía no sabes cuántos serán. Genera hasta 500 por lote, sin límite fijo de jugadores por partida.</div>
         </div>
         <div id="indiv-email-fields" class="d-flex flex-column gap-2 mb-3"></div>
 
       </div>
 
-      <button class="btn btn-game btn-lg w-100 rounded-pill fw-bold" onclick="createGame()">
-        🎮 Crear Partida
+      <label class="d-flex gap-2 mb-3 small"><input type="checkbox" id="send-emails" checked> Enviar invitaciones a los correos indicados (en segundo plano)</label>
+      <button id="btn-create" class="btn btn-game btn-lg w-100 rounded-pill fw-bold" onclick="createGame()">
+        Guardar partida
       </button>
       <div class="text-center mt-2">
         <a href="<?= BASE_URL ?>/Vista/songs.php" id="catalog-link" class="small" style="color:var(--accent)">🎵 Catálogo de canciones</a>
@@ -226,6 +239,13 @@ $genres = Genres::allWithTodos(); ?>
 <div id="screen-waiting" class="screen">
   <div class="container py-4 d-flex flex-column align-items-center gap-4" style="max-width:640px">
 
+    <div class="card w-100 p-3">
+      <label for="waiting-title" class="form-label">Nombre de la partida</label><input id="waiting-title" class="form-control mb-2" maxlength="120">
+      <label for="waiting-date" class="form-label">Fecha prevista (Madrid)</label><input id="waiting-date" type="datetime-local" class="form-control mb-2">
+      <button class="btn btn-outline-light" onclick="savePlannedDetails(this)">Guardar datos</button>
+      <p class="small text-secondary mt-2 mb-0">Puedes salir y volver desde Mis partidas. La partida no empieza automáticamente.</p>
+    </div>
+    <div class="card w-100 p-3 text-center"><button class="btn btn-game" onclick="openGameQr()">Mostrar QR de acceso a la partida</button><p class="small mb-0 mt-2">Cada jugador escanea el QR e introduce su propio código. Puedes enseñarlo desde la barra o compartir el enlace.</p></div>
     <div class="card w-100 p-4 text-center" id="w-pin-card">
       <div class="text-secondary small text-uppercase fw-semibold mb-1">PIN de la partida</div>
       <div class="pin-box" id="w-pin">----</div>
@@ -243,14 +263,24 @@ $genres = Genres::allWithTodos(); ?>
 
     <!-- Panel PINs individuales (oculto en modo compartido) -->
     <div class="card w-100 p-4 d-none" id="w-indiv-pins">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="text-secondary small text-uppercase fw-semibold">Cartones / PINs individuales</div>
+      <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+        <div class="text-secondary small fw-semibold" id="invite-count">Códigos individuales</div>
         <button class="btn btn-sm btn-outline-secondary rounded-pill" id="btn-copy-all" onclick="copyAllPins()">
           📋 Copiar todos
         </button>
       </div>
+      <form onsubmit="addInvitations(event)" class="mb-3">
+        <label for="add-invite-count" class="form-label">Códigos que quieres añadir</label><input id="add-invite-count" type="number" min="1" max="500" value="1" required class="form-control mb-2">
+        <label for="add-invite-name" class="form-label">Nombre (opcional, para un solo jugador)</label><input id="add-invite-name" maxlength="30" class="form-control mb-2" autocomplete="off">
+        <label for="add-invite-email" class="form-label">Correo (opcional)</label><input id="add-invite-email" type="email" maxlength="255" class="form-control mb-2" autocomplete="off">
+        <label class="d-flex gap-2 small mb-3"><input id="add-invite-send" type="checkbox" checked> Enviar correo si lo he indicado</label>
+        <button class="btn btn-game w-100" type="submit">Añadir y generar códigos</button>
+        <p class="small text-secondary mt-2">Para un lote, deja nombre y correo vacíos. Puedes editar cada código después.</p>
+      </form>
+      <label for="invite-search" class="form-label">Buscar jugador, correo o código</label><input id="invite-search" class="form-control mb-3" type="search" oninput="invitePage=0;renderInvitations()">
       <div class="d-flex flex-wrap gap-2 justify-content-center" id="w-pins-grid"></div>
-      <div class="text-secondary small mt-3 text-center">Haz clic en un cartón para copiar su PIN</div>
+      <div class="d-flex gap-2 align-items-center justify-content-between mt-3"><button id="invite-prev" class="btn btn-sm btn-outline-secondary" onclick="invitePage--;renderInvitations()">Anterior</button><span id="invite-page" class="small"></span><button id="invite-next" class="btn btn-sm btn-outline-secondary" onclick="invitePage++;renderInvitations()">Siguiente</button></div>
+      <p class="small text-secondary mt-3 mb-0">El código funciona de inmediato. «Aceptado por el servidor» no garantiza que el correo haya llegado a la bandeja de entrada.</p>
     </div>
 
     <div class="w-100">
@@ -274,12 +304,13 @@ $genres = Genres::allWithTodos(); ?>
 
     <div class="d-flex flex-column align-items-center gap-2">
       <button id="btn-start" class="btn btn-success btn-lg rounded-pill px-5 fw-bold" onclick="startGame()" disabled>
-        ▶ Iniciar Partida
+        ▶ Iniciar partida con premios
       </button>
-      <span class="text-secondary small">Mínimo 1 jugador para comenzar</span>
+      <button id="btn-tutorial" class="btn btn-outline-info btn-lg rounded-pill px-4" onclick="startGame('tutorial')" disabled>Iniciar tutorial · 5 canciones</button>
+      <span class="text-secondary small text-center">Mismo código y jugadores para todos los tutoriales. Las canciones de práctica solo se reutilizan si se agotan las nuevas. Puedes añadir gente entre tutoriales. Los puntos se reinician antes de la partida con premios.</span>
     </div>
 
-    <button class="btn btn-outline-secondary btn-sm rounded-pill px-4 back-btn" onclick="newGame()">‹ Cancelar partida</button>
+    <div class="d-flex gap-2 flex-wrap"><button class="btn btn-outline-secondary rounded-pill" onclick="openSavedGames()">Guardar y salir</button><button class="btn btn-outline-danger rounded-pill" onclick="cancelPlannedGame()">Cerrar partida</button></div>
 
   </div>
 </div>
@@ -324,7 +355,7 @@ $genres = Genres::allWithTodos(); ?>
         <div class="rsc-artist" id="q-artist">—</div>
         <div class="rsc-year year-hidden" id="q-year">—</div>
         <div class="rsc-genre"  id="q-genre"></div>
-        <div class="text-secondary small mt-2">El año se desvela al terminar el tiempo</div>
+        <div class="text-secondary small mt-2">El año se desvela al cerrar la ronda</div>
       </div>
 
       <div class="d-flex justify-content-between align-items-center">
@@ -463,6 +494,11 @@ $genres = Genres::allWithTodos(); ?>
   const GK  = 'hitstoric_gid';
   const TK  = 'hitstoric_tok';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/admin.js?v=68"></script>
+<script src="<?= BASE_URL ?>/assets/vendor/qrcode-1.4.4.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/game-qr.js?v=20261024-kick1"></script>
+<script src="<?= BASE_URL ?>/assets/js/event-prizes.js?v=20261024-kick1"></script>
+<script src="<?= BASE_URL ?>/assets/js/live-control.js?v=20261024-kick1"></script>
+<script src="<?= BASE_URL ?>/assets/js/planner.js?v=20261024-kick1"></script>
+<script src="<?= BASE_URL ?>/assets/js/admin.js?v=20261024-kick1"></script>
 </body>
 </html>

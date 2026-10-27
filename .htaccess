@@ -11,12 +11,19 @@
 # ══════════════════════════════════════════════════════
 
 Options -Indexes
+DirectoryIndex index.php
 RewriteEngine On
 
 # ── Entorno ──────────────────────────────────────────
 # Descomenta la línea correcta para tu entorno:
 # RewriteBase /Practicas/Web%20Musicos/
 RewriteBase /
+
+# Internal sources, logs and backup/config files are never downloadable.
+RewriteRule (^|/)\.git(?:/|$) - [F,L,NC]
+<FilesMatch "(?i)(^config\.local(?:\.example)?\.php$|^php_errorlog$|\.(sql|log|bak)$)">
+    Require all denied
+</FilesMatch>
 
 # ── Archivos y carpetas reales → acceso directo ───────
 RewriteCond %{REQUEST_FILENAME} -f [OR]

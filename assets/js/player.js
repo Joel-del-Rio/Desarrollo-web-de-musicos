@@ -1,3 +1,4 @@
+let activeSession = 0;
 /* ═══════════════════════════════════════════════════════════════
  * player.js — Vista del jugador
  *
@@ -8,6 +9,9 @@
  * ═══════════════════════════════════════════════════════════════ */
 
 /* ── Estado global ────────────────────────────────────────────── */
+let answerPending = false, pollBusy = false, pollGeneration = 0, questionRound = null;
+let mobileTimeline = [];
+const requestedGameId = /^[1-9]\d*$/.test(new URLSearchParams(location.search).get('game') || '') ? new URLSearchParams(location.search).get('game') : '';
 let playerId     = parseInt(localStorage.getItem(PK), 10) || null;
 let pollTimer    = null;
 let countdown    = null;        // Intervalo de la barra de cuenta atrás
@@ -58,9 +62,11 @@ function destroyMemePlayer(elId) {
 
 /** Crea (o recrea) el reproductor de un meme con el volumen guardado, sin mutear */
 function loadMemePlayer(elId, videoId, startSeconds) {
+  if (playerLiveMode) return;
   destroyMemePlayer(elId);
   document.getElementById(elId)?.classList.remove('d-none');
   whenYTReady(() => {
+    if (playerLiveMode) return;
     memePlayers[elId] = new YT.Player(elId + '-player', {
       videoId,
       playerVars: {
@@ -227,23 +233,24 @@ let pPreviewLoading   = false;
   const urlPin = new URLSearchParams(window.location.search).get('pin');
   if (urlPin) {
     const pinInput = document.getElementById('pin-input');
-    if (pinInput) pinInput.value = urlPin.replace(/\D/g, '').slice(0, 4);
+    if (pinInput) pinInput.value = urlPin.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
   }
 
+  if (requestedGameId && String(localStorage.getItem(GK)) !== requestedGameId) playerId = null;
   if (playerId) {
     // Sesión guardada — intentar recuperar el estado
     fetchState().then(state => {
       if (state && !state.error) applyState(state);
       else if (state && state.error === 'Jugador no encontrado') handleKicked();
-      else { clearSession(); showScreen('join'); }
+      else { showScreen('answered'); startPolling(); }
     });
   } else {
     showScreen('join');
   }
 
-  // Forzar que el PIN solo acepte dígitos (máx 4)
+  // Codes are case-insensitive; keep legacy numeric codes valid.
   document.getElementById('pin-input')?.addEventListener('input', e => {
-    e.target.value = e.target.value.replace(/\D/g,'').slice(0,4);
+    e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
   });
   // Enviar con Enter en el formulario de join
   document.getElementById('pin-input')?.addEventListener('keydown',  e => { if(e.key==='Enter') joinGame(); });
@@ -406,8 +413,8 @@ async function chooseLobbyOption(key, value) {
 /* ── Llamada API ──────────────────────────────────────────────── */
 async function fetchState() {
   try {
-    const r = await fetch(`${API}?action=player_state&player_id=${playerId}&last_reaction_id=${lastReactionId}&_t=${Date.now()}`, { cache: 'no-store' });
-    return r.json();
+    const r = await fetch(`${API}?action=player_state&player_id=${playerId}&last_reaction_id=${lastReactionId}&_t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined });
+    return await r.json();
   } catch { return null; }
 }
 
@@ -415,12 +422,20 @@ async function fetchState() {
 function startPolling(ms = 1500) {
   stopPolling();
   pollTimer = setInterval(async () => {
+    if (pollBusy || answerPending) return;
+    pollBusy = true;
+    const generation = pollGeneration;
     const s = await fetchState();
+    pollBusy = false;
+    if (generation !== pollGeneration || answerPending) return;
+    const notice = document.getElementById('connection-status');
+    notice.hidden = !!s;
+    notice.textContent = 'Reconectando… Conservamos tu partida.';
     if (s && !s.error) applyState(s);
     else if (s && s.error === 'Jugador no encontrado') handleKicked();
   }, ms);
 }
-function stopPolling() { clearInterval(pollTimer); pollTimer = null; }
+function stopPolling() { pollGeneration++; clearInterval(pollTimer); pollTimer = null; }
 
 /** El dinamizador ha expulsado al jugador de la sala — avisar y volver al join */
 function handleKicked() {
@@ -437,24 +452,28 @@ function handleKicked() {
 
 /* ── Gestión de pantallas ─────────────────────────────────────── */
 function showScreen(name) {
+  document.body.dataset.screen = name;
+  const prizes=document.getElementById('event-prizes');if(prizes)prizes.hidden=['library','setup','join'].includes(name);
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`)?.classList.add('active');
-  document.getElementById('reaction-fab')?.classList.toggle('d-none', name === 'join');
+  document.getElementById('reaction-fab')?.classList.toggle('d-none', name === 'join' || !reactionsAllowed);
 }
 
 /* ── Reacciones tipo Kahoot ───────────────────────────────────── */
 
 /** Abre/cierra el desplegable de reacciones */
 function toggleReactionBar() {
-  document.getElementById('reaction-fab')?.classList.toggle('open');
+  const open=document.getElementById('reaction-fab')?.classList.toggle('open');
+  document.getElementById('reaction-toggle')?.setAttribute('aria-expanded',String(!!open));
 }
 
 /** El jugador pulsa un botón de reacción: se envía, aparece también en su propia pantalla, y se cierra el desplegable */
 const REACTION_COOLDOWN_MS = 5000;
 let reactionCooldownUntil = 0;
+let reactionsAllowed=false;
 
 async function sendReaction(emoji) {
-  if (!playerId || Date.now() < reactionCooldownUntil) return;
+  if (!playerId || !reactionsAllowed || Date.now() < reactionCooldownUntil) return;
 
   reactionCooldownUntil = Date.now() + REACTION_COOLDOWN_MS;
   setReactionButtonsDisabled(true);
@@ -490,11 +509,35 @@ function handleNewReactions(reactions) {
 }
 
 /* ── Dispatcher de estado ─────────────────────────────────────── */
+let playerLiveMode=false,playerLivePaused=false;
 function applyState(state) {
+  if(activeSession!==Number(state.session_number||0)){lastStatus=null;questionRound=null;selectedPos=null;answerPending=false;}
+  activeSession=Number(state.session_number||0);
+  setShareGame(state.player?.game_id || localStorage.getItem(GK) || requestedGameId);
+  playerLiveMode=!!Number(state.live_mode);playerLivePaused=!!Number(state.live_paused);
+  const oldNotice=document.getElementById('live-player-notice');if(oldNotice)oldNotice.hidden=!playerLiveMode;
+  if(playerLiveMode){for(const a of document.querySelectorAll('audio,video'))a.pause();hideMemePlayer('q-meme-img');hideMemePlayer('r-meme-img');stopCountdown();}
+  queueMicrotask(()=>{
+    if(!playerLiveMode)return;
+    let n=document.getElementById('live-player-notice');if(!n){n=document.createElement('p');n.id='live-player-notice';n.className='container py-2 text-center';n.setAttribute('role','status');document.body.prepend(n);}
+    n.hidden=false;n.textContent=playerLivePaused?'Partida en pausa. Espera al dinamizador.':'Escucha la música de la sala. Tu móvil está en silencio; el dinamizador decide cuándo avanzar.';
+    if(state.status==='question'){updatePositionControls();const secs=document.getElementById('q-secs');if(secs)secs.textContent=playerLivePaused?'Pausa':'Manual';document.querySelectorAll('.pos-btn').forEach(b=>b.disabled=playerLivePaused||answerPending);const confirm=document.getElementById('confirm-btn');if(confirm)confirm.disabled=playerLivePaused||answerPending||selectedPos===null||timelineSettling||!!state.has_answered;}
+  });
+  renderEventPrizes(state, false);
+  const panel = document.getElementById('event-prizes');
+  if (panel) document.getElementById('player-prizes').appendChild(panel);
+  document.getElementById('player-status').textContent = state.session_kind==='tutorial' ? (state.status==='waiting'?'Tutorial terminado · espera aquí':('TUTORIAL · '+state.current_round+'/5 · Sin premios'+(playerLivePaused?' · Pausa':''))) : state.main_started ? (playerLivePaused?'CON PREMIOS · En pausa':'PARTIDA CON PREMIOS') : playerLiveMode ? 'Escucha la música de la sala' : 'Hitstoric';
+  document.getElementById('q-seconds-unit').hidden = playerLiveMode;
+  document.body.classList.toggle('live-player', playerLiveMode);
+  if (state.status === 'question' && questionRound !== state.current_round) lastStatus = null;
   const st = state.status;
 
   // Se comprueba siempre, incluso cuando el resto de la función corta por early-return
-  handleNewReactions(state.new_reactions);
+  reactionsAllowed=!!state.reactions_allowed;
+  document.getElementById('reaction-fab')?.classList.toggle('d-none',!reactionsAllowed);
+  if(!reactionsAllowed)document.getElementById('reaction-fab')?.classList.remove('open');
+  ReactionFeed.render(state);
+  for(const r of state.new_reactions||[])lastReactionId=Math.max(lastReactionId,Number(r.id));
 
   // Si el jugador ya respondió, ir a pantalla de espera
   if (st === 'question' && state.has_answered) {
@@ -506,7 +549,7 @@ function applyState(state) {
   }
   // Transición local 'answered' → evitar que reaparezca el timeline antes de que el
   // servidor confirme el cambio (el siguiente poll mostrará 'results')
-  if (lastStatus === 'answered' && st === 'question') return;
+  if (answerPending && st === 'question') return;
 
   // Actualización ligera del contador del lobby
   if (st === 'waiting' && lastStatus === 'waiting') { renderLobbyCount(state); return; }
@@ -580,6 +623,7 @@ function renderLobbyCount(state) {
 
 /* ── Pantalla de pregunta (timeline interactivo) ──────────────── */
 function renderQuestion(state) {
+  questionRound = state.current_round;
   selectedPos  = null;
   currentSong  = state.song || {};
   lastStatus   = 'question'; // fijar aquí para que el dispatcher use la rama de tick
@@ -591,21 +635,15 @@ function renderQuestion(state) {
 
   const isMeme = state.game_type === 'meme';
   document.getElementById('q-label').textContent = isMeme
-    ? '😂 ¿En qué año se hizo viral? Colócalo en tu línea del tiempo'
-    : '🎵 ¿En qué año salió? Colócala en tu línea del tiempo';
-  if (isMeme) loadMemePlayer('q-meme-img', currentSong.youtube_id, currentSong.start_seconds);
+    ? 'MEME QUE DEBES COLOCAR'
+    : 'CANCIÓN QUE ESTÁ SONANDO';
+  if (isMeme && !playerLiveMode) loadMemePlayer('q-meme-img', currentSong.youtube_id, currentSong.start_seconds);
   else hideMemePlayer('q-meme-img');
 
-  document.getElementById('q-title').textContent  = isMeme ? (currentSong.title || '') : (currentSong.title || '—');
+  document.getElementById('q-title').textContent = isMeme ? (currentSong.title || '') : 'Escucha y encuentra su lugar';
   const artistEl = document.getElementById('q-artist');
-  artistEl.classList.toggle('d-none', isMeme);
-  if (state.hard_mode) {
-    artistEl.textContent = '???';
-    artistEl.style.opacity = '.35';
-  } else {
-    artistEl.textContent = currentSong.artist || '—';
-    artistEl.style.opacity = '';
-  }
+  artistEl.classList.add('d-none');
+  artistEl.textContent = '';
   document.getElementById('q-round').textContent  = state.current_round;
   document.getElementById('q-total').textContent  = state.total_rounds;
   document.getElementById('hard-mode-badge')?.classList.toggle('d-none', !state.hard_mode);
@@ -656,6 +694,7 @@ function playerSetVolume(val) {
 
 /** Llamado cuando el usuario pulsa el botón Play/Pausa */
 async function playerAudioToggle() {
+  if(playerLiveMode)return;
   const a       = document.getElementById('p-audio');
   const playBtn = document.getElementById('p-play');
   const timeEl  = document.getElementById('p-atime');
@@ -710,6 +749,7 @@ function playerAudioSeek(e, bar) {
  * Se llama fire-and-forget desde renderQuestion.
  */
 async function renderAudio(state) {
+  if(playerLiveMode){document.getElementById('audio-section')?.classList.add('d-none');return;}
   const section   = document.getElementById('audio-section');
   const linksEl   = document.getElementById('audio-links');
   if (state.game_type === 'meme') { section.classList.add('d-none'); return; }
@@ -723,8 +763,8 @@ async function renderAudio(state) {
 
   const log = () => {};
 
-  if (embedYT && song.title) {
-    const songKey = `${song.title}|${song.artist}`;
+  if (embedYT && song.id) {
+    const songKey = String(song.id);
     log(`2 key=${songKey} prev=${pCurrentSongKey}`);
     const a       = document.getElementById('p-audio');
     const playBtn = document.getElementById('p-play');
@@ -747,7 +787,7 @@ async function renderAudio(state) {
       // Buscar preview vía proxy PHP
       try {
         const q = encodeURIComponent(song.title + ' ' + (song.artist || ''));
-        const url = `${API}?action=itunes_preview&term=${q}`;
+        const url = `${API}?action=itunes_preview&song_id=${encodeURIComponent(song.id)}`;
         log('Fetch: ' + url);
         const r = await fetch(url, { cache: 'no-store' });
         const d = await r.json();
@@ -758,6 +798,7 @@ async function renderAudio(state) {
         log('Error fetch: ' + e.message);
       }
       pPreviewLoading = false;
+      if(playerLiveMode)return;
 
       if (!pPreviewUrl) {
         if (timeEl) timeEl.textContent = '—';
@@ -774,6 +815,7 @@ async function renderAudio(state) {
         // Siempre autoplay al detectar canción nueva (igual que el dinamizador)
         a.oncanplay = () => {
           a.oncanplay = null;
+          if(playerLiveMode)return;
           log('Reproduciendo…');
           a.play()
             .then(() => { if (playBtn) playBtn.innerHTML = P_SVG_PAUSE; })
@@ -811,80 +853,63 @@ async function renderAudio(state) {
  * Alterna entre botones de posición y tarjetas de canción.
  * El jugador pulsa un botón de posición para indicar dónde encaja la nueva canción.
  */
-function buildTimeline(timeline) {
-  const area = document.getElementById('timeline-area');
-  area.innerHTML = '';
-
-  const n = timeline.length;
-
-  if (n === 0) {
-    area.innerHTML = '<p class="text-secondary text-center p-3">Sin canciones en tu línea del tiempo</p>';
-    return;
-  }
-
-  const label = document.createElement('div');
-  label.className = 'text-secondary small text-uppercase fw-semibold px-3 pt-3 pb-1';
-  label.textContent = 'Tu línea del tiempo — toca dónde encaja';
-  area.appendChild(label);
-
-  // Generar N+1 botones de posición intercalados con N tarjetas de canción
-  for (let i = 0; i <= n; i++) {
-    const posBtn = document.createElement('button');
-    posBtn.className = 'pos-btn';
-    posBtn.dataset.pos = i;
-    const arrow = n === 0 ? '👉 Clica aquí para colocarla'
-                : i === 0 ? '⬆ Antes de todo' : i === n ? '⬇ Después de todo' : '↕ Aquí';
-    posBtn.innerHTML = `<span class="pos-icon">📍</span>${arrow}`;
-    posBtn.addEventListener('click', () => selectPosition(i));
-    area.appendChild(posBtn);
-
-    if (i < n) {
-      const song = timeline[i];
-      const card = document.createElement('div');
-      card.className = 'timeline-song' + (i === 0 && n === 1 ? ' initial' : '');
-      card.innerHTML = song.youtube_id
-        ? `<div class="ts-year">${song.year}</div>
-           <img src="https://img.youtube.com/vi/${song.youtube_id}/default.jpg" alt="Meme" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0">
-           <div class="ts-info"><div class="ts-title">${esc(song.title || '(sin título)')}</div></div>`
-        : `<div class="ts-year">${song.year}</div>
-           <div class="ts-info">
-             <div class="ts-title">${esc(song.title)}</div>
-             <div class="ts-artist">${esc(song.artist)}</div>
-           </div>`;
-      area.appendChild(card);
-    }
-  }
+function positionLabel(pos) {
+  const t = mobileTimeline;
+  return !t.length ? 'Primera canción' : pos === 0 ? 'Antes de ' + t[0].year : pos === t.length ? 'Después de ' + t[pos-1].year : 'Entre ' + t[pos-1].year + ' y ' + t[pos].year;
 }
-
-/** Marca visualmente la posición seleccionada y habilita el botón de confirmar */
+let timelineSettling=false;
+let timelineCleanup=()=>{};
+function buildTimeline(timeline) {
+  timelineCleanup();mobileTimeline=timeline;selectedPos=null;timelineSettling=false;
+  const area=document.getElementById('timeline-area');
+  area.innerHTML='<div class="timeline-heading"><div class="collection-heading">TU LÍNEA DEL TIEMPO</div><p class="position-instruction">Desliza la lista para elegir el hueco.</p></div><div class="timeline-wheel"><div class="timeline-track" tabindex="0" role="group" aria-label="Línea del tiempo. Desliza arriba o abajo para elegir posición."></div><div class="timeline-marker" aria-hidden="true"><span>Colócala aquí</span></div></div>';
+  const track=area.querySelector('.timeline-track');
+  for(let i=0;i<=timeline.length;i++) {
+    const gap=document.createElement('button');gap.type='button';gap.className='pos-btn timeline-slot';gap.dataset.position=i;
+    gap.setAttribute('aria-label',positionLabel(i));gap.setAttribute('aria-pressed','false');gap.textContent='· · ·';
+    gap.onclick=()=>{if(!playerLivePaused&&!answerPending){interacted=true;moveTo(i);}};track.appendChild(gap);
+    if(i<timeline.length){const song=timeline[i],card=document.createElement('div');card.className='timeline-reference';card.innerHTML='<strong>'+esc(song.year)+'</strong><span>'+esc(song.title||'')+'<small>'+esc(song.artist||'')+'</small></span>';track.appendChild(card);}
+  }
+  const slots=[...track.querySelectorAll('.timeline-slot')];
+  let timer=0,interacted=false,touched=false,disposed=false;
+  const offset=i=>slots[i].offsetTop-track.clientHeight/2+slots[i].offsetHeight/2;
+  const nearest=()=>{let best=0,distance=Infinity;slots.forEach((slot,i)=>{const d=Math.abs(offset(i)-track.scrollTop);if(d<distance){best=i;distance=d;}});return best;};
+  const settle=()=>{
+    if(disposed||touched)return;
+    const pos=nearest();
+    if(Math.abs(offset(pos)-track.scrollTop)>1){track.scrollTop=offset(pos);timer=setTimeout(settle,100);return;}
+    timelineSettling=false;
+    if(interacted&&!playerLivePaused&&!answerPending)selectPosition(pos);else updatePositionControls();
+  };
+  const moveTo=i=>{timelineSettling=true;updatePositionControls();track.scrollTo({top:offset(i),behavior:'smooth'});clearTimeout(timer);timer=setTimeout(settle,180);};
+  track.addEventListener('scroll',()=>{if(disposed)return;timelineSettling=true;updatePositionControls();clearTimeout(timer);timer=setTimeout(settle,160);},{passive:true});
+  track.addEventListener('pointerdown',()=>{if(playerLivePaused||answerPending)return;touched=true;interacted=true;timelineSettling=true;updatePositionControls();},{passive:true});
+  const release=()=>{if(!touched)return;touched=false;clearTimeout(timer);timer=setTimeout(settle,180);};
+  // Touch scrolling generates pointercancel; wait for native momentum to settle.
+  track.addEventListener('pointerup',release);track.addEventListener('pointercancel',release);
+  track.addEventListener('wheel',()=>{if(!playerLivePaused&&!answerPending)interacted=true;},{passive:true});
+  track.addEventListener('keydown',event=>{if(playerLivePaused||answerPending)return;let pos=nearest();if(event.key==='ArrowDown')pos++;else if(event.key==='ArrowUp')pos--;else if(event.key==='Home')pos=0;else if(event.key==='End')pos=timeline.length;else return;event.preventDefault();interacted=true;moveTo(Math.max(0,Math.min(timeline.length,pos)));});
+  const resize=new ResizeObserver(()=>{track.style.setProperty('--wheel-pad',Math.max(0,track.parentElement.clientHeight/2-22)+'px');track.scrollTop=offset(selectedPos??Math.floor(timeline.length/2));});resize.observe(track.parentElement);
+  timelineCleanup=()=>{disposed=true;clearTimeout(timer);resize.disconnect();};
+  document.getElementById('confirm-btn').textContent='Confirmar posición';
+  document.getElementById('confirm-hint').textContent='Desliza hasta el hueco y confirma.';
+  paintPosition(null);
+}
+function paintPosition(pos) {
+  document.querySelectorAll('.timeline-slot').forEach(button=>button.setAttribute('aria-pressed',String(pos!==null&&Number(button.dataset.position)===pos)));
+  const marker=document.querySelector('.timeline-marker');if(marker)marker.classList.toggle('has-selection',pos!==null);
+  updatePositionControls();
+}
+function updatePositionControls() {
+  const blocked=playerLivePaused||answerPending;
+  document.querySelectorAll('.timeline-slot').forEach(button=>button.disabled=blocked);
+  const track=document.querySelector('.timeline-track');if(track)track.classList.toggle('wheel-locked',blocked);
+  const confirm=document.getElementById('confirm-btn');if(confirm)confirm.disabled=blocked||timelineSettling||selectedPos===null;
+}
 function selectPosition(pos) {
-  selectedPos = pos;
-
-  document.querySelectorAll('.pos-btn').forEach(btn => {
-    const isSelected = parseInt(btn.dataset.pos) === pos;
-    btn.classList.toggle('selected', isSelected);
-    const total = document.querySelectorAll('.pos-btn').length;
-    if (isSelected) {
-      const arrow = total === 1 ? '👉 Clica aquí para colocarla'
-                 : pos === 0 ? '⬆ Antes de todo'
-                 : pos === total - 1 ? '⬇ Después de todo'
-                 : '↕ Aquí';
-      btn.innerHTML = `<span class="pos-icon">✅</span>${arrow}`;
-    } else {
-      const i = parseInt(btn.dataset.pos);
-      const txt = total === 1 ? '👉 Clica aquí para colocarla'
-                : i === 0 ? '⬆ Antes de todo' : i === total-1 ? '⬇ Después de todo' : '↕ Aquí';
-      btn.innerHTML = `<span class="pos-icon">📍</span>${txt}`;
-    }
-  });
-
-  const btn  = document.getElementById('confirm-btn');
-  const hint = document.getElementById('confirm-hint');
-  btn.disabled = false;
-  btn.classList.add('btn-pulse');
-  hint.textContent = `Posición ${pos + 1} seleccionada — pulsa para confirmar`;
-
-  document.querySelector(`.pos-btn[data-pos="${pos}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  if(playerLivePaused||answerPending)return;
+  selectedPos=pos;paintPosition(pos);
+  document.getElementById('confirm-hint').textContent=positionLabel(pos);
 }
 
 /**
@@ -894,7 +919,12 @@ function selectPosition(pos) {
  * puede haberla recibido aunque la respuesta no llegara al cliente).
  */
 async function confirmAnswer() {
-  if (selectedPos === null) return;
+  if(playerLivePaused)return;
+  if (selectedPos === null || answerPending || timelineSettling) return;
+  answerPending = true;
+  updatePositionControls();
+  const submittedRound = questionRound;
+  const submittedSession = activeSession;
   const pos = selectedPos;
 
   const confirmBtn = document.getElementById('confirm-btn');
@@ -907,9 +937,11 @@ async function confirmAnswer() {
     const r = await fetch(`${API}?action=submit_answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ player_id: playerId, position: pos }),
+      signal: AbortSignal.timeout ? AbortSignal.timeout(12000) : undefined,
+      body: new URLSearchParams({ player_id: playerId, position: pos, expected_session: submittedSession, expected_round: submittedRound }),
     });
     const d = await r.json();
+    if(activeSession!==submittedSession || questionRound!==submittedRound)return;
     if (d.error) {
       // El servidor rechazó la respuesta — reactivar la UI para reintentar
       console.error('[Player] submit_answer rechazado:', d.error);
@@ -922,9 +954,14 @@ async function confirmAnswer() {
     showScreen('answered');
     lastStatus = 'answered';
   } catch {
-    // Red inestable: ir a espera igualmente (el polling detectará el estado real)
-    showScreen('answered');
-    lastStatus = 'answered';
+    document.getElementById('confirm-hint').textContent = 'No hemos podido confirmar el envío. Comprueba la conexión y vuelve a intentarlo.';
+  } finally {
+    answerPending = false;
+    if (activeSession === submittedSession && questionRound === submittedRound && lastStatus === 'question') {
+      updatePositionControls();
+      confirmBtn.disabled = playerLivePaused || timelineSettling;
+      document.querySelectorAll('.pos-btn').forEach(b => b.disabled = playerLivePaused);
+    }
   }
 }
 
@@ -939,7 +976,7 @@ function renderResults(state) {
   // Parar el vídeo del meme de la pregunta — la ronda ya pasó a resultados
   hideMemePlayer('q-meme-img');
 
-  if (isMeme) loadMemePlayer('r-meme-img', song.youtube_id, song.start_seconds);
+  if (isMeme && !playerLiveMode) loadMemePlayer('r-meme-img', song.youtube_id, song.start_seconds);
   else hideMemePlayer('r-meme-img');
 
   // Carátula de la canción — solo se muestra aquí (resultados), nunca durante la pregunta
@@ -989,7 +1026,7 @@ function renderResults(state) {
   } else {
     // No respondió a tiempo
     document.getElementById('res-icon').textContent = '⏱️';
-    document.getElementById('res-msg').textContent  = 'Tiempo agotado';
+    document.getElementById('res-msg').textContent  = playerLiveMode ? 'No respondiste esta ronda' : 'Tiempo agotado';
     document.getElementById('res-msg').style.color  = 'var(--muted)';
     document.getElementById('res-pts').textContent  = '0 pts';
   }
@@ -1006,7 +1043,7 @@ function renderResults(state) {
 
 /* ── Pantalla final ───────────────────────────────────────────── */
 function renderFinished(state) {
-  stopPolling(); stopCountdown();
+  startPolling(10000); stopCountdown();
   showScreen('finished');
   // Parar cualquier vídeo de meme que siguiera reproduciéndose de la última ronda
   hideMemePlayer('q-meme-img');
@@ -1018,7 +1055,7 @@ function renderFinished(state) {
   // En modo PIN individual, informar sobre el ranking global de premios
   const prizeEl = document.getElementById('f-prize');
   if (prizeEl) {
-    if (state.pin_mode === 'individual') {
+    if (state.pin_mode === 'individual' && p.email) {
       prizeEl.innerHTML = `🏆 ¡Has acumulado <strong>${p.score} pts</strong> en el ranking global!<br><span style="font-size:.85rem;font-weight:400">Visita <a href="premios" style="color:var(--accent)">Premios</a> para ver cuántos tienes y canjearlos.</span>`;
       prizeEl.classList.remove('d-none');
     } else {
@@ -1089,6 +1126,7 @@ function renderMiniTimeline(id, timeline) {
 
 /* ── Barra de cuenta atrás ────────────────────────────────────── */
 function startTimerBar(seconds, total) {
+  if(playerLiveMode){stopCountdown();return;}
   stopCountdown();
   let s = seconds;
   function tick() {
@@ -1108,12 +1146,12 @@ function stopCountdown() { clearInterval(countdown); countdown = null; }
 
 /* ── Formulario de join ───────────────────────────────────────── */
 async function joinGame() {
-  const pin   = document.getElementById('pin-input').value.trim();
+  const pin   = document.getElementById('pin-input').value.trim().toUpperCase();
   const name  = document.getElementById('name-input').value.trim();
   const errEl = document.getElementById('join-error');
   errEl.classList.add('d-none');
 
-  if (pin.length !== 4)  { showErr('El PIN debe tener 4 dígitos'); return; }
+  if (!/^(?:[0-9]{4}|[0-9]{8}|[A-Z0-9]{6})$/.test(pin)) { showErr('Escribe el código de 6 letras y números (también aceptamos los códigos numéricos anteriores)'); return; }
   if (!name)             { showErr('Escribe tu nombre'); return; }
 
   try {
@@ -1121,7 +1159,7 @@ async function joinGame() {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        pin, name, avatar: joinCustom.avatar,
+        pin, name, expected_game: requestedGameId, avatar: joinCustom.avatar,
         hair: joinCustom.hair, glasses: joinCustom.glasses,
         hat: joinCustom.hat, headphones: joinCustom.headphones,
         facial_hair: joinCustom.facial_hair,
@@ -1173,7 +1211,7 @@ function esc(s) {
 async function resolveSongArtwork(song, imgEl) {
   try {
     const q = encodeURIComponent(song.title + ' ' + (song.artist || ''));
-    const r = await fetch(`${API}?action=itunes_preview&term=${q}`, { cache: 'no-store' });
+    const r = await fetch(`${API}?action=itunes_preview&song_id=${encodeURIComponent(song.id)}`, { cache: 'no-store' });
     const d = await r.json();
     if (!d.artworkUrl) return;
     imgEl.src = d.artworkUrl;

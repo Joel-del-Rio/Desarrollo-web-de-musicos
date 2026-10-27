@@ -2,38 +2,60 @@
 /**
  * EmailService.php — Servicio de envío de emails
  *
- * Usa la función PHP mail() del servidor (SiteGround) sin credenciales SMTP.
+ * Usa SMTP autenticado de SiteGround con PHPMailer y TLS.
  * El remitente debe coincidir con el dominio que tiene los registros SPF/DKIM
  * configurados (hitstoric.nite.black) para evitar que los correos vayan a spam.
  */
 class EmailService {
 
     /**
-     * Envía un email HTML usando la función mail() nativa de PHP.
+     * Envía un email HTML por SMTP autenticado, con credenciales fuera de la web.
      * El asunto y el cuerpo van codificados en Base64 UTF-8 para
      * soportar tildes y caracteres especiales sin problemas.
      */
     private static function sendSmtp(string $to, string $subject, string $htmlBody): bool {
-        // SMTP_ENABLED es false en Windows (desarrollo local), true en producción
         if (!SMTP_ENABLED) return true;
-
-        $from     = SMTP_FROM;      // noreply@hitstoric.nite.black
-        $fromName = SMTP_FROM_NAME; // Hitstoric
-
-        // Cabeceras necesarias para email HTML con codificación UTF-8
-        $headers = implode("\r\n", [
-            "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$from}>",
-            "Reply-To: {$from}",
-            "MIME-Version: 1.0",
-            "Content-Type: text/html; charset=UTF-8",
-            "Content-Transfer-Encoding: base64",
-        ]);
-
-        // Codificación Base64 del asunto y del cuerpo para soportar UTF-8
-        $encodedSubject = "=?UTF-8?B?" . base64_encode($subject) . "?=";
-        $encodedBody    = chunk_split(base64_encode($htmlBody));
-
-        return @mail($to, $encodedSubject, $encodedBody, $headers);
+        require_once __DIR__.'/../Lib/PHPMailer/Exception.php';
+        require_once __DIR__.'/../Lib/PHPMailer/SMTP.php';
+        require_once __DIR__.'/../Lib/PHPMailer/PHPMailer.php';
+        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+        try {
+            // Credentials stay outside public_html and source control.
+            $path = getenv('HITSTORIC_SMTP_CONFIG') ?: dirname(__DIR__,4).'/hitstoric-ops/smtp-private.json';
+            if (!is_readable($path)) throw new RuntimeException('SMTP configuration missing');
+            $config = json_decode(file_get_contents($path),true,512,JSON_THROW_ON_ERROR);
+            foreach (['host','username','password'] as $key) {
+                if (empty($config[$key]) || !is_string($config[$key])) throw new RuntimeException('SMTP configuration invalid');
+            }
+            if (($config['port'] ?? 0) !== 465) throw new RuntimeException('SMTP must use implicit TLS on port 465');
+            $mail->isSMTP();
+            $mail->Host = $config['host'];
+            $mail->Port = 465;
+            $mail->SMTPAuth = true;
+            $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+            $mail->Username = $config['username'];
+            $mail->Password = $config['password'];
+            $mail->SMTPDebug = 0;
+            $mail->Timeout = 15;
+            $mail->getSMTPInstance()->Timelimit = 25;
+            $mail->CharSet = 'UTF-8';
+            $mail->setFrom(SMTP_FROM, SMTP_FROM_NAME);
+            $mail->addReplyTo(SMTP_FROM, SMTP_FROM_NAME);
+            $mail->addAddress($to);
+            $mail->Subject = $subject;
+            $mail->isHTML(true);
+            $mail->Body = $htmlBody;
+            $mail->AltBody = html_entity_decode(strip_tags(preg_replace('/<\/(?:p|div|tr)>/i',"\n",$htmlBody)),ENT_QUOTES,'UTF-8');
+            $ok = $mail->send();
+            error_log('[Hitstoric SMTP] accepted message '.$mail->getLastMessageID());
+            return $ok;
+        } catch (Throwable $e) {
+            // Never put passwords or the SMTP exchange in application responses/logs.
+            error_log('[Hitstoric SMTP] delivery failed: '.get_class($e));
+            return false;
+        } finally {
+            $mail->smtpClose();
+        }
     }
 
     /**
@@ -132,19 +154,21 @@ HTML;
      * El enlace ya incluye el PIN como parámetro para que no tenga que escribirlo.
      */
     public static function sendPlayerPin(
-        string $to, string $pin, string $baseUrl, int $playerNum
+        string $to, string $pin, string $baseUrl, int $playerNum, int $gameId
     ): bool {
-        if (!filter_var($to, FILTER_VALIDATE_EMAIL)) return false;
+        if (!filter_var($to, FILTER_VALIDATE_EMAIL) || $gameId < 1) return false;
 
-        $url     = $baseUrl . '/player?pin=' . $pin;
+        // The event ID prevents a saved player session from opening another event.
+        $url     = $baseUrl . '/player?game=' . $gameId . '&pin=' . rawurlencode($pin);
         $content = "
           <p style=\"font-size:18px;font-weight:700;margin:0 0 8px\">¡Te han invitado a jugar! 🎵</p>
-          <p style=\"color:#9ca3af;margin:0 0 24px\">Tienes reservado el Cartón {$playerNum}. Solo necesitas hacer clic y poner tu nombre.</p>
+          <p style=\"color:#9ca3af;margin:0 0 24px\">Tu código personal está preparado. Solo necesitas hacer clic y poner tu nombre.</p>
           " . self::btn($url, 'Entrar a la partida →') . "
           <p style=\"text-align:center;color:#6b7280;font-size:13px;margin:0\">
             Tu PIN personal es <strong style=\"color:#e94560\">{$pin}</strong> por si lo necesitas manualmente.
           </p>";
 
-        return self::sendSmtp($to, 'Hitstoric — Tu acceso a la partida', self::html($content));
+        return self::sendSmtp($to, 'Hitstoric — Acceso a la partida ' . $gameId, self::html($content));
     }
 }
+

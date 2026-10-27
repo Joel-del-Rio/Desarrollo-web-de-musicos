@@ -12,12 +12,14 @@
  *   GK  = clave localStorage para el ID de la partida
  */
 require_once __DIR__ . '/../config.php';
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
 <!DOCTYPE html>
 <html lang="es" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Hitstoric — Jugador</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=9">
@@ -117,8 +119,15 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
     .server-row-pin { font-weight: 900; font-size: 1.3rem; letter-spacing: .08em; color: var(--accent); }
     .server-row-info { flex: 1; min-width: 0; font-size: .78rem; color: var(--muted); }
   </style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/player-mobile.css?v=20261024-reactions2">
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/game-qr.css?v=20261024-tutorial1">
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/reactions.css?v=20261024-reactions2">
+<script src="<?= BASE_URL ?>/assets/js/reaction-feed.js?v=20261024-reactions2"></script>
 </head>
-<body>
+<body class="player-app" data-screen="join">
+<header class="player-toolbar"><span id="player-status" role="status">Hitstoric</span><button class="btn btn-outline-light" onclick="openGameQr()" aria-label="Compartir acceso por QR">QR</button><button class="btn btn-outline-light" onclick="document.getElementById('player-prizes').showModal()">Premios</button></header>
+<div id="connection-status" role="status" hidden></div>
+<dialog id="player-prizes" class="player-dialog"><button class="btn btn-outline-light dialog-close" onclick="this.closest('dialog').close()">Cerrar premios</button></dialog>
 
 <!-- ══ JOIN ══ -->
 <div id="screen-join" class="screen active align-items-center justify-content-center">
@@ -130,42 +139,41 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
 
     <div class="text-center mb-3" style="color:var(--muted);font-size:.88rem;line-height:1.6">
       Ordena canciones por año antes que los demás.<br>
-      <span style="color:rgba(255,255,255,.5);font-size:.78rem">Pide el PIN de 4 dígitos al dinamizador.</span>
+      <span style="color:rgba(255,255,255,.5);font-size:.78rem">Pide tu código al anfitrión. Sirve para los tutoriales y la partida con premios.</span>
     </div>
 
     <div class="card p-4">
       <div class="mb-3">
-        <label class="form-label text-secondary small fw-semibold text-uppercase">PIN de la partida</label>
+        <label class="form-label text-secondary small fw-semibold text-uppercase" for="pin-input">Tu código</label>
         <input id="pin-input" type="text" class="form-control form-control-lg text-center fw-black"
-               inputmode="numeric" pattern="[0-9]*" maxlength="4"
+               inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="8"
                placeholder="· · · ·" autocomplete="off"
                style="font-size:2.5rem;letter-spacing:.3em">
       </div>
       <div class="mb-3">
-        <label class="form-label text-secondary small fw-semibold text-uppercase">Tu nombre</label>
+        <label class="form-label text-secondary small fw-semibold text-uppercase" for="name-input">Tu nombre</label>
         <input id="name-input" type="text" class="form-control form-control-lg"
                placeholder="¿Cómo te llamas?" maxlength="30" autocomplete="off">
       </div>
-      <div class="mb-3">
-        <label class="form-label text-secondary small fw-semibold text-uppercase">Personaliza tu avatar</label>
+      <details class="mb-3"><summary>Personalizar avatar (opcional)</summary>
 
         <div class="d-flex justify-content-center mb-2">
           <div id="join-avatar-preview" class="avatar-preview"></div>
         </div>
 
         <div id="join-custom-tabs" class="custom-tabs mb-2"></div>
-        <div id="join-custom-grid" class="avatar-grid"></div>
-      </div>
+        <div id="join-custom-grid" class="avatar-grid"></div></details>
       <button class="btn btn-game btn-lg w-100 rounded-pill fw-bold" onclick="joinGame()">
         Entrar a la partida →
       </button>
       <div id="join-error" class="alert alert-danger mt-3 py-2 small d-none text-center"></div>
     </div>
 
-    <div class="text-center mt-3 d-flex flex-column gap-2">
+    <div class="text-center mt-3 d-flex gap-2">
       <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-4" onclick="openServerBrowser()">
-        🌐 Ver partidas públicas
+        Partidas públicas
       </button>
+      <button type="button" class="btn btn-outline-light btn-sm rounded-pill" style="min-height:44px" onclick="openGameQr()">Enseñar QR</button>
     </div>
     <a href="<?= BASE_URL ?>/Vista/index.php" class="btn btn-outline-secondary btn-sm rounded-pill px-4 back-btn">‹ Volver al inicio</a>
 
@@ -230,10 +238,11 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
         <div id="q-meme-img" class="d-none meme-video-wrap" style="width:100%;max-width:420px;margin:.4rem auto"><div id="q-meme-img-player"></div></div>
         <div class="ns-title"  id="q-title">—</div>
         <div class="ns-artist" id="q-artist">—</div>
+        <div class="unknown-year">Año por descubrir · ?</div>
       </div>
       <div class="text-end" style="flex-shrink:0">
         <div class="fw-black" style="font-size:2rem;color:var(--accent)" id="q-secs">30</div>
-        <div class="text-secondary" style="font-size:.7rem">seg</div>
+        <div class="text-secondary" style="font-size:.7rem" id="q-seconds-unit">seg</div>
       </div>
     </div>
     <div class="timer-bar mt-2"><div class="timer-fill" id="timer-fill" style="width:100%"></div></div>
@@ -283,7 +292,7 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
       Confirmar posición
     </button>
     <div class="d-flex align-items-center justify-content-between mt-2">
-      <div class="text-secondary" style="font-size:.75rem" id="confirm-hint">
+      <div class="text-secondary" style="font-size:.75rem" id="confirm-hint" role="status">
         👆 Toca «Antes» o «Después» para colocarla
       </div>
       <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 back-btn" style="font-size:.72rem"
@@ -297,7 +306,7 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
 <div id="screen-answered" class="screen align-items-center justify-content-center gap-3">
   <div class="game-spinner"></div>
   <div class="fw-semibold fs-5">Respuesta enviada</div>
-  <div class="text-secondary small">Esperando a los demás jugadores…</div>
+  <div class="text-secondary small">Espera a que el dinamizador continúe.</div>
   <button class="btn btn-outline-secondary btn-sm rounded-pill px-4 back-btn" onclick="leaveGame()">‹ Salir</button>
 </div>
 
@@ -323,13 +332,11 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
     <div class="text-secondary small" id="res-rank"></div>
 
     <!-- Mini leaderboard -->
-    <div id="res-leaderboard" class="leaderboard w-100"></div>
+    <details class="w-100"><summary>Ver clasificación</summary><div id="res-leaderboard" class="leaderboard w-100"></div></details>
 
     <!-- Timeline actualizado -->
-    <div class="w-100 text-start">
-      <div class="text-secondary small text-uppercase fw-semibold mb-2">Tu línea del tiempo actualizada</div>
-      <div id="res-timeline"></div>
-    </div>
+    <details class="w-100 text-start"><summary>Ver mi línea del tiempo</summary>
+      <div id="res-timeline"></div></details><p class="small mb-0">Espera a que el dinamizador lance la siguiente canción.</p>
 
     <button class="btn btn-outline-secondary btn-sm rounded-pill px-4 back-btn" onclick="leaveGame()">‹ Salir</button>
 
@@ -343,7 +350,7 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
     <div class="fw-bold fs-5" id="f-rank"></div>
     <div class="pts-badge"    id="f-score"></div>
     <div id="f-prize" class="d-none w-100 text-center py-2 px-3 rounded-3 fw-bold" style="background:rgba(233,69,96,.15);border:2px solid var(--accent);font-size:1.05rem"></div>
-    <div id="f-leaderboard" class="leaderboard w-100"></div>
+    <details class="w-100"><summary>Ver clasificación final</summary><div id="f-leaderboard" class="leaderboard w-100"></div></details>
     <button class="btn btn-game rounded-pill px-5 mt-2 fw-bold" onclick="goToJoin()">🎮 Jugar de nuevo</button>
     <a href="<?= BASE_URL ?>/Vista/index.php" class="btn btn-outline-secondary rounded-pill px-5 back-btn">‹ Inicio</a>
   </div>
@@ -357,7 +364,7 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
     <button type="button" class="reaction-btn" onclick="sendReaction('<?= htmlspecialchars($e, ENT_QUOTES) ?>')"><?= $e ?></button>
     <?php endforeach; ?>
   </div>
-  <button type="button" id="reaction-toggle" onclick="toggleReactionBar()">😀</button>
+  <button type="button" id="reaction-toggle" aria-label="Enviar reacción" onclick="toggleReactionBar()">😀</button>
 </div>
 
 <!-- DBG:v25 -->
@@ -367,6 +374,9 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
   const PK  = 'hitstoric_pid';
   const GK  = 'hitstoric_gid_p';
 </script>
-<script src="<?= BASE_URL ?>/assets/js/player.js?v=90"></script>
+<script src="<?= BASE_URL ?>/assets/vendor/qrcode-1.4.4.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/game-qr.js?v=20261024-tutorial1"></script>
+<script src="<?= BASE_URL ?>/assets/js/event-prizes.js?v=20261024-tutorial1"></script>
+<script src="<?= BASE_URL ?>/assets/js/player.js?v=20261024-reactions2"></script>
 </body>
 </html>

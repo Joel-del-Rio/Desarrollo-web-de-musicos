@@ -1,0 +1,15 @@
+#game-qr-dialog {box-sizing:border-box;width:calc(100% - 24px);max-width:440px;max-height:92vh;max-height:92dvh;overflow:auto;border:1px solid #ffffff55;border-radius:18px;background:#16213e;color:#fff;padding:18px;text-align:center}
+#game-qr-dialog::backdrop {background:#000c}
+#game-qr-dialog h2 {font-size:22px;clear:both;padding-top:10px}
+#game-qr-dialog p {font-size:14px;line-height:1.4;margin:10px 0}
+#game-qr-dialog .qr-close {float:right;min-height:44px}
+#game-qr-image {background:white;border-radius:8px;max-width:290px;margin:12px auto;color:#000}
+#game-qr-image svg {display:block;width:100%;height:auto}
+#game-qr-dialog label {display:block;text-align:left;font-size:13px;margin:8px 0}
+#game-qr-link {box-sizing:border-box;width:100%;min-height:44px;border:1px solid #94a3b8;background:#fff;color:#172033;border-radius:8px;padding:8px;font-size:16px}
+#game-qr-dialog .qr-actions {display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+#game-qr-dialog .qr-actions button {flex:1;min-height:44px}
+#game-qr-dialog button:focus-visible {outline:3px solid #fff;outline-offset:2px}
+.player-toolbar #player-status {flex:1;min-width:0;font-size:11px}
+.player-toolbar button {flex-shrink:0}
+@media(max-height:650px){#game-qr-image{max-width:210px}#game-qr-dialog{padding:12px}#game-qr-dialog p{font-size:13px}}

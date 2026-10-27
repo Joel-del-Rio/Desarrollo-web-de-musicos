@@ -930,7 +930,7 @@ function renderCatalog(songs, expand) {
             ${s.artwork_url ? `<img src="${esc(s.artwork_url)}" alt="">` : ''}
             <div class="catalog-row-info">
               <div class="catalog-row-title">${esc(s.title)}</div>
-              <div class="catalog-row-sub">${esc(s.artist)} · ${s.year}</div>
+              <div class="catalog-row-sub">${esc(s.artist)} · ${s.year}</div><div class="small" style="color:${s.catalog_status==='verified'?'#61d6ae':'#f2bd69'}">${s.catalog_status==='verified'?'✓ Verificada · disponible':'En revisión · fuera de las partidas'}</div>
             </div>
             <button class="catalog-del-btn" onclick="deleteCatalogSong(${s.id})" title="Eliminar del catálogo">✕</button>
           </div>
