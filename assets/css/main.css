@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap');
+
 /* ═══════════════════════════════════════════════════════════════
  * main.css — Estilos globales de Hitstoric
  *
@@ -428,4 +430,233 @@ body { background: var(--bg) !important; color: var(--text); }
   /* Leaderboard */
   .lb-row { padding: .45rem .75rem; gap: .5rem; }
   .lb-rank { min-width: 22px; font-size: .9rem; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CAPA VISUAL "FIESTA"
+   Solo colores, degradados, sombras y animaciones: no cambia tamaños
+   ni márgenes, para no romper el layout móvil de player-mobile.css.
+════════════════════════════════════════════════════════════════ */
+:root {
+  --accent-2: #ff8a3d;
+  --accent-3: #7c5cff;
+  --accent-4: #2de2e6;
+  --grad-hot:  linear-gradient(120deg, #e94560 0%, #ff5f8f 40%, #ff8a3d 100%);
+  --grad-cool: linear-gradient(120deg, #7c5cff 0%, #2de2e6 100%);
+  --font-fun: 'Fredoka', 'Segoe UI Rounded', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --lift: 0 0 0 1px rgba(255,255,255,.06), 0 12px 30px -14px rgba(0,0,0,.7);
+}
+
+/* Fondo vivo: dos manchas de color que flotan muy despacio detrás de todo */
+body::before, body::after {
+  content: ""; position: fixed; z-index: -1; pointer-events: none;
+  width: 70vmax; height: 70vmax; border-radius: 50%; opacity: .28;
+}
+body::before {
+  top: -30vmax; left: -25vmax;
+  background: radial-gradient(circle, #e94560 0%, rgba(233,69,96,0) 62%);
+  animation: aurora-a 24s ease-in-out infinite alternate;
+}
+body::after {
+  bottom: -35vmax; right: -25vmax;
+  background: radial-gradient(circle, #7c5cff 0%, rgba(124,92,255,0) 62%);
+  animation: aurora-b 28s ease-in-out infinite alternate;
+}
+@keyframes aurora-a { to { transform: translate(20vmax, 16vmax) scale(1.15); } }
+@keyframes aurora-b { to { transform: translate(-18vmax, -14vmax) scale(1.1); } }
+
+/* Tipografía redondeada para todo lo que "grita" */
+h1, h2, h3, h4, h5, .fw-black, .pin-box, .btn-game, .pts-badge, .timer-number,
+.lb-rank, .lb-score, .ts-year, .rsc-year, .rsc-title, .ns-title, #res-msg,
+.reference-year strong, .timeline-reference > strong, .fw-bold.fs-4, .fw-bold.fs-5 {
+  font-family: var(--font-fun);
+}
+
+/* Las pantallas aparecen con un fundido suave (solo opacidad: un transform
+   rompería los elementos position:fixed de dentro, como el botón de volver) */
+.screen.active { animation: screen-in .35s ease both; }
+@keyframes screen-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Tarjetas con algo de profundidad */
+.card {
+  background: linear-gradient(160deg, #164a82 0%, #0f3460 55%, #142a55 100%) !important;
+  border-color: rgba(255,255,255,.09) !important;
+  border-radius: 18px !important;
+  box-shadow: var(--lift);
+}
+a.card {
+  transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s, border-color .2s !important;
+}
+a.card:hover {
+  box-shadow: 0 0 0 1px rgba(233,69,96,.55), 0 16px 36px -14px rgba(233,69,96,.65);
+}
+a.card > span:first-child { display: inline-block; }
+a.card:hover > span:first-child { animation: emoji-wiggle .55s ease; }
+@keyframes emoji-wiggle {
+  0%,100% { transform: rotate(0) scale(1); }
+  30%     { transform: rotate(-14deg) scale(1.2); }
+  60%     { transform: rotate(10deg) scale(1.15); }
+}
+
+/* Botones: todos se "hunden" un poco al pulsarlos */
+.btn { transition: color .15s, background-color .15s, border-color .15s, box-shadow .15s, transform .12s; }
+.btn:not(:disabled):active { transform: scale(.96); }
+
+/* Botón principal: degradado vivo con efecto 3D tipo arcade */
+.btn-game {
+  background-image: var(--grad-hot) !important;
+  background-size: 200% 100%;
+  background-position: 0% 50%;
+  color: #fff !important;
+  letter-spacing: .01em;
+  text-shadow: 0 1px 2px rgba(0,0,0,.25);
+  box-shadow: 0 4px 0 #a3243c, 0 10px 22px -8px rgba(233,69,96,.7);
+  transition: transform .12s, box-shadow .12s, background-position .45s, filter .2s;
+}
+.btn-game:hover, .btn-game:focus-visible {
+  background-position: 100% 50%;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #a3243c, 0 14px 28px -8px rgba(233,69,96,.8);
+}
+.btn-game:not(:disabled):active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #a3243c, 0 4px 10px -4px rgba(233,69,96,.6);
+}
+.btn-game:disabled { filter: grayscale(.6); box-shadow: none; }
+
+/* "Iniciar partida" con el mismo tratamiento, en verde */
+.btn-success {
+  background-image: linear-gradient(120deg, #18b26b 0%, #2bd18f 100%);
+  border: none;
+  box-shadow: 0 4px 0 #0e7a48, 0 10px 22px -8px rgba(46,204,113,.6);
+}
+.btn-success:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 6px 0 #0e7a48, 0 14px 28px -8px rgba(46,204,113,.7); }
+.btn-success:not(:disabled):active { transform: translateY(3px); box-shadow: 0 1px 0 #0e7a48; }
+.btn-success:disabled { filter: grayscale(.7); box-shadow: none; }
+
+/* Campos de texto: redondeados y con brillo al enfocar */
+.form-control, .form-select { border-radius: 12px; transition: border-color .15s, box-shadow .2s; }
+.form-control:focus, .form-select:focus {
+  border-color: #ff5f8f !important;
+  box-shadow: 0 0 0 .22rem rgba(255,95,143,.25), 0 0 18px -4px rgba(255,95,143,.6) !important;
+}
+
+/* PIN gigante: texto en degradado que flota */
+.pin-box {
+  background: var(--grad-hot);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 6px 20px rgba(233,69,96,.45));
+  animation: pin-float 3.6s ease-in-out infinite;
+}
+@keyframes pin-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+
+/* Chips y avatares */
+.player-chip { box-shadow: 0 6px 16px -8px rgba(0,0,0,.6); }
+.avatar-circle { box-shadow: 0 0 0 2px rgba(255,255,255,.18); }
+.avatar-preview { box-shadow: 0 0 0 4px rgba(255,255,255,.12), 0 14px 30px -10px rgba(233,69,96,.7); }
+
+/* Selector de avatar: salta al pasar el ratón */
+.avatar-opt { transition: border-color .15s, background .15s, transform .2s cubic-bezier(.34,1.56,.64,1); }
+.avatar-opt:hover { transform: scale(1.12) rotate(-4deg); }
+.avatar-opt.selected { box-shadow: 0 0 16px -2px rgba(255,95,143,.7); }
+.custom-tab.active { background: var(--grad-hot); border-color: transparent; }
+
+/* Géneros */
+.genre-btn.active { background: var(--grad-hot); border-color: transparent; box-shadow: 0 6px 16px -8px rgba(233,69,96,.8); }
+
+/* Línea del tiempo */
+.timeline-song {
+  border-left: 4px solid transparent;
+  border-image: var(--grad-cool) 1;
+  box-shadow: 0 8px 20px -14px rgba(0,0,0,.8);
+}
+.timeline-song.initial { border-image: var(--grad-hot) 1; }
+.timeline-song .ts-year, .rsc-year {
+  background: var(--grad-hot);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+.pos-btn { transition: background .15s, border-color .15s, color .15s, transform .2s cubic-bezier(.34,1.56,.64,1); }
+.pos-btn:hover { transform: scale(1.02); }
+.pos-btn.selected {
+  border-color: #ff5f8f;
+  box-shadow: 0 0 0 3px rgba(255,95,143,.2), 0 0 22px -6px rgba(255,95,143,.8);
+  animation: slot-glow 1.6s ease-in-out infinite;
+}
+@keyframes slot-glow { 50% { box-shadow: 0 0 0 5px rgba(255,95,143,.12), 0 0 30px -4px rgba(255,95,143,.9); } }
+
+/* Rueda del jugador (player-mobile.css): solo color, no tamaños */
+.timeline-marker { box-shadow: 0 0 0 4px var(--bg), 0 0 22px -4px rgba(241,107,144,.8); }
+.timeline-reference { background: linear-gradient(120deg, #173356 0%, #142b43 100%); }
+
+/* Barras de tiempo y progreso con degradado */
+.timer-fill, .answer-progress-fill { background: var(--grad-hot); box-shadow: 0 0 12px rgba(255,95,143,.6); }
+.timer-ring .fg { filter: drop-shadow(0 0 5px rgba(255,95,143,.7)); }
+
+/* Tarjeta de la canción del turno (dinamizador) */
+.round-song-card {
+  background: linear-gradient(160deg, #1d2a52 0%, #16213e 100%);
+  box-shadow: 0 16px 40px -18px rgba(233,69,96,.8);
+}
+.year-revealed { animation: year-pop .6s cubic-bezier(.34,1.56,.64,1); }
+@keyframes year-pop { 0% { transform: scale(.6); } 100% { transform: scale(1); } }
+
+/* Resultados de ronda */
+.pts-badge {
+  background: var(--grad-hot);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  display: inline-block;
+  animation: pop-in .6s cubic-bezier(.34,1.56,.64,1) both;
+}
+.res-correct { box-shadow: inset 4px 0 0 #2ecc71; }
+.res-wrong   { box-shadow: inset 4px 0 0 #e74c3c; }
+
+/* Clasificación: las filas entran en cascada */
+.lb-row { animation: row-in .4s ease both; transition: transform .15s; }
+.lb-row:nth-child(2)  { animation-delay: .05s; }
+.lb-row:nth-child(3)  { animation-delay: .10s; }
+.lb-row:nth-child(4)  { animation-delay: .15s; }
+.lb-row:nth-child(5)  { animation-delay: .20s; }
+.lb-row:nth-child(6)  { animation-delay: .25s; }
+.lb-row:nth-child(7)  { animation-delay: .30s; }
+.lb-row:nth-child(n+8){ animation-delay: .35s; }
+.lb-row:hover { transform: translateX(4px); }
+.lb-row.me { box-shadow: 0 0 20px -8px rgba(255,95,143,.8); }
+@keyframes row-in { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+
+/* Podio: barras metálicas que crecen y el ganador da saltitos */
+.podium-bar { transform-origin: bottom; animation: bar-grow .7s cubic-bezier(.34,1.3,.64,1) both; }
+.podium-2nd .podium-bar { animation-delay: .15s; }
+.podium-3rd .podium-bar { animation-delay: .3s; }
+.podium-1st .podium-bar { background: linear-gradient(180deg, #ffe066 0%, #f5b700 55%, #c98a00 100%); box-shadow: 0 0 30px -6px rgba(255,200,0,.8); }
+.podium-2nd .podium-bar { background: linear-gradient(180deg, #e8eef3 0%, #aab7c2 55%, #7f8c8d 100%); }
+.podium-3rd .podium-bar { background: linear-gradient(180deg, #f0a46c 0%, #cd7f32 55%, #9c5b1f 100%); }
+.podium-1st .podium-avatar-big { animation: winner-bounce 1.1s ease-in-out .8s infinite; box-shadow: 0 0 0 3px #ffd43b, 0 0 24px rgba(255,212,59,.7); }
+@keyframes bar-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes winner-bounce { 0%,100% { transform: translateY(0); } 40% { transform: translateY(-10px); } 60% { transform: translateY(-4px); } }
+@keyframes pop-in { 0% { opacity: 0; transform: scale(.4); } 100% { opacity: 1; transform: scale(1); } }
+
+/* Spinner de carga: un disco de vinilo girando */
+.game-spinner {
+  border: none;
+  background:
+    radial-gradient(circle, #e94560 0 18%, #111 19% 22%, transparent 23%),
+    repeating-radial-gradient(circle, #1b1b1b 0 2px, #2a2a2a 3px 4px);
+  box-shadow: 0 0 0 3px rgba(255,255,255,.08), 0 8px 20px -8px rgba(0,0,0,.8);
+  animation: spin 1.2s linear infinite;
+}
+
+/* Cartones de PIN individual */
+.pin-ticket { transition: background .15s, border-color .15s, transform .2s cubic-bezier(.34,1.56,.64,1); }
+.pin-ticket:hover { transform: translateY(-3px) rotate(-1.5deg); }
+
+/* Botones de reproducción */
+.a-play { background: var(--grad-hot); box-shadow: 0 4px 12px -4px rgba(233,69,96,.8); transition: transform .15s; }
+.a-play:hover { background: var(--grad-hot); transform: scale(1.08); }
+
+/* Quien tenga activado "reducir movimiento" en su sistema no ve animaciones */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }
