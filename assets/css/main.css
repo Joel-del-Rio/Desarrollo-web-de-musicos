@@ -660,3 +660,76 @@ a.card:hover > span:first-child { animation: emoji-wiggle .55s ease; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   EFECTOS DE PARTIDA (los activa assets/js/fx.js)
+════════════════════════════════════════════════════════════════ */
+
+/* Notas musicales flotando detrás de todo (se ocultan mientras el
+   jugador está colocando la canción, para no distraerle) */
+#fx-notes { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+#fx-notes span {
+  position: absolute; bottom: -3rem; color: #fff; opacity: 0;
+  text-shadow: 0 0 12px rgba(255,95,143,.6);
+  animation: note-rise linear infinite;
+}
+@keyframes note-rise {
+  0%   { transform: translateY(0) rotate(0); opacity: 0; }
+  10%  { opacity: .14; }
+  90%  { opacity: .14; }
+  100% { transform: translateY(-110vh) rotate(25deg); opacity: 0; }
+}
+body[data-screen="question"] #fx-notes { display: none; }
+
+/* Lienzo del confeti, por encima de todo pero sin bloquear clics */
+.fx-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 2000; }
+
+/* Cuenta atrás nerviosa en los últimos 5 segundos */
+.fx-urgent {
+  animation: urgent-pulse .5s ease-in-out infinite alternate;
+  text-shadow: 0 0 16px rgba(226,27,60,.9);
+}
+@keyframes urgent-pulse { from { transform: scale(1); } to { transform: scale(1.25); } }
+
+/* Sacudida al fallar */
+.fx-shake { animation: fx-shake .55s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes fx-shake {
+  10%, 90%      { transform: translateX(-2px); }
+  20%, 80%      { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-8px); }
+  40%, 60%      { transform: translateX(8px); }
+}
+
+/* El icono de acierto/fallo entra de un salto */
+#screen-results.active #res-icon { animation: icon-pop .7s cubic-bezier(.34,1.56,.64,1) both; }
+@keyframes icon-pop {
+  0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* Sala de espera: el avatar se balancea y el contador va en degradado */
+#screen-lobby .avatar-preview-lg { animation: avatar-bob 2.6s ease-in-out infinite; }
+@keyframes avatar-bob { 50% { transform: translateY(-8px) rotate(-3deg); } }
+#lobby-count {
+  background: var(--grad-hot);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent !important;
+  display: inline-block;
+}
+#screen-lobby .waiting-dots span { color: #ff5f8f; }
+
+/* Desplegables ("Ver clasificación", "Ver mi línea del tiempo") */
+.player-app summary { transition: border-color .15s, box-shadow .2s, background .15s; }
+.player-app summary:hover,
+.player-app details[open] > summary {
+  border-color: rgba(255,95,143,.55);
+  background: rgba(255,95,143,.06);
+  box-shadow: 0 0 18px -8px rgba(255,95,143,.8);
+}
+
+/* Botón flotante de reacciones con un brillo suave */
+#reaction-toggle { box-shadow: 0 0 0 2px rgba(255,255,255,.12), 0 8px 22px -6px rgba(255,95,143,.8); }
+
+@media (prefers-reduced-motion: reduce) {
+  #fx-notes { display: none; }
+}

@@ -22,7 +22,7 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Hitstoric — Jugador</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=10">
+  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=11">
   <style>
     #screen-question {
       height: 100dvh; /* dynamic viewport height (iOS safe) */
@@ -378,5 +378,6 @@ require_once __DIR__ . '/../Modelo/Reaction.php'; ?>
 <script src="<?= BASE_URL ?>/assets/js/game-qr.js?v=20261024-tutorial1"></script>
 <script src="<?= BASE_URL ?>/assets/js/event-prizes.js?v=20261024-tutorial1"></script>
 <script src="<?= BASE_URL ?>/assets/js/player.js?v=20261024-reactions2"></script>
+<script src="<?= BASE_URL ?>/assets/js/fx.js?v=2"></script>
 </body>
 </html>
