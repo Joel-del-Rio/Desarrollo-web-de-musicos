@@ -6,9 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hitstoric — Catálogo de canciones</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=11">
+  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=12">
   <style>
-    .filter-bar { position: sticky; top: 0; z-index: 10; background: var(--bg); padding: .75rem 0; }
 
     /* ── Mini reproductor por fila ── */
     .song-play-btn {
@@ -59,7 +58,7 @@
 
 <div class="container py-4" style="max-width:1040px">
 
-  <div class="d-flex align-items-center gap-3 mb-4" style="margin-left:9rem">
+  <div class="catalog-head d-flex align-items-center gap-3 mb-4">
     <img src="<?= BASE_URL ?>/assets/images/Logo.png" alt="Hitstoric" style="height:48px">
     <div>
       <h4 class="fw-black mb-0">Catálogo de canciones</h4>

@@ -24,7 +24,7 @@ $genres = Genres::allWithTodos(); ?>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hitstoric — Dinamizador</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=11">
+  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/main.css?v=12">
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/game-qr.css?v=20261024-kick1">
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/reactions.css?v=20261024-kick1">
 <script src="<?= BASE_URL ?>/assets/js/reaction-feed.js?v=20261024-kick1"></script>
