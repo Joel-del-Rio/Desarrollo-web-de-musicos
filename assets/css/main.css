@@ -763,3 +763,54 @@ body[data-screen="question"] #fx-notes { display: none; }
   background: rgba(255,95,143,.12); color: #ff8fb0 !important;
   font-weight: 600;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   DETALLES EXTRA
+════════════════════════════════════════════════════════════════ */
+
+/* El año aterriza con un golpe cuando la "tragaperras" se para (fx.js) */
+.fx-landed { animation: year-land .45s cubic-bezier(.34,1.56,.64,1); display: inline-block; }
+@keyframes year-land {
+  0%   { transform: scale(1.45); text-shadow: 0 0 28px rgba(255,95,143,.95); }
+  100% { transform: scale(1);    text-shadow: none; }
+}
+
+/* "Mis partidas" sin partidas: tarjeta de bienvenida en vez de una línea de texto suelta */
+#saved-games:not(:has(*)) {
+  padding: 2.5rem 1.5rem; text-align: center;
+  color: var(--muted); font-size: .95rem;
+  border: 2px dashed rgba(255,255,255,.12); border-radius: 22px;
+  background: rgba(255,255,255,.025);
+}
+#saved-games:not(:has(*))::before {
+  content: '🎶'; display: block; font-size: 2.8rem; margin-bottom: .6rem;
+  animation: avatar-bob 2.6s ease-in-out infinite;
+}
+
+/* Catálogo de canciones en el móvil: cada canción es una ficha compacta
+   (nombre arriba; año, enlaces y play debajo) en vez de una tabla apretada */
+@media (max-width: 575.98px) {
+  #songs-container thead { display: none; }
+  #songs-container table, #songs-container tbody { display: block; }
+  #songs-container tbody tr {
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center;
+    gap: .55rem .75rem; padding: .8rem .9rem;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  #songs-container tbody tr:last-child { border-bottom: 0; }
+  #songs-container tbody td {
+    display: block; padding: 0; border: 0;
+    background: transparent; box-shadow: none;
+  }
+  #songs-container tbody td:first-child { grid-column: 1 / -1; }
+  #songs-container tbody td:nth-child(2) {
+    font-family: var(--font-fun); font-weight: 700; color: #ff8fb0;
+    padding: .15rem .6rem; border-radius: 999px; background: rgba(255,95,143,.12);
+  }
+  /* Mientras suena, el reproductor baja a su propia línea para que quepa la barra */
+  #songs-container tbody td:last-child:has(.song-player-ctrl:not(.d-none)) { grid-column: 1 / -1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #saved-games:not(:has(*))::before { animation: none; }
+}

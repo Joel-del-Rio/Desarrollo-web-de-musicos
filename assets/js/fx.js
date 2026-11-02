@@ -93,10 +93,75 @@
     el.classList.add('fx-shake');
   }
 
+  /* ── El año de la canción gira como una tragaperras hasta caer en el bueno ──
+     Vale para "1985" (jugador) y "📅 1985" (dinamizador): solo cambia los 4 dígitos */
+  function rollYear(el, duration = 1100) {
+    if (!el || reduceMotion) return;
+    const final = el.textContent;
+    const match = final.match(/^(.*?)(\d{4})(.*)$/);
+    if (!match) return;
+    const [, before, , after] = match;
+    let done = false;
+    const land = () => {
+      if (done) return;
+      done = true;
+      el.textContent = final;
+      el.classList.remove('fx-landed');
+      void el.offsetWidth;
+      el.classList.add('fx-landed');
+    };
+    // Red de seguridad: con la pestaña en segundo plano el navegador pausa
+    // requestAnimationFrame, y el año no puede quedarse en uno inventado
+    setTimeout(land, duration + 150);
+
+    const start = performance.now();
+    let lastTick = 0;
+    (function frame(now) {
+      if (done) return;
+      const t = now - start;
+      if (t >= duration) return land();
+      // Cada vez cambia más despacio, como una ruleta que se frena
+      if (now - lastTick > 45 + t / 8) {
+        lastTick = now;
+        el.textContent = before + (1960 + Math.floor(Math.random() * 66)) + after;
+      }
+      requestAnimationFrame(frame);
+    })(start);
+  }
+
+  /* ── Los puntos suben contando ("+0 pts" → "+120 pts") ── */
+  function countUp(el, duration = 900) {
+    if (!el || reduceMotion) return;
+    const final = el.textContent;
+    const match = final.match(/^(\D*)(\d+)(.*)$/);
+    if (!match || Number(match[2]) === 0) return;
+    const [, before, digits, after] = match;
+    const target = Number(digits);
+    let done = false;
+    const finish = () => { done = true; el.textContent = final; };
+    setTimeout(() => { if (!done) finish(); }, duration + 150); // igual que en rollYear
+
+    const start = performance.now();
+    (function frame(now) {
+      if (done) return;
+      const k = Math.min(1, (now - start) / duration);
+      if (k >= 1) return finish();
+      const eased = 1 - Math.pow(1 - k, 3);
+      el.textContent = before + Math.round(target * eased) + after;
+      requestAnimationFrame(frame);
+    })(start);
+  }
+
   /* ── Reaccionar cuando cambia la pantalla activa ── */
   function onScreenChange(id) {
     // El JS del juego rellena la pantalla justo al mostrarla: esperar un instante
     setTimeout(() => {
+      if (id === 'screen-results') {
+        rollYear(document.getElementById('r-year'));
+        countUp(document.getElementById('res-pts'));
+      }
+      if (id === 'screen-finished') countUp(document.getElementById('f-score'), 1400);
+
       if (id === 'screen-results') {
         const icon = document.getElementById('res-icon')?.textContent || '';
         if (icon.includes('✅')) {
